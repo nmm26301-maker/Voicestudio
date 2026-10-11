@@ -1,0 +1,18 @@
+----------
+1. WARNING in $PROJECT/tests/AudioPipelineTest.java (at line 2)
+	import java.io.*;import java.util.*;
+	                        ^^^^^^^^^
+The import java.util is never used
+----------
+1 problem (1 warning)
+AudioChecks: 20 assertions passed; decoder/device checks separate.
+PCM16/24/32, float32, signed stereo, mono downmix and stereo silence checks passed.
+Duration ratio 0.5: 439.5070548312199 Hz
+Duration ratio 0.8: 439.875727183636 Hz
+Duration ratio 1.25: 440.2415403896548 Hz
+Duration ratio 2.0: 440.0904295403165 Hz
+Audio timing, resampling, synthetic metadata, WAV addressing and malformed WAV checks passed.
+17 assertions passed: PCM heartbeat, silent input, signed peak, clipping, recording limit
+11 assertions passed: finalized partial recording recovery, short/corrupt input rejection, existing input protection
+146 assertions passed: arbitrary chunk boundaries, sinc continuity, exact global duration, final drain
+3 dubbing assertions passed: complete 61-second clip, retained tail, oversized clip rejection.

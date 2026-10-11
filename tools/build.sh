@@ -7,14 +7,21 @@ android_tools="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 platform_jar="$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
 ort_aar="$project_dir/app/libs/onnxruntime-android-1.30.0.aar"
 if [ ! -f "$ort_aar" ]; then python3 "$project_dir/tools/fetch_runtime.py"; fi
+# Public backups deliberately exclude the original upgrade signing key.
+key_path="$project_dir/signing/voicestudio-development.p12"
+if [ "${VOICE_UNSIGNED:-0}" != "1" ] && [ ! -f "$key_path" ]; then
+    echo "Missing original signing key: $key_path" >&2
+    echo "Restore the original key for an upgrade, or set VOICE_UNSIGNED=1 for compile/package validation only." >&2
+    exit 1
+fi
 artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
 out_dir="$(mktemp -d "$artifact_dir/compile.XXXXXX")"
 aapt_flags=()
-apk_name="VoiceStudio-1.5.0-Hybrid.apk"
+apk_name="VoiceStudio-1.5.1-Hybrid.apk"
 if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
-    apk_name="VoiceStudio-1.5.0-Hybrid-debug.apk"
+    apk_name="VoiceStudio-1.5.1-Hybrid-debug.apk"
 fi
 unzip -q "$ort_aar" classes.jar "jni/arm64-v8a/*" -d "$out_dir/ort"
 mkdir -p "$out_dir/classes" "$out_dir/dex" "$out_dir/res" "$out_dir/generated"
@@ -46,12 +53,13 @@ with zipfile.ZipFile(sys.argv[1]) as src,zipfile.ZipFile(sys.argv[2],'w') as dst
     for f in pathlib.Path(sys.argv[4]).rglob('*.so'): dst.write(f,'lib/'+str(f.relative_to(sys.argv[4])),compress_type=zipfile.ZIP_STORED)
 PY
 "$android_tools/zipalign" -f -P 16 4 "$out_dir/unsigned.apk" "$out_dir/aligned.apk"
-# Keep this key between releases. It is a dedicated local development key.
-key_path="$project_dir/signing/voicestudio-development.p12"
-mkdir -p "$(dirname "$key_path")"
-if [ ! -f "$key_path" ]; then
-    keytool -genkeypair -keystore "$key_path" -storetype PKCS12 -storepass android -keypass android -alias voicestudio -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=VoiceStudio Development,O=VoiceStudio,C=CN"
+if [ "${VOICE_UNSIGNED:-0}" = "1" ]; then
+    unsigned_name="${apk_name%.apk}-unsigned.apk"
+    cp "$out_dir/aligned.apk" "$artifact_dir/$unsigned_name"
+    "$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$unsigned_name"
+    echo "Unsigned validation build: $artifact_dir/$unsigned_name (not an installable upgrade)"
+else
+    "$android_tools/apksigner" sign --ks "$key_path" --ks-pass pass:android --key-pass pass:android --ks-key-alias voicestudio --out "$artifact_dir/$apk_name" "$out_dir/aligned.apk"
+    "$android_tools/apksigner" verify --verbose "$artifact_dir/$apk_name"
+    "$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$apk_name"
 fi
-"$android_tools/apksigner" sign --ks "$key_path" --ks-pass pass:android --key-pass pass:android --ks-key-alias voicestudio --out "$artifact_dir/$apk_name" "$out_dir/aligned.apk"
-"$android_tools/apksigner" verify --verbose "$artifact_dir/$apk_name"
-"$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$apk_name"

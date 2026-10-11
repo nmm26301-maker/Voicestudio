@@ -5,6 +5,25 @@ import java.util.Arrays;
 
 /** Waveform similarity overlap-add for modest duration corrections without pitch shifting. */
 final class AudioTiming {
+    static float[] readCompleteClip(PcmAudio.Reader audio) throws IOException {
+        // A 60-second subtitle can accept up to 2.5x its duration. Never silently
+        // discard the tail of a longer generated sentence before fitting it.
+        if (audio.seconds() > 150) throw new IOException("生成的配音片段超过 150 秒，请拆分字幕或缩短文字");
+        float[] result = new float[(int)Math.round(audio.seconds() * 24000)];
+        StreamingResampler resampler = new StreamingResampler(audio.rate, 24000);
+        int written = 0;
+        for (long frame = 0; frame < audio.frames; ) {
+            int count = (int)Math.min(audio.frames - frame, audio.rate * 5L);
+            float[] chunk = audio.read((double)frame / audio.rate, (double)count / audio.rate);
+            float[] converted = resampler.push(chunk);
+            System.arraycopy(converted, 0, result, written, converted.length);
+            written += converted.length; frame += count;
+        }
+        float[] tail = resampler.finish();
+        System.arraycopy(tail, 0, result, written, tail.length);
+        return result;
+    }
+
     static float[] fit(float[] input, int frames) throws IOException {
         if (input.length < 1024 || frames < 1024) throw new IOException("配音片段太短");
         double ratio = (double) input.length / frames;

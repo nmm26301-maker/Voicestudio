@@ -1,3 +1,11 @@
+# VoiceStudio repository
+
+Current source: **1.5.1-hybrid (versionCode 17)**. The 1.5.1 changes reorganize navigation and repair workflow issues; see README.md and CHANGELOG-1.5.1.md. Current checks are in validation/current-checks.json. No signed 1.5.1 upgrade APK is included. The original development signing key is required to produce an upgrade; unsigned builds are explicitly available for compilation validation.
+
+The original backup below remains the source provenance. PROVENANCE.json and old validation logs describe their original releases, not current device acceptance.
+
+---
+
 # VoiceStudio 1.5.0 backup
 
 This repository backs up source code, pinned runtime download manifest, tests, authored ONNX fixtures, design previews, licenses and build documentation from VoiceStudio 1.5.0-hybrid (versionCode 16).

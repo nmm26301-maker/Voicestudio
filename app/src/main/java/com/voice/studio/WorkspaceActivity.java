@@ -18,7 +18,20 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class WorkspaceActivity extends Activity {
-    LinearLayout root, tasks;
+    LinearLayout root, tasks, shell;
+    final Map<String, View> sections = new LinkedHashMap<>();
+    final Map<String, TextView> sectionButtons = new LinkedHashMap<>();
+    final Map<TextView, String[]> requirements = new LinkedHashMap<>();
+    String section = "转写", pendingResume = "";
+    TextView recordingStatus;
+    final Runnable recordingPoll = new Runnable() {
+        public void run() {
+            if (gone || !visible) return;
+            if (recordingStatus != null) recordingStatus.setText(StudioService.recording.isEmpty()
+                    ? "未在录音 · 开始后点击“结束录音并转写”" : "正在录音 · 完成后点击下方结束按钮");
+            ui.postDelayed(this, 500);
+        }
+    };
     ScrollView scroll;
     TextView status;
     final Handler ui = new Handler();
@@ -51,11 +64,14 @@ public class WorkspaceActivity extends Activity {
 
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
+        section = saved == null ? getIntent().getStringExtra("section") : saved.getString("section", "转写");
+        if (section == null) section = "转写";
         if (saved != null) {
+            pendingResume = saved.getString("pendingResume", "");
             taskLimit = saved.getInt("taskLimit", 50);
             taskFilter = Math.max(0, Math.min(4, saved.getInt("taskFilter", 0)));
             String name = saved.getString("exportFile", "");
-            if (name.matches("[a-f0-9-]+\\.(wav|mp4|zip|txt|srt|json)")) {
+            if (name.matches("[a-f0-9-]+\\.(mp3|wav|mp4|zip|txt|srt|json)")) {
                 File file = new File(StudioFiles.dir(this, "audio"), name);
                 if (file.isFile()) export = file;
             }
@@ -67,20 +83,24 @@ public class WorkspaceActivity extends Activity {
         root.setPadding(dp(20), dp(20), dp(20), dp(28));
         scroll.setBackgroundColor(CosmicUi.BG);
         scroll.addView(root);
-        setContentView(scroll);
-        CosmicUi.enter(root,1);
-        root.addView(CosmicUi.hero(this,"离线工作台","声音与任务保留在手机里。","声学任务中心",CosmicUi.CYAN));
-        button(root, "返回创作", this::finish);
-        quickSections();
-        int installed = 0;
-        for (String module : MODULE_CODES) if (StudioFiles.ready(this, module)) installed++;
-        LinearLayout setup = card("模型与设备", "按需要安装模型；配音先安装基础模型，录音转写先安装识别模型。");
-        status = label(setup, "已安装 " + installed + " / 6 个模块 · 可用空间 " + (getFilesDir().getUsableSpace() / 1024 / 1024) + " MiB", 13, false);
+        shell = new LinearLayout(this); shell.setOrientation(1); shell.setBackgroundColor(CosmicUi.BG);
+        shell.setPadding(dp(12), dp(8), dp(12), 0);
+        LinearLayout toolbar = new LinearLayout(this); toolbar.setOrientation(0);
+        TextView back = CosmicUi.label(this, "‹ 返回", 14, CosmicUi.CYAN, true);
+        back.setPadding(dp(12), dp(12), dp(16), dp(12)); CosmicUi.press(back);
+        back.setOnClickListener(v -> finish()); toolbar.addView(back);
+        TextView heading = CosmicUi.label(this, "工具与任务", 22, CosmicUi.INK, true);
+        heading.setGravity(Gravity.CENTER_VERTICAL); toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(48), 1));
+        shell.addView(toolbar); quickSections();
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1)); setContentView(shell);
+        LinearLayout setup = sectionCard("模型", "模型与设备", "下载、安装、校验与设备自检集中在这里。");
+        status = label(setup, "正在读取模型状态…", 13, false);
         button(setup, "模型安装与设备检查", this::modelModules);
         button(setup, "下载与安装离线模型", () -> startActivity(new Intent(this, ModelDownloadsActivity.class)));
         button(setup, "导出设备与模型诊断", this::diagnostics);
         button(setup, "一键基础自检", this::deviceChecks);
-        LinearLayout voice = card("声音克隆与音色设计", "选取清晰、单人、3—10 秒 参考音频，并输入对应文字。");
+        LinearLayout voice = sectionCard("音色", "声音克隆与音色设计", "选取清晰、单人、3—10 秒 参考音频，并输入对应文字。");
+        requireModels(voice, "clone", "omni");
         button(voice, "创建参考音色", () -> pick(71, "audio/*", false));
         button(voice, "选择 / 删除已保存音色", this::profiles);
         button(voice, "设置自动音色与采样参数", this::settings);
@@ -91,8 +111,10 @@ public class WorkspaceActivity extends Activity {
                     getSharedPreferences("studio", 0).edit().remove("selected-profile").apply();
                     toast("已使用自动音色");
                 });
-        LinearLayout recognition = card("语音转写与录音", "Whisper tiny 在手机上离线识别。646 是合成语言目录，识别语言范围另列。");
+        LinearLayout recognition = sectionCard("转写", "语音转写与录音", "导入音视频或现场录音 → 校对字幕 → 分组说话人 → 翻译与配音。识别使用 Whisper tiny。");
+        requireModels(recognition, "whisper");
         button(recognition, "导入音频 / 视频转写", () -> pick(77, "*/*", false));
+        recordingStatus = label(recognition, "未在录音", 13, true);
         button(recognition, "麦克风录音并转写", this::startDictation);
         button(recognition, "选择麦克风 / 蓝牙耳机", this::recordInput);
         button(
@@ -103,33 +125,29 @@ public class WorkspaceActivity extends Activity {
                         startService(new Intent(this, StudioService.class).setAction("stopMic"));
                     else toast("当前没有正在录音的任务");
                 });
-        button(recognition, "导入 Whisper 识别模型", () -> pick(76, "*/*", true));
-        LinearLayout modules = card("克隆模型", "与基础模型分别导入。一次选择该模块的所有分包，不需要电脑拼接。");
-        button(modules, "导入声音克隆模型", () -> pick(72, "*/*", true));
-        label(
-                        modules,
-                        StudioFiles.ready(this, "clone") ? "克隆模型已导入" : "克隆模型尚未导入",
-                        13,
-                        false);
-        LinearLayout translation = card("离线翻译", "NLLB 200，包含 202 个语言 / 文字体系选项；翻译结果可复制、导出或用于配音。");
+        button(recognition, "开启悬浮听写", this::floatingDictation);
+        button(recognition, "关闭悬浮听写", () -> stopService(new Intent(this, DictationOverlay.class)));
+        button(recognition, "打开转写结果与字幕编辑", () -> jumpSection("任务"));
+        LinearLayout translation = sectionCard("翻译", "离线翻译", "NLLB 200，包含 202 个语言 / 文字体系选项；翻译结果可复制、导出或用于配音。");
+        requireModels(translation, "translation");
         button(translation, "输入文字并翻译", this::translationDialog);
-        button(translation, "导入离线翻译模型", () -> pick(78, "*/*", true));
-        LinearLayout extras = card("人声分离与说话人", "MDX-Net 输出立体声人声 / 伴奏；CAM++ 按校对字幕片段分组，结果可人工改正。");
+        LinearLayout extras = sectionCard("音频", "人声分离与配音", "分离人声与伴奏；视频配音从已完成的转写任务进入，可校对字幕并为说话人分配音色。");
+        requireModels(extras, "separation");
         button(extras, "导入音频 / 视频分离人声", () -> pick(79, "*/*", false));
-        button(extras, "导入人声分离模型", () -> pick(80, "*/*", true));
-        button(extras, "导入说话人分组模型", () -> pick(81, "*/*", true));
-        button(extras, "开启悬浮听写", this::floatingDictation);
-        button(extras, "关闭悬浮听写", () -> stopService(new Intent(this, DictationOverlay.class)));
-        LinearLayout book = card("有声书", "导入 UTF-8 TXT 或未加密 EPUB。按章节保存 WAV，完成后导出 ZIP；已完成章节可续做。");
+        button(extras, "字幕、说话人分组与视频配音", () -> jumpSection("任务"));
+        LinearLayout book = sectionCard("有声书", "有声书", "导入 UTF-8 TXT 或未加密 EPUB。按章节保存 WAV，完成后导出 ZIP；已完成章节可续做。");
+        requireModels(book, "omni");
         button(book, "导入书籍", () -> pick(75, "*/*", false));
-        LinearLayout batch = card("批量生成", "每行作为一个独立任务，使用首页当前语言、语速与音色。");
+        LinearLayout batch = sectionCard("批量", "批量生成", "使用 OmniVoice 离线合成，每行一个任务；沿用本机语言、语速和参考音色，不使用 Fish 或手机语音引擎。");
+        requireModels(batch, "omni");
         button(batch, "输入批量文字", this::batch);
-        tasks = card("任务与结果", "锁屏或离开页面后继续计算。系统回收进程后可手动继续；每行“···”可暂停单个任务；长按可删除任务。");
+        tasks = sectionCard("任务", "任务与结果", "锁屏或离开页面后继续计算。系统回收进程后可手动继续；每行“···”可暂停单个任务；长按可删除任务。");
         button(
                 tasks,
                 "暂停整个队列",
                 () -> startService(new Intent(this, StudioService.class).setAction("cancel")));
-        button(tasks, "继续所有已暂停任务", () -> {
+        label(tasks, "继续队列会复用已保存录音；需要重新录音的任务请单独打开并继续。", 12, false);
+        button(tasks, "继续可恢复的暂停任务", () -> {
             try {
                 int count = StudioService.resumePaused(this);
                 toast(count == 0 ? "没有已暂停任务" : "已继续 " + count + " 个任务");
@@ -147,15 +165,19 @@ public class WorkspaceActivity extends Activity {
         });
         taskSummary = label(tasks, "正在读取任务…", 13, false);
         taskHeaderCount = tasks.getChildCount();
-        if (getIntent().getBooleanExtra("openModels", false)) ui.post(this::modelModules);
+        if (getIntent().getBooleanExtra("openModels", false)) {
+            section = "模型"; getIntent().removeExtra("openModels"); ui.post(this::modelModules);
+        }
         String inspectModule = getIntent().getStringExtra("inspectModule");
         String importModule = getIntent().getStringExtra("importModule");
         getIntent().removeExtra("inspectModule"); getIntent().removeExtra("importModule");
+        if (inspectModule != null || importModule != null) section = "模型";
         for (int n = 0; n < MODULE_CODES.length; n++) {
             final int index = n;
             if (MODULE_CODES[n].equals(inspectModule)) ui.post(() -> modelDetails(index));
             if (MODULE_CODES[n].equals(importModule)) ui.post(() -> pick(MODULE_REQUESTS[index], "*/*", true));
         }
+        jumpSection(sections.containsKey(section) ? section : "转写");
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
                         != android.content.pm.PackageManager.PERMISSION_GRANTED)
@@ -179,32 +201,31 @@ public class WorkspaceActivity extends Activity {
         EditText text = new EditText(this);
         text.setMinLines(5);
         text.setHint("每行一个任务");
-        new CosmicDialogBuilder(this)
+        new CosmicDialogBuilder(this).submit("加入队列", () -> {
+            String[] lines = text.getText().toString().split("\\r?\\n");
+            if (lines.length > 100) throw new IOException("一次最多 100 条");
+            List<JSONObject> jobs = new ArrayList<>();
+            for (String line : lines) {
+                if (line.trim().isEmpty()) continue;
+                if (line.length() > 12000)
+                    throw new IOException("某行超过 12000 字");
+                jobs.add(speechJob(line.trim()));
+            }
+            if (jobs.isEmpty()) throw new IOException("请先输入文字");
+            if (!StudioFiles.ready(this, "omni"))
+                throw new IOException("请先导入基础模型");
+            for (int at = 0; at < jobs.size(); at++) {
+                StudioService.enqueue(this, jobs.get(at));
+                StringBuilder remaining = new StringBuilder();
+                for (int next = at + 1; next < jobs.size(); next++) remaining.append(jobs.get(next).getString("text")).append('\n');
+                text.setText(remaining.toString());
+            }
+            toast("已加入 " + jobs.size() + " 个任务");
+                })
                 .setTitle("批量生成")
                 .setView(text)
                 .setNegativeButton("取消", null)
-                .setPositiveButton(
-                        "加入队列",
-                        (d, w) -> {
-                            try {
-                                String[] lines = text.getText().toString().split("\\r?\\n");
-                                if (lines.length > 100) throw new IOException("一次最多 100 条");
-                                List<JSONObject> jobs = new ArrayList<>();
-                                for (String line : lines) {
-                                    if (line.trim().isEmpty()) continue;
-                                    if (line.length() > 12000)
-                                        throw new IOException("某行超过 12000 字");
-                                    jobs.add(speechJob(line.trim()));
-                                }
-                                if (jobs.isEmpty()) throw new IOException("请先输入文字");
-                                if (!StudioFiles.ready(this, "omni"))
-                                    throw new IOException("请先导入基础模型");
-                                for (JSONObject job : jobs) StudioService.enqueue(this, job);
-                                toast("已加入 " + jobs.size() + " 个任务");
-                            } catch (Exception e) {
-                                toast(e.getMessage());
-                            }
-                        })
+
                 .show();
     }
 
@@ -218,7 +239,8 @@ public class WorkspaceActivity extends Activity {
                         .addCategory(Intent.CATEGORY_OPENABLE)
                         .setType(mime)
                         .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multi);
-        startActivityForResult(i, code);
+        try { startActivityForResult(i, code); }
+        catch (ActivityNotFoundException e) { toast("没有可用的文件选择器，请启用手机文件管理器"); }
     }
 
     protected void onActivityResult(int request, int result, Intent data) {
@@ -232,10 +254,12 @@ public class WorkspaceActivity extends Activity {
             File source = export;
             export = null;
             Uri target = data.getData();
+            if (target == null) { toast("没有选择保存位置"); return; }
             files.execute(
                     () -> {
                         try (InputStream in = new FileInputStream(source);
-                                OutputStream out = getContentResolver().openOutputStream(target)) {
+                                OutputStream out = getContentResolver().openOutputStream(target, "wt")) {
+                            if (out == null) throw new IOException("无法打开保存位置");
                             copy(in, out, Long.MAX_VALUE);
                             ui.post(() -> toast("已保存"));
                         } catch (Exception e) {
@@ -302,43 +326,37 @@ public class WorkspaceActivity extends Activity {
                 seconds = field(box, "参考秒数（3—10）", "6"),
                 text = field(box, "对应文字（留空可自动离线转写）", "");
         text.setMinLines(3);
-        new CosmicDialogBuilder(this)
+        new CosmicDialogBuilder(this).submit("创建", () -> {
+            if (!StudioFiles.ready(this, "clone"))
+                throw new IOException("请先导入克隆模型");
+            double a = Double.parseDouble(start.getText().toString()),
+                    b = Double.parseDouble(seconds.getText().toString());
+            if (!Double.isFinite(a)
+                    || !Double.isFinite(b)
+                    || a < 0
+                    || b < 3
+                    || b > 10) throw new IOException("参考时间无效");
+            String transcript = text.getText().toString().trim();
+            if (transcript.length() > 2000)
+                throw new IOException("对应文字最多 2000 字");
+            if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper"))
+                throw new IOException("对应文字留空时需要导入识别模型");
+            StudioService.enqueue(
+                    this,
+                    new JSONObject()
+                            .put("type", "clone")
+                            .put("uri", uri.toString())
+                            .put("start", a)
+                            .put("seconds", b)
+                            .put("text", transcript)
+                            .put("name", name.getText().toString())
+                            .put("title", "创建音色 · " + name.getText()));
+            toast("音色任务已加入队列");
+                })
                 .setTitle("创建参考音色")
                 .setView(box)
                 .setNegativeButton("取消", null)
-                .setPositiveButton(
-                        "创建",
-                        (d, w) -> {
-                            try {
-                                if (!StudioFiles.ready(this, "clone"))
-                                    throw new IOException("请先导入克隆模型");
-                                double a = Double.parseDouble(start.getText().toString()),
-                                        b = Double.parseDouble(seconds.getText().toString());
-                                if (!Double.isFinite(a)
-                                        || !Double.isFinite(b)
-                                        || a < 0
-                                        || b < 3
-                                        || b > 10) throw new IOException("参考时间无效");
-                                String transcript = text.getText().toString().trim();
-                                if (transcript.length() > 2000)
-                                    throw new IOException("对应文字最多 2000 字");
-                                if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper"))
-                                    throw new IOException("对应文字留空时需要导入识别模型");
-                                StudioService.enqueue(
-                                        this,
-                                        new JSONObject()
-                                                .put("type", "clone")
-                                                .put("uri", uri.toString())
-                                                .put("start", a)
-                                                .put("seconds", b)
-                                                .put("text", transcript)
-                                                .put("name", name.getText().toString())
-                                                .put("title", "创建音色 · " + name.getText()));
-                                toast("音色任务已加入队列");
-                            } catch (Exception e) {
-                                toast(e.getMessage());
-                            }
-                        })
+
                 .show();
     }
 
@@ -456,30 +474,24 @@ public class WorkspaceActivity extends Activity {
         steps.setSelection(p.getInt("voice-steps", 16) == 16 ? 1 : 0);
         box.addView(steps);
         EditText seed = field(box, "随机种子", Long.toString(p.getLong("voice-seed", 42)));
-        new CosmicDialogBuilder(this)
+        new CosmicDialogBuilder(this).submit("保存", () -> {
+            long value = Long.parseLong(seed.getText().toString());
+            String instruction = style.getText().toString().trim();
+            if (instruction.length() > 300) throw new IOException("音色描述过长");
+            p.edit()
+                    .putString(
+                            "voice-style",
+                            instruction.isEmpty() ? "None" : instruction)
+                    .putInt(
+                            "voice-steps",
+                            steps.getSelectedItemPosition() == 0 ? 32 : 16)
+                    .putLong("voice-seed", value)
+                    .apply();
+            toast("设置已保存");
+                })
                 .setTitle("音色设计与采样")
                 .setView(box)
-                .setPositiveButton(
-                        "保存",
-                        (d, w) -> {
-                            try {
-                                long value = Long.parseLong(seed.getText().toString());
-                                String instruction = style.getText().toString().trim();
-                                if (instruction.length() > 300) throw new IOException("音色描述过长");
-                                p.edit()
-                                        .putString(
-                                                "voice-style",
-                                                instruction.isEmpty() ? "None" : instruction)
-                                        .putInt(
-                                                "voice-steps",
-                                                steps.getSelectedItemPosition() == 0 ? 32 : 16)
-                                        .putLong("voice-seed", value)
-                                        .apply();
-                                toast("设置已保存");
-                            } catch (Exception e) {
-                                toast("参数无效");
-                            }
-                        })
+
                 .setNegativeButton("取消", null)
                 .show();
     }
@@ -629,7 +641,7 @@ public class WorkspaceActivity extends Activity {
                             "继续",
                             (d, w) -> {
                                 try {
-                                    StudioService.resume(this, id);
+                                    resumeTask(id);
                                 } catch (Exception e) {
                                     toast(e.getMessage());
                                 }
@@ -685,13 +697,7 @@ public class WorkspaceActivity extends Activity {
                         (d, n) -> {
                             try {
                                 if (n == 1) {
-                                    export = f;
-                                    startActivityForResult(
-                                            new Intent(Intent.ACTION_CREATE_DOCUMENT)
-                                                    .addCategory(Intent.CATEGORY_OPENABLE)
-                                                    .setType(mime)
-                                                    .putExtra(Intent.EXTRA_TITLE, f.getName()),
-                                            74);
+                                    saveOutput(f);
                                 } else if (n == 0 && mime.startsWith("audio/")) {
                                     preview(f, "音频试听");
                                 } else {
@@ -760,6 +766,16 @@ public class WorkspaceActivity extends Activity {
 
     public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);
+        if (request == 88) {
+            String retry = pendingResume; pendingResume = "";
+            if (results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED && !retry.isEmpty()) resumeTask(retry);
+            else toast("未授权麦克风，任务已保留，可授权后继续");
+            return;
+        }
+        if ((request == 80 || request == 85) && (results.length == 0
+                || results[0] != android.content.pm.PackageManager.PERMISSION_GRANTED)) {
+            toast("未授权麦克风，可在系统设置中授权后重试"); return;
+        }
         if (request == 86) {
             boolean granted =
                     results.length > 0
@@ -842,12 +858,13 @@ public class WorkspaceActivity extends Activity {
     void saveOutput(File file) {
         if (!file.isFile()) { toast("结果文件不存在，请检查任务状态"); return; }
         export = file;
-        startActivityForResult(
+        try { startActivityForResult(
                 new Intent(Intent.ACTION_CREATE_DOCUMENT)
                         .addCategory(Intent.CATEGORY_OPENABLE)
                         .setType(mime(file))
                         .putExtra(Intent.EXTRA_TITLE, file.getName()),
-                74);
+                74); }
+        catch (ActivityNotFoundException e) { export = null; toast("没有可用的文件保存器，请启用手机文件管理器"); }
     }
 
     void transcriptResult(JSONObject job) {
@@ -1459,41 +1476,35 @@ public class WorkspaceActivity extends Activity {
             Spinner target = languageSpinner(box, codes, "zho_Hans");
             EditText text = field(box, "输入较短段落", "");
             text.setMinLines(5);
-            new CosmicDialogBuilder(this)
+            new CosmicDialogBuilder(this).submit("加入队列", () -> {
+            String content = text.getText().toString().trim();
+            if (content.isEmpty() || content.length() > 2000)
+                throw new IOException("请输入 1—2000 字；长段落请分开翻译");
+            StudioService.enqueue(
+                    this,
+                    new JSONObject()
+                            .put("type", "translate")
+                            .put("text", content)
+                            .put(
+                                    "title",
+                                    "翻译 · "
+                                            + AudioChecks.shortTitle(
+                                                    content))
+                            .put(
+                                    "sourceLanguage",
+                                    codes.getString(
+                                            source
+                                                    .getSelectedItemPosition()))
+                            .put(
+                                    "targetLanguage",
+                                    codes.getString(
+                                            target
+                                                    .getSelectedItemPosition())));
+            toast("翻译已加入队列");
+                })
                     .setTitle("离线翻译")
                     .setView(box)
-                    .setPositiveButton(
-                            "加入队列",
-                            (d, n) -> {
-                                try {
-                                    String content = text.getText().toString().trim();
-                                    if (content.isEmpty() || content.length() > 2000)
-                                        throw new IOException("请输入 1—2000 字；长段落请分开翻译");
-                                    StudioService.enqueue(
-                                            this,
-                                            new JSONObject()
-                                                    .put("type", "translate")
-                                                    .put("text", content)
-                                                    .put(
-                                                            "title",
-                                                            "翻译 · "
-                                                                    + AudioChecks.shortTitle(
-                                                                            content))
-                                                    .put(
-                                                            "sourceLanguage",
-                                                            codes.getString(
-                                                                    source
-                                                                            .getSelectedItemPosition()))
-                                                    .put(
-                                                            "targetLanguage",
-                                                            codes.getString(
-                                                                    target
-                                                                            .getSelectedItemPosition())));
-                                    toast("翻译已加入队列");
-                                } catch (Exception e) {
-                                    toast(e.getMessage());
-                                }
-                            })
+
                     .setNegativeButton("取消", null)
                     .show();
         } catch (Exception e) {
@@ -1662,20 +1673,76 @@ public class WorkspaceActivity extends Activity {
         return t;
     }
 
-    void quickSections() {
-        HorizontalScrollView scroll=new HorizontalScrollView(this); scroll.setHorizontalScrollBarEnabled(false);
-        LinearLayout row=new LinearLayout(this); row.setOrientation(0);
-        for(String name:new String[]{"模型","音色","转写","翻译","任务"}) {
-            TextView chip=CosmicUi.label(this,name,12,CosmicUi.CYAN,true);chip.setGravity(Gravity.CENTER);chip.setPadding(dp(16),dp(10),dp(16),dp(10));chip.setBackground(CosmicUi.button(this,false));CosmicUi.press(chip);
-            LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-2,dp(48));lp.rightMargin=dp(8);lp.topMargin=dp(12);row.addView(chip,lp);chip.setOnClickListener(v->jumpSection(name));
-        }scroll.addView(row);root.addView(scroll);
+    LinearLayout sectionCard(String key, String title, String subtitle) {
+        LinearLayout card = card(title, subtitle); sections.put(key, card); return card;
     }
-    void jumpSection(String name) {
-        for(int i=0;i<root.getChildCount();i++) { View child=root.getChildAt(i);
-            if(child instanceof LinearLayout) { LinearLayout box=(LinearLayout)child;if(box.getChildCount()>0 && box.getChildAt(0) instanceof TextView && ((TextView)box.getChildAt(0)).getText().toString().contains(name)) {
-                if(CosmicUi.motionAllowed(this))scroll.smoothScrollTo(0,child.getTop());else scroll.scrollTo(0,child.getTop());return;
-            }}
+
+    void quickSections() {
+        HorizontalScrollView strip = new HorizontalScrollView(this); strip.setHorizontalScrollBarEnabled(false);
+        LinearLayout row = new LinearLayout(this); row.setOrientation(0);
+        for (String name : new String[]{"转写", "音色", "翻译", "音频", "有声书", "批量", "任务", "模型"}) {
+            TextView chip = CosmicUi.label(this, name, 14, CosmicUi.CYAN, true);
+            chip.setGravity(Gravity.CENTER); chip.setPadding(dp(16), dp(10), dp(16), dp(10));
+            CosmicUi.press(chip); chip.setContentDescription(name);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(48)); lp.rightMargin = dp(8);
+            row.addView(chip, lp); sectionButtons.put(name, chip);
+            chip.setOnClickListener(v -> jumpSection(name));
         }
+        strip.addView(row); shell.addView(strip);
+    }
+
+    void jumpSection(String name) {
+        if (!sections.containsKey(name)) return;
+        section = name;
+        for (Map.Entry<String, View> entry : sections.entrySet())
+            entry.getValue().setVisibility(name.equals(entry.getKey()) ? View.VISIBLE : View.GONE);
+        for (Map.Entry<String, TextView> entry : sectionButtons.entrySet()) {
+            boolean chosen = name.equals(entry.getKey()); TextView chip = entry.getValue();
+            chip.setSelected(chosen); chip.setTextColor(chosen ? Color.WHITE : CosmicUi.CYAN);
+            chip.setBackground(CosmicUi.button(this, chosen));
+            if (chosen) chip.post(() -> chip.requestRectangleOnScreen(new android.graphics.Rect(0, 0, chip.getWidth(), chip.getHeight()), true));
+        }
+        scroll.post(() -> scroll.scrollTo(0, 0));
+    }
+
+    void requireModels(LinearLayout parent, String... modules) {
+        TextView hint = label(parent, "", 12, false); requirements.put(hint, modules);
+        button(parent, "查看所需模型", () -> jumpSection("模型"));
+    }
+
+    void refreshModels() {
+        if (status == null || StudioFiles.modelWork()) return;
+        Map<String, Boolean> ready = new HashMap<>();
+        int installed = 0;
+        for (String code : MODULE_CODES) {
+            boolean available = StudioFiles.ready(this, code); ready.put(code, available);
+            if (available) installed++;
+        }
+        for (Map.Entry<TextView, String[]> entry : requirements.entrySet()) {
+            StringBuilder label = new StringBuilder("所需模型：");
+            for (String code : entry.getValue()) {
+                int index = Arrays.asList(MODULE_CODES).indexOf(code);
+                if (label.length() > 5) label.append(" · ");
+                label.append(MODULE_NAMES[index]).append(Boolean.TRUE.equals(ready.get(code)) ? "已安装" : "待安装");
+            }
+            entry.getKey().setText(label.toString());
+        }
+        status.setText("已安装 " + installed + " / " + MODULE_CODES.length + " 个模块 · 可用空间 "
+                + (getFilesDir().getUsableSpace() / 1024 / 1024) + " MiB");
+    }
+
+    void resumeTask(String id) {
+        try {
+            JSONObject job = StudioFiles.read(StudioFiles.job(this, id));
+            if (StudioService.needsMicrophone(this, job)
+                    && checkSelfPermission("android.permission.RECORD_AUDIO") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                pendingResume = id;
+                requestPermissions(new String[]{"android.permission.RECORD_AUDIO"}, 88);
+                return;
+            }
+            StudioService.resume(this, id); pendingResume = "";
+            toast(StudioService.needsMicrophone(this, job) ? "正在开始录音" : "任务已加入队列");
+        } catch (Exception error) { toast(error.getMessage()); }
     }
 
     int dp(int x) {
@@ -1688,6 +1755,7 @@ public class WorkspaceActivity extends Activity {
 
     protected void onSaveInstanceState(Bundle state) {
         if (export != null) state.putString("exportFile", export.getName());
+        state.putString("section", section); state.putString("pendingResume", pendingResume);
         state.putInt("taskLimit", taskLimit);
         state.putInt("taskFilter", taskFilter);
         super.onSaveInstanceState(state);
@@ -1695,11 +1763,13 @@ public class WorkspaceActivity extends Activity {
 
     protected void onResume() {
         super.onResume(); visible = true;
+        refreshModels();
+        ui.removeCallbacks(recordingPoll); ui.post(recordingPoll);
         ui.removeCallbacks(poll); ui.post(poll);
     }
 
     protected void onPause() {
-        visible = false; ui.removeCallbacks(poll);
+        visible = false; ui.removeCallbacks(poll); ui.removeCallbacks(recordingPoll);
         if (preview != null) { preview.close(); preview = null; }
         super.onPause();
     }

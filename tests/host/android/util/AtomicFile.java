@@ -4,6 +4,7 @@ import java.io.*;
 public class AtomicFile {
     final File file;
     public AtomicFile(File value) { file = value; }
+    public void delete() { file.delete(); new File(file.getPath()+".bak").delete(); new File(file.getPath()+".new").delete(); }
     public FileInputStream openRead() throws IOException {
         File backup = new File(file.getPath()+".bak");
         if (backup.isFile()) { file.delete(); if (!backup.renameTo(file)) throw new IOException("restore failed"); }

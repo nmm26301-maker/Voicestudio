@@ -23,7 +23,7 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$ou
   "$project_dir/tests/SubtitleWorkflowTest.java" \
   "$project_dir/tests/host/android/content/Context.java" "$project_dir/tests/host/android/content/res/AssetManager.java" \
   "$project_dir/tests/host/android/util/AtomicFile.java" "$project_dir/tests/host/com/voice/studio/StudioService.java" \
-  "$project_dir/tests/host/com/voice/studio/VoicePrompt.java" "$project_dir/tests/StudioRecoveryTest.java" "$project_dir/tests/HistoryConcurrencyTest.java"
+  "$project_dir/tests/host/com/voice/studio/VoicePrompt.java" "$project_dir/tests/StudioRecoveryTest.java" "$project_dir/tests/HistoryConcurrencyTest.java" "$project_dir/tests/QueueWorkflowTest.java"
 java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.ModelPartsTest
 java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.OmniModelsTest
 java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.ModelPackageCheckTest "$project_dir/app/src/main/assets"
@@ -33,3 +33,5 @@ java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.StudioRecoveryTest
 
 java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.HistoryConcurrencyTest
 java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.SubtitleWorkflowTest
+
+java -cp "$output_dir/classes:$JSON_JAR" com.voice.studio.QueueWorkflowTest

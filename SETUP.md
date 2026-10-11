@@ -1,4 +1,32 @@
-# VoiceStudio 1.5.0 · 深空界面与原生动效
+# VoiceStudio 1.5.1 · 当前构建与使用说明
+
+当前源码为 `1.5.1-hybrid`、版本代码 17。功能入口见 [README](README.md)，修复列表见 [CHANGELOG-1.5.1.md](CHANGELOG-1.5.1.md)，设备验收见 [功能核对](docs/FUNCTION_AUDIT_1.5.1.md)。
+
+## 构建
+
+准备 Java 17、Android SDK platform 35 / build-tools 35.0.0、ECJ 3.38.0 和 org.json 20240303 JAR，设置 `ANDROID_SDK_ROOT`、`ECJ_JAR`、`JSON_JAR`。
+
+```bash
+python3 tools/fetch_runtime.py
+bash tests/run_regression.sh
+VOICE_UNSIGNED=1 bash tools/build.sh
+```
+
+此模式完成 Java、资源、D8、ARM64 打包与 16 KiB 对齐，输出 `build-manual/VoiceStudio-1.5.1-Hybrid-unsigned.apk`，仅供构建验证，不能直接安装。
+
+覆盖旧应用需要原开发签名文件 `signing/voicestudio-development.p12`。恢复原文件后执行 `bash tools/build.sh`；文件缺失时脚本明确报错，不再生成新的签名。签名不一致时不要卸载旧应用；应先找回原签名。本次环境没有原签名，因此没有验证覆盖安装。
+
+## 使用入口
+
+主页面底部为创作、音色、工具、作品、设置。工具页顶部切换转写、音色、翻译、音频、有声书、批量、任务、模型。模型下载、安装、检查和移除集中在模型分类；已保存的任务与作品沿用旧存储位置。
+
+文字生成留在原页面；任务通知打开任务分类。音频转写完成后，从任务结果进入字幕校对、说话人分组、翻译配音和导出。Fish 仍需用户自己的密钥与音色；模型需另行安装。
+
+当前检查记录为 `validation/current-checks.json` 与 `validation/*-1.5.1.log`。下面是原始历史资料，其中安装、签名和性能检查不表示 1.5.1 已执行相同设备验收。
+
+---
+
+# 历史版本 VoiceStudio 1.5.0 · 深空界面与原生动效
 
 安装 `VoiceStudio-1.5.0-Hybrid.apk`，可直接覆盖 1.4.1。包名 com.voice.studio、版本代码 16、Android 8.0 以上、ARM64。沿用上一版开发签名；作品、模型、音色、加密 Fish API Key 和任务保留。不要先卸载。
 
@@ -41,7 +69,7 @@ AndroidX 来源：https://android.googlesource.com/platform/frameworks/support/+
 
 ---
 
-以下是历史版本说明，当前版本为 1.5.0，版本代码 16。
+以下继续保留 1.5.0 及更早版本的历史说明。
 
 # VoiceStudio 1.4.1 · 继续加速本机生成
 

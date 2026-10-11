@@ -44,7 +44,7 @@ final class AudioPreview implements AutoCloseable {
         Button next = button(controls, "+10秒");
         speed = new Button(activity); speed.setText("试听速度 · 1×"); body.addView(speed);
         toggle.setEnabled(false); back.setEnabled(false); next.setEnabled(false); speed.setEnabled(false);
-        dialog = new AlertDialog.Builder(activity).setTitle(title).setView(body)
+        dialog = new CosmicDialogBuilder(activity).setTitle(title).setView(body)
                 .setNegativeButton("关闭", null).create();
         dialog.setOnDismissListener(d -> close());
         toggle.setOnClickListener(v -> {

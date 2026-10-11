@@ -98,7 +98,6 @@ public class ModelDownloadsActivity extends Activity {
         if (!"https".equals(uri.getScheme()) || !"chatgpt.com".equals(uri.getHost())) { toast("下载地址不完整，请更新应用"); return; }
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE);
-            intent.setSelector(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_BROWSER));
             startActivity(intent);
         } catch (Exception e) {
             new CosmicDialogBuilder(this).setTitle("无法打开浏览器下载页")

@@ -108,16 +108,19 @@ public class ModelInstallActivity extends Activity {
         cancel.setEnabled(!ModelImports.cancelling()); use.setVisibility(ready ? android.view.View.VISIBLE : android.view.View.GONE);
         verify.setEnabled(ready);
         use.setText(module.equals("clone") && !StudioFiles.ready(this, "omni") ? "继续安装基础合成模型"
-                : module.equals("omni") || module.equals("clone") ? "去创作" : "去离线工作台");
+                : module.equals("clone") ? "去创建参考音色" : module.equals("omni") ? "去创作" : "打开对应工具");
         if (active) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
     void useModel() {
         if (module.equals("clone") && !StudioFiles.ready(this, "omni"))
             startActivity(new Intent(this, ModelInstallActivity.class).putExtra("module", "omni"));
-        else if (module.equals("omni") || module.equals("clone"))
-            startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
-        else startActivity(new Intent(this, WorkspaceActivity.class));
+        else if (module.equals("omni"))
+            startActivity(new Intent(this, MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE")
+                    .putExtra("engine", "omni").addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        else startActivity(new Intent(this, WorkspaceActivity.class).putExtra("section",
+                module.equals("clone") ? "音色" : module.equals("translation") ? "翻译"
+                        : module.equals("separation") ? "音频" : module.equals("speaker") ? "任务" : "转写"));
         finish();
     }
     public void onBackPressed() {

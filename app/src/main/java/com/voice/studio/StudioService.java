@@ -43,19 +43,13 @@ public class StudioService extends Service {
             }
         }
         String id = UUID.randomUUID().toString();
-        if (job.optString("type").equals("dictation")) {
-            if (!active.isEmpty()) throw new IOException("请等待当前任务完成后录音");
-            JSONArray all = StudioFiles.list(c);
-            for (int n = 0; n < all.length(); n++)
-                if (all.optJSONObject(n).optString("state").equals("queued"))
-                    throw new IOException("请先完成或暂停队列，再录音");
-        }
         job.put("id", id)
                 .put("file", id + ("fish".equals(job.optString("engine")) ? ".mp3" : ".wav"))
                 .put("state", "queued")
                 .put("created", System.currentTimeMillis())
                 .put("progress", "等待执行");
-        StudioFiles.save(StudioFiles.job(c, id), job);
+        requireMicrophonePermission(c, job);
+        StudioFiles.queue(c, job);
         try {
             c.startForegroundService(new Intent(c, StudioService.class).putExtra("id", id));
         } catch (RuntimeException failure) {
@@ -71,15 +65,8 @@ public class StudioService extends Service {
     static void resume(Context context, String id) throws Exception {
         if (StudioFiles.modelWork()) throw new IOException("请等待模型导入或检查完成");
         JSONObject job = StudioFiles.read(StudioFiles.job(context, id));
-        String state = job.optString("state");
-        if (!state.equals("paused") && !state.equals("failed"))
-            throw new IOException("该任务已经在队列中或已完成");
-        job.put("state", "queued").put("progress", "等待继续");
-        job.remove("finished");
-        job.remove("started");
-        job.remove("failureStage");
-        job.remove("failureDetail");
-        StudioFiles.save(StudioFiles.job(context, id), job);
+        requireMicrophonePermission(context, job);
+        job = StudioFiles.requeue(context, id);
         try {
             context.startForegroundService(new Intent(context, StudioService.class).putExtra("id", id));
         } catch (RuntimeException failure) {
@@ -97,10 +84,9 @@ public class StudioService extends Service {
         try {
             for (int n = 0; n < jobs.length(); n++) {
                 JSONObject job = jobs.getJSONObject(n);
-                if (job.optString("state").equals("paused") && !job.optString("type").equals("dictation")) {
-                    selected.add(job);
-                    job.put("state", "queued").put("progress", "等待继续");
-                    StudioFiles.save(StudioFiles.job(context, job.getString("id")), job);
+                // Reuse saved recordings, but never start a new microphone capture in a bulk retry.
+                if (job.optString("state").equals("paused") && !needsMicrophone(context, job)) {
+                    selected.add(StudioFiles.requeue(context, job.getString("id")));
                 }
             }
             if (selected.isEmpty()) return 0;
@@ -150,18 +136,14 @@ public class StudioService extends Service {
             synchronized (gate) {
                 paused = true;
                 cancel.set(true);
+                stopMic.set(true);
+                cancelEngines();
+                JSONArray all = StudioFiles.list(this);
+                for (int at = 0; at < all.length(); at++) {
+                    JSONObject task = all.optJSONObject(at);
+                    if (task.optString("state").equals("queued")) state(task, "paused", "队列已暂停");
+                }
                 if (active.isEmpty() && pending == 0) stopSelfResult(lastStart);
-            }
-            engine.cancel();
-        fish.cancel();
-            if (whisper != null) whisper.cancel();
-            if (translator != null) translator.cancel();
-            if (speaker != null) speaker.cancel();
-            if (separator != null) separator.cancel();
-            JSONArray all = StudioFiles.list(this);
-            for (int at = 0; at < all.length(); at++) {
-                JSONObject j = all.optJSONObject(at);
-                if (j.optString("state").equals("queued")) state(j, "paused", "队列已暂停");
             }
             return START_NOT_STICKY;
         }
@@ -192,6 +174,13 @@ public class StudioService extends Service {
         return START_NOT_STICKY;
     }
 
+    static void requireMicrophonePermission(Context context, JSONObject job) throws IOException {
+        if (needsMicrophone(context, job)
+                && context.checkSelfPermission("android.permission.RECORD_AUDIO")
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED)
+            throw new IOException("请先授权麦克风，再开始录音");
+    }
+
     static boolean needsMicrophone(Context context, JSONObject job) {
         return job.optString("type").equals("dictation")
                 && !new File(new File(StudioFiles.dir(context, "jobs"), job.optString("id")), "input.wav").isFile();
@@ -206,7 +195,7 @@ public class StudioService extends Service {
                         PendingIntent.getActivity(
                                 this,
                                 0,
-                                new Intent(this, WorkspaceActivity.class),
+                                new Intent(this, WorkspaceActivity.class).putExtra("section", "任务"),
                                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE),
                 stop =
                         PendingIntent.getService(
@@ -757,10 +746,7 @@ public class StudioService extends Service {
                     try (PcmAudio.Reader audio = new PcmAudio.Reader(clip)) {
                         writer.write(
                                 AudioTiming.fit(
-                                        PcmAudio.resample(
-                                                audio.read(0, Math.min(60, audio.seconds())),
-                                                audio.rate,
-                                                24000),
+                                        AudioTiming.readCompleteClip(audio),
                                         (int) (finish - begin)));
                     }
                     clip.delete();

@@ -1,6 +1,23 @@
-# 当前版本：1.4.1-hybrid（versionCode 15）
+# 当前验证：1.5.1-hybrid（versionCode 17）
 
-本轮验证与边界见 `CHANGELOG-1.4.1.md` 与 `validation/current-checks.json`。原生分阶段引擎诊断使用自编图，对照冻结的 1.4.0 引擎，未使用完整 OmniVoice 权重；不代表手机性能或音质验收。当前日志为 `validation/*-1.4.1.log`。
+2026-10-11 对本次源码执行了完整 Android 未签名构建及宿主回归。详情见 `validation/current-checks.json`、`validation/regression-1.5.1.log` 和 `CHANGELOG-1.5.1.md`。
+
+- ECJ 编译、Android 资源、D8、ARM64 APK 打包、版本元数据及 16 KiB ZIP 对齐通过。存在旧 API 弃用等编译警告，无编译错误。
+- 合成、Fish 模拟传输、采样/作品、分词、分段流水线、模型/文件/字幕、音频、动效宿主回归通过；本次没有真实 Fish 调用。
+- 新增队列测试 49 项，包括维护/入队竞争、重复恢复、录音任务准入、检查点保留、旧时间清理和临时文件删除。
+- 新增配音测试 3 项，覆盖 61 秒生成音频完整读取、尾部保留、超过 150 秒的有界拒绝。
+- 配色和源码集成检查 137 项通过；动效曲线 8,003 项通过。它们不能代替 Android UI 截图、布局、触控或生命周期测试。
+- 缺失原签名的发行构建明确失败、且未创建替代密钥的检查通过，见 `validation/signing-guard-1.5.1.log`。
+
+**未完成：真机/模拟器交互、完整语音/翻译/分离模型推理、麦克风/蓝牙、实际 MP4 输出、真实 Fish 账户、原签名覆盖升级。** 没有把历史原生 ONNX/ICU 检查或旧版签名结果算成本轮验证。逐功能设备步骤见 [功能核对与验收](docs/FUNCTION_AUDIT_1.5.1.md)。
+
+---
+
+以下记录只描述对应历史版本。
+
+# 历史版本：1.4.1-hybrid（versionCode 15）
+
+本轮验证与边界见 `CHANGELOG-1.4.1.md` 与 `validation/current-checks-1.4.1-historical.json`。原生分阶段引擎诊断使用自编图，对照冻结的 1.4.0 引擎，未使用完整 OmniVoice 权重；不代表手机性能或音质验收。当前日志为 `validation/*-1.4.1.log`。
 
 以下为历史验证记录。
 
@@ -90,7 +107,7 @@ Android 正则参数说明：https://developer.android.com/reference/java/util/r
 
 # VoiceStudio 1.3.4 本轮验证
 
-2026-10-09（北京时间）。最终版本与日志见 validation/current-checks.json。
+2026-10-09（北京时间）。最终版本与日志见 validation/current-checks-1.4.1-historical.json。
 
 - Android 构建成功，versionCode 8、1.3.4-offline；v2/v3 签名与既有证书一致，16 KiB 对齐，无 INTERNET 权限，resources.arsc 未压缩，六个模型清单及自检图与源码一致。
 - 文件/数据：ModelParts 24、OmniModels 27、StudioRecovery 24、HistoryConcurrency 100、SubtitleWorkflow 32，共 207 项。
@@ -106,7 +123,7 @@ Android 正则参数说明：https://developer.android.com/reference/java/util/r
 
 # VoiceStudio 1.3.3 本轮验证
 
-2026-10-09（北京时间）。日志与当前范围见 validation/current-checks.json。
+2026-10-09（北京时间）。日志与当前范围见 validation/current-checks-1.4.1-historical.json。
 
 - 最终 Android 构建成功，versionCode 7、1.3.3-offline；v2/v3 签名与原证书一致、16 KiB 对齐，无 INTERNET 权限，resources.arsc 未压缩，六个模型清单与源码一致。
 - ModelPartsTest 24、OmniModelsTest 27、StudioRecoveryTest 24、HistoryConcurrencyTest 100，共 175 项宿主机断言通过。
@@ -121,7 +138,7 @@ Android 正则参数说明：https://developer.android.com/reference/java/util/r
 
 # VoiceStudio 1.3.2 本轮验证
 
-2026-10-08。详情见 CHANGELOG-1.3.2.md 与 validation/current-checks.json。
+2026-10-08。详情见 CHANGELOG-1.3.2.md 与 validation/current-checks-1.4.1-historical.json。
 
 - Android SDK35/ECJ/AAPT2/D8 构建成功，versionCode 6、1.3.2-offline；v2/v3 签名与既有证书一致，16 KiB zipalign 通过，resources.arsc 未压缩，无 INTERNET 权限。
 - ModelPartsTest 24、OmniModelsTest 27、StudioRecoveryTest 24、HistoryConcurrencyTest 100，共 175 项断言通过。
@@ -137,7 +154,7 @@ Android 正则参数说明：https://developer.android.com/reference/java/util/r
 
 # VoiceStudio 1.3.1 本轮验证
 
-2026-10-08。详情和未验收范围见 CHANGELOG-1.3.1.md 与 validation/current-checks.json。
+2026-10-08。详情和未验收范围见 CHANGELOG-1.3.1.md 与 validation/current-checks-1.4.1-historical.json。
 
 - Android SDK35/ECJ/AAPT2/D8 构建成功，versionCode 5、1.3.1-offline。
 - APK v2/v3 签名通过，证书 SHA-256 与 1.3.0 相同；16 KiB zipalign 通过，resources.arsc 未压缩，无 INTERNET 权限。

@@ -16,10 +16,12 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -d "$out_dir" \
   "$project_dir/tests/StreamingResamplerTest.java" \
   "$project_dir/tests/AudioChecksTest.java" \
   "$project_dir/tests/PcmFormatsTest.java" \
-  "$project_dir/tests/AudioPipelineTest.java"
+  "$project_dir/tests/AudioPipelineTest.java" "$project_dir/tests/DubClipTest.java"
 java -cp "$out_dir" com.voice.studio.AudioChecksTest
 java -cp "$out_dir" com.voice.studio.PcmFormatsTest
 java -cp "$out_dir" com.voice.studio.AudioPipelineTest
 java -cp "$out_dir" com.voice.studio.RecordingHealthTest
 java -cp "$out_dir" com.voice.studio.RecordedInputTest
 java -cp "$out_dir" com.voice.studio.StreamingResamplerTest
+
+java -cp "$out_dir" com.voice.studio.DubClipTest

@@ -1,0 +1,31 @@
+{
+  "version": "1.4.1-hybrid",
+  "versionCode": 15,
+  "accelerationArchiveHostChecks": 1589,
+  "nativeOrtBufferChecks": 26489,
+  "tokenizerProgressCacheHostChecks": 17548,
+  "nativeICU74Fixtures": 211,
+  "inlineRoutingSourceGuard": "passed",
+  "synthesisHostAssertions": 8560,
+  "fishMockAssertions": 55,
+  "modelFileAssertions": 285,
+  "audioSuite": "passed",
+  "androidDevice": "not run",
+  "liveFish": "not run",
+  "fullOmniInference": "not run",
+  "phoneOverallSpeedup": "not measured",
+  "figmaCloudUpdate": "not performed",
+  "certificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+  "chunkPipelineHostChecks": 16646,
+  "nativeStagedEngineChecks": 1460201,
+  "nativeStagedEngineFixture": "authored dynamic logits + sine decoder, compared with frozen 1.4.0; no speech weights",
+  "phonePeakMemory": "not measured",
+  "modelLoadCountExample": {
+    "chunks": 10,
+    "before": 20,
+    "providedReference": 2,
+    "automaticFirstAnchor": 4
+  },
+  "apkSignature": "v2/v3 passed",
+  "apkZipAlignment": "16 KiB passed"
+}

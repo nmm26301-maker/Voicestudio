@@ -93,7 +93,13 @@ public class MainActivity extends Activity {
 
     SharedPreferences prefs;
     TextToSpeech tts;
-    boolean ttsReady, destroyed, busy;
+    boolean ttsReady, destroyed, busy, noisyRegistered;
+    final BroadcastReceiver noisyReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            if (player != null && isPlaying()) try { player.pause(); } catch (RuntimeException ignored) { }
+            stopPreview(); abandonFocus(); updatePlayback();
+        }
+    };
     String page = "创作",
             engine = "omni",
             voiceId = "",
@@ -366,6 +372,10 @@ public class MainActivity extends Activity {
         if (!prefs.getBoolean("fast-default-140", false))
             prefs.edit().putInt("voice-steps", 16).putBoolean("fast-default-140", true).apply();
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        IntentFilter noisyFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(noisyReceiver, noisyFilter, Context.RECEIVER_NOT_EXPORTED);
+        else registerReceiver(noisyReceiver, noisyFilter);
+        noisyRegistered = true;
         engine = prefs.getString("engine", "omni");
         if (!Arrays.asList("fish", "omni", "local").contains(engine)) engine = "omni";
         omniLang = prefs.getString("omniLang", "zh");
@@ -400,7 +410,7 @@ public class MainActivity extends Activity {
             if (exported.matches("[a-f0-9-]+\\.(mp3|wav)"))
                 exportFile = new File(new File(getFilesDir(), "audio"), exported);
         }
-        acceptText(getIntent());
+        if (saved == null) acceptText(getIntent());
         tts =
                 new TextToSpeech(
                         this,
@@ -625,8 +635,13 @@ public class MainActivity extends Activity {
         hideKeyboard();
         stopPreview();
         lastMessage = "";
+        if ("工具".equals(name)) { openWorkspace("转写"); return; }
         page = name;
         render();
+    }
+
+    void openWorkspace(String section) {
+        startActivity(new Intent(this, WorkspaceActivity.class).putExtra("section", section));
     }
 
     private void hideKeyboard() {
@@ -698,7 +713,7 @@ public class MainActivity extends Activity {
         nav = row();
         nav.setBackgroundColor(cosmic ? SPACE_BG : Color.WHITE);
         nav.setPadding(dp(8), dp(8), dp(8), dp(10));
-        String[] names = {"创作", "音色", "作品", "设置"}, icons = {"edit", "wave", "folder", "settings"};
+        String[] names = {"创作", "音色", "工具", "作品", "设置"}, icons = {"edit", "wave", "tools", "folder", "settings"};
         for (int i = 0; i < names.length; i++) {
             String n = names[i];
             boolean chosen = n.equals(page);
@@ -735,9 +750,9 @@ public class MainActivity extends Activity {
         add(
                 content,
                 button(
-                        "离线工作台 · 克隆 / 批量 / 任务",
+                        "打开工具与任务",
                         false,
-                        () -> startActivity(new Intent(this, WorkspaceActivity.class))));
+                        () -> openWorkspace("任务")));
         gap(content, 16);
         heading("今天，想说些什么？", "写下文字，制作属于你的第一段声音。");
         LinearLayout draftCard = card();
@@ -849,7 +864,7 @@ public class MainActivity extends Activity {
                 button(
                         "设计与克隆音色",
                         false,
-                        () -> startActivity(new Intent(this, WorkspaceActivity.class))));
+                        () -> openWorkspace("音色")));
         add(content, voice);
         gap(content, 14);
         if("omni".equals(engine)) {
@@ -1742,7 +1757,9 @@ public class MainActivity extends Activity {
         add(content, c);
         gap(content, 16);
         LinearLayout voice = card();
-        info(voice, "原生自动音色", "选择参考音色，或设置自动音色描述、采样步数和种子。");
+        info(voice, "参考音色与声音设计", "当前：" + selectedVoiceName());
+        gap(voice, 12);
+        add(voice, button("选择、创建或管理参考音色", false, () -> openWorkspace("音色")));
         add(content, voice);
         gap(content, 16);
         LinearLayout state = card();
@@ -1873,12 +1890,16 @@ public class MainActivity extends Activity {
                                         .setPositiveButton(
                                                 "移除",
                                                 (d, w) -> {
-                                                    if (StudioFiles.pending(this)) {
-                                                        toast("请暂停并等待当前队列停止");
-                                                        return;
+                                                    if (!StudioFiles.beginModelWork(this)) {
+                                                        toast("请暂停并等待当前队列停止"); return;
                                                     }
-                                                    OmniModels.remove(omniModelDir());
-                                                    render();
+                                                    fileExecutor.execute(() -> {
+                                                        try { OmniModels.remove(omniModelDir()); }
+                                                        finally { StudioFiles.endModelWork(); }
+                                                        handler.post(() -> { if (!destroyed) {
+                                                            render(); toast(omniModelDir().exists() ? "移除失败，请重试" : "模型已移除");
+                                                        } });
+                                                    });
                                                 })
                                         .show();
                             });
@@ -1894,10 +1915,10 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.0 · 云端与离线合成",
+                "VoiceStudio 1.5.1 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
-                        + " CC-BY-NC 条款。代码 Apache-2.0。");
+                        + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");
         add(content, about);
     }
 
@@ -2517,7 +2538,7 @@ public class MainActivity extends Activity {
             fileExecutor.execute(
                     () -> {
                         try (InputStream in = new FileInputStream(f);
-                                OutputStream os = getContentResolver().openOutputStream(uri, "w")) {
+                                OutputStream os = getContentResolver().openOutputStream(uri, "wt")) {
                             if (os == null) throw new IOException();
                             byte[] b = new byte[16384];
                             int n;
@@ -2565,6 +2586,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if (noisyRegistered) { unregisterReceiver(noisyReceiver); noisyRegistered = false; }
         cancelled.set(true);
         omni.cancel();
         if (jobFile != null) jobFile.delete();
@@ -2636,6 +2658,9 @@ public class MainActivity extends Activity {
                     float h = new float[] {6, 15, 23, 15, 6}[i];
                     canvas.drawLine(6 + i * 5, 16 - h / 2, 6 + i * 5, 16 + h / 2, paint);
                 }
+            } else if (icon.equals("tools")) {
+                for (int x = 0; x < 2; x++) for (int y = 0; y < 2; y++)
+                    canvas.drawRoundRect(5 + x * 13, 5 + y * 13, 14 + x * 13, 14 + y * 13, 2, 2, paint);
             } else if (icon.equals("folder")) {
                 Path p = new Path();
                 p.moveTo(4, 10);

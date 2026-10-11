@@ -1,0 +1,4 @@
+Missing original signing key: $PROJECT/signing/voicestudio-development.p12
+Restore the original key for an upgrade, or set VOICE_UNSIGNED=1 for compile/package validation only.
+
+PASS: missing-key release build stops; no replacement key created.

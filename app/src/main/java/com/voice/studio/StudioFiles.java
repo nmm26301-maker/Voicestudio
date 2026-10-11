@@ -21,6 +21,28 @@ final class StudioFiles {
     static synchronized void endModelWork() { modelWork = false; }
     static synchronized boolean modelWork() { return modelWork; }
 
+    /** One lock covers model maintenance, queue admission and retry state changes. */
+    static synchronized void queue(Context c, JSONObject task) throws Exception {
+        if (modelWork) throw new IOException("请等待模型导入或检查完成");
+        if (task.optString("type").equals("dictation")
+                && !new File(new File(dir(c, "jobs"), task.getString("id")), "input.wav").isFile()
+                && jobsPending(c))
+            throw new IOException("请先完成或暂停队列，再开始录音");
+        task.put("state", "queued").put("progress", "等待执行");
+        for (String key : new String[]{"started", "finished", "failureStage", "failureDetail", "interrupted"})
+            task.remove(key);
+        save(job(c, task.getString("id")), task);
+    }
+
+    static synchronized JSONObject requeue(Context c, String id) throws Exception {
+        JSONObject task = read(job(c, id));
+        String state = task.optString("state");
+        if (!state.equals("paused") && !state.equals("failed"))
+            throw new IOException("该任务已经在队列中或已完成");
+        queue(c, task);
+        return task;
+    }
+
     static synchronized void recoverInterrupted(Context context) {
         JSONArray jobs = list(context);
         for (int n = 0; n < jobs.length(); n++) {
@@ -201,7 +223,10 @@ final class StudioFiles {
                 if (file.getName().startsWith(id + ".") || file.getName().startsWith(id + "-a."))
                     if (!file.delete()) throw new IOException("部分结果删除失败，请重试");
         OmniModels.remove(new File(dir(context, "jobs"), id));
-        if (!record.delete() && record.exists()) throw new IOException("任务删除失败");
+        // Delete the recovery files too; otherwise AtomicFile can resurrect a deleted task.
+        new AtomicFile(record).delete();
+        if (record.exists() || new File(record.getPath() + ".bak").exists())
+            throw new IOException("任务删除失败");
         writeText(new File(context.getFilesDir(), "history.json"), next.toString());
     }
 
