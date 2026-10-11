@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "checks": 40,
+  "originalApkSha256": "0997c39c52973f7a87bded6f2399e550d2ea8387f8d673351fb2616bd3651cf9",
+  "originalCertificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+  "previewPackage": "com.voice.studio.preview",
+  "previewApkSha256": "172cb751f99607a1e58896d201ad192309983f635391c69a04d7f6ff041925a6",
+  "previewCertificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
+  "scope": "Signed APK, package/provider isolation, class resolution, unchanged native runtime, ZIP alignment. No device installation or inference performed."
+}

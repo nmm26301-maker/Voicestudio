@@ -1,4 +1,6 @@
-Missing original signing key: $PROJECT/signing/voicestudio-development.p12
+Missing original key: rejected; no replacement original key created.
+Missing signing key: /workspace/scratch/0b8aa571e19e/Voicestudio/signing/voicestudio-development.p12
 Restore the original key for an upgrade, or set VOICE_UNSIGNED=1 for compile/package validation only.
 
-PASS: missing-key release build stops; no replacement key created.
+Wrong certificate under original alias: rejected before compilation.
+Signing certificate differs from the original 1.5.0 APK; refusing an incompatible upgrade.

@@ -2465,7 +2465,7 @@ public class MainActivity extends Activity {
             toast("文件不存在");
             return;
         }
-        Uri u = Uri.parse("content://com.voice.studio.audio/" + f.getName());
+        Uri u = AudioProvider.uri(this, f);
         Intent i =
                 new Intent(Intent.ACTION_SEND)
                         .setType(f.getName().endsWith("wav") ? "audio/wav" : "audio/mpeg")

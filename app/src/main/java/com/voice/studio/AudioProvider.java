@@ -2,6 +2,7 @@ package com.voice.studio;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
@@ -12,6 +13,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 
 public class AudioProvider extends ContentProvider {
+    public static Uri uri(Context context, File file) {
+        return new Uri.Builder()
+                .scheme("content")
+                .authority(context.getPackageName() + ".audio")
+                .appendPath(file.getName())
+                .build();
+    }
+
     public boolean onCreate() {
         return true;
     }

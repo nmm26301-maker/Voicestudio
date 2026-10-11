@@ -2,6 +2,8 @@
 
 Current source: **1.5.1-hybrid (versionCode 17)**. The 1.5.1 changes reorganize navigation and repair workflow issues; see README.md and CHANGELOG-1.5.1.md. Current checks are in validation/current-checks.json. No signed 1.5.1 upgrade APK is included. The original development signing key is required to produce an upgrade; unsigned builds are explicitly available for compilation validation.
 
+A separate `VOICE_PREVIEW=1` build uses package `com.voice.studio.preview` and a dedicated preview key. The user's uploaded original APK matched the historical hash and certificate; the original private signing key remains unavailable. Preview certificate and isolation evidence are in validation/preview-checks-1.5.1.json. Preview is not an upgrade of the original installation.
+
 The original backup below remains the source provenance. PROVENANCE.json and old validation logs describe their original releases, not current device acceptance.
 
 ---

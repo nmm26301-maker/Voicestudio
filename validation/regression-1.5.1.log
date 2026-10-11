@@ -1,4 +1,4 @@
-Host segmentation benchmark (not phone inference): old=403.238192 ms, new=11.934099 ms
+Host segmentation benchmark (not phone inference): old=278.832076 ms, new=9.33393 ms
 Synthesis flow: 8560 assertions passed (host only).
 Fish mock transport: 55 assertions passed; no live API calls.
 Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
@@ -13,7 +13,7 @@ Staged chunk pipeline: 16646 checks passed; 10 reference chunks use 2 loads vs 2
 32 assertions passed: subtitle ordering/Unicode, stale edit conflict, export repair and concurrent commit (host adapters)
 49 queue workflow assertions passed (host filesystem; no Android service simulation).
 ----------
-1. WARNING in $PROJECT/tests/AudioPipelineTest.java (at line 2)
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/tests/AudioPipelineTest.java (at line 2)
 	import java.io.*;import java.util.*;
 	                        ^^^^^^^^^
 The import java.util is never used
@@ -31,7 +31,7 @@ Audio timing, resampling, synthetic metadata, WAV addressing and malformed WAV c
 146 assertions passed: arbitrary chunk boundaries, sinc continuity, exact global duration, final drain
 3 dubbing assertions passed: complete 61-second clip, retained tail, oversized clip rejection.
 ----------
-1. WARNING in $PROJECT/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
 	import android.view.animation.Interpolator;
 	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 The import android.view.animation.Interpolator is never used

@@ -689,7 +689,7 @@ public class WorkspaceActivity extends Activity {
         }
         File f = new File(StudioFiles.dir(this, "audio"), j.optString("output", id + ".wav"));
         String mime = mime(f);
-        Uri uri = Uri.parse("content://com.voice.studio.audio/" + f.getName());
+        Uri uri = AudioProvider.uri(this, f);
         new CosmicDialogBuilder(this)
                 .setTitle("任务结果")
                 .setItems(
@@ -1276,10 +1276,7 @@ public class WorkspaceActivity extends Activity {
                                 else if (n == 3) saveOutput(StudioFiles.output(this, id, "srt"));
                                 else if (n == 0 && mime(result).startsWith("audio/")) preview(result, "配音试听");
                                 else {
-                                    Uri uri =
-                                            Uri.parse(
-                                                    "content://com.voice.studio.audio/"
-                                                            + result.getName());
+                                    Uri uri = AudioProvider.uri(this, result);
                                     Intent intent =
                                             new Intent(
                                                             n == 0

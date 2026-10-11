@@ -57,6 +57,26 @@ VOICE_UNSIGNED=1 bash tools/build.sh
 
 要构建原安装的更新包，必须恢复原 `signing/voicestudio-development.p12` 后运行 `bash tools/build.sh`。**不要用新密钥替代，也不要卸载旧应用来绕过签名不一致**；卸载可能删除内部作品、音色和模型。原私有签名不在公开仓库中。
 
+### 独立安装的测试版
+
+原签名尚未恢复时，可以用 `VOICE_PREVIEW=1` 构建 `com.voice.studio.preview`，桌面名称为“VoiceStudio 测试版”。它与旧版并存，使用独立数据目录、音频分享接口和专用签名；旧版模型、音色、作品及 Fish 配置不会自动复制到测试版，需要重新导入/配置。
+
+首次创建测试版签名（已有测试版时必须恢复其备份签名，避免影响后续升级）：
+
+```bash
+mkdir -p signing
+keytool -genkeypair -keystore signing/voicestudio-preview.p12 -storetype PKCS12 \
+  -storepass android -keypass android -alias voicestudio-preview \
+  -keyalg RSA -keysize 2048 -validity 3650 \
+  -dname 'CN=VoiceStudio Preview, O=VoiceStudio, C=CN'
+VOICE_PREVIEW=1 bash tools/build.sh
+python3 tools/verify_preview.py build-manual/VoiceStudio-1.5.1-Hybrid-Preview.apk /path/to/original-1.5.0.apk
+```
+
+测试版签名仅供开发测试，不是原版签名。备份 `.p12` 到私人存储；签名文件被 Git 忽略，不应提交到公开仓库。默认发行构建额外核对原版证书指纹，拒绝不匹配的密钥。
+
+2026-10-11 用户上传的原版 APK 的 SHA-256 与 `PROVENANCE.json` 完全一致；测试版已通过签名、实际包名/分享接口隔离、组件 DEX 类存在、运行库一致与对齐检查，见 `validation/preview-checks-1.5.1.json`。这不代表已完成手机安装和功能验收。
+
 结果与范围见 [VALIDATION.md](VALIDATION.md)，机器可读记录为 [validation/current-checks.json](validation/current-checks.json)。历史构建记录与本次结果分开保存。
 
 ## 来源、设计与历史

@@ -5,9 +5,9 @@
   "baseCommit": "b359c7a37edb0e83fd0c9c7d4bf76d59d1e5d7c4",
   "androidCompilation": "passed (ECJ, resources, D8, ARM64 packaging)",
   "apkZipAlignment": "16 KiB passed",
-  "apkSignature": "unsigned; not installable; original signing key unavailable",
+  "apkSignature": "original package: unsigned validation only; original signing key unavailable",
   "missingKeyBuildGuard": "passed; no replacement signing key generated",
-  "unsignedApkSha256": "4c3782e1b7e3da61dd641fd45ef98bd5861813a3829751a5261f4c6b63c0ed05",
+  "unsignedApkSha256": "c4d4cb0d739ccdfe48ef7444834b48f99d913f3eedbe21c3e04f90aa3ab8d699",
   "synthesisHostAssertions": 8560,
   "fishMockAssertions": 55,
   "accelerationArchiveHostChecks": 1589,
@@ -29,5 +29,17 @@
   "phoneSpeedAndMemory": "not measured",
   "nativeOnnxAndICUFixtures": "historical only, not rerun",
   "figmaCloudUpdate": "not performed",
-  "scope": "Source fixes, complete unsigned build and host regressions; not a claim that all device functions have passed."
+  "scope": "Source fixes, full original unsigned build, independent signed preview build and host regressions; no device acceptance or original-signature upgrade claim.",
+  "wrongCertificateBuildGuard": "passed; mismatched certificate rejected before compilation",
+  "uploadedOriginalApk": "SHA-256 and certificate match PROVENANCE.json exactly",
+  "preview": {
+    "status": "passed",
+    "checks": 40,
+    "originalApkSha256": "0997c39c52973f7a87bded6f2399e550d2ea8387f8d673351fb2616bd3651cf9",
+    "originalCertificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+    "previewPackage": "com.voice.studio.preview",
+    "previewApkSha256": "172cb751f99607a1e58896d201ad192309983f635391c69a04d7f6ff041925a6",
+    "previewCertificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
+    "scope": "Signed APK, package/provider isolation, class resolution, unchanged native runtime, ZIP alignment. No device installation or inference performed."
+  }
 }

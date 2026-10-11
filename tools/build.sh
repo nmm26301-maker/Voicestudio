@@ -9,10 +9,27 @@ ort_aar="$project_dir/app/libs/onnxruntime-android-1.30.0.aar"
 if [ ! -f "$ort_aar" ]; then python3 "$project_dir/tools/fetch_runtime.py"; fi
 # Public backups deliberately exclude the original upgrade signing key.
 key_path="$project_dir/signing/voicestudio-development.p12"
+key_alias="voicestudio"
+if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
+    # A separate package and key, never a replacement key for the installed app.
+    key_path="$project_dir/signing/voicestudio-preview.p12"
+    key_alias="voicestudio-preview"
+fi
 if [ "${VOICE_UNSIGNED:-0}" != "1" ] && [ ! -f "$key_path" ]; then
-    echo "Missing original signing key: $key_path" >&2
-    echo "Restore the original key for an upgrade, or set VOICE_UNSIGNED=1 for compile/package validation only." >&2
+    echo "Missing signing key: $key_path" >&2
+    if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
+        echo "Restore the preview key or follow README.md to create a separate preview signing identity." >&2
+    else
+        echo "Restore the original key for an upgrade, or set VOICE_UNSIGNED=1 for compile/package validation only." >&2
+    fi
     exit 1
+fi
+if [ "${VOICE_PREVIEW:-0}" != "1" ] && [ "${VOICE_UNSIGNED:-0}" != "1" ]; then
+    certificate_sha="$(keytool -exportcert -keystore "$key_path" -storepass android -alias "$key_alias" | sha256sum | cut -d ' ' -f 1)"
+    if [ "$certificate_sha" != "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33" ]; then
+        echo "Signing certificate differs from the original 1.5.0 APK; refusing an incompatible upgrade." >&2
+        exit 1
+    fi
 fi
 artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
@@ -23,19 +40,16 @@ if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
     apk_name="VoiceStudio-1.5.1-Hybrid-debug.apk"
 fi
+manifest_flags=()
+if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
+    manifest_flags+=(--preview)
+    apk_name="${apk_name%.apk}-Preview.apk"
+fi
 unzip -q "$ort_aar" classes.jar "jni/arm64-v8a/*" -d "$out_dir/ort"
 mkdir -p "$out_dir/classes" "$out_dir/dex" "$out_dir/res" "$out_dir/generated"
 "$android_tools/aapt2" compile --dir "$project_dir/app/src/main/res" -o "$out_dir/res"
-python3 - "$project_dir/app/src/main/AndroidManifest.xml" "$out_dir/AndroidManifest.xml" <<'PYXML'
-import sys,xml.etree.ElementTree as ET
-ET.register_namespace('android','http://schemas.android.com/apk/res/android')
-tree=ET.parse(sys.argv[1]);key='{http://schemas.android.com/tools}node'
-for parent in tree.iter():
-    for child in list(parent):
-        if child.get(key)=='remove':parent.remove(child)
-tree.write(sys.argv[2],encoding='utf-8',xml_declaration=True)
-PYXML
-"$android_tools/aapt2" link -o "$out_dir/base.apk" -I "$platform_jar" --manifest "$out_dir/AndroidManifest.xml" --java "$out_dir/generated" -A "$project_dir/app/src/main/assets" --min-sdk-version 26 --target-sdk-version 34 "${aapt_flags[@]}" "$out_dir"/res/*.flat
+python3 "$project_dir/tools/prepare_manifest.py" "$project_dir/app/src/main/AndroidManifest.xml" "$out_dir/AndroidManifest.xml" "${manifest_flags[@]}"
+"$android_tools/aapt2" link -o "$out_dir/base.apk" -I "$platform_jar" --manifest "$out_dir/AndroidManifest.xml" --custom-package com.voice.studio --java "$out_dir/generated" -A "$project_dir/app/src/main/assets" --min-sdk-version 26 --target-sdk-version 34 "${aapt_flags[@]}" "$out_dir"/res/*.flat
 java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -classpath "$platform_jar:$out_dir/ort/classes.jar" -d "$out_dir/classes" "$project_dir"/app/src/main/java/com/voice/studio/*.java "$out_dir"/generated/com/voice/studio/R.java
 python3 - "$out_dir/classes" "$out_dir/classes.jar" <<'PY'
 import sys,zipfile,pathlib
@@ -59,7 +73,7 @@ if [ "${VOICE_UNSIGNED:-0}" = "1" ]; then
     "$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$unsigned_name"
     echo "Unsigned validation build: $artifact_dir/$unsigned_name (not an installable upgrade)"
 else
-    "$android_tools/apksigner" sign --ks "$key_path" --ks-pass pass:android --key-pass pass:android --ks-key-alias voicestudio --out "$artifact_dir/$apk_name" "$out_dir/aligned.apk"
+    "$android_tools/apksigner" sign --ks "$key_path" --ks-pass pass:android --key-pass pass:android --ks-key-alias "$key_alias" --out "$artifact_dir/$apk_name" "$out_dir/aligned.apk"
     "$android_tools/apksigner" verify --verbose "$artifact_dir/$apk_name"
     "$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$apk_name"
 fi
