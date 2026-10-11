@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import zipfile
+import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser()
 parser.add_argument("preview")
@@ -16,6 +17,10 @@ args = parser.parse_args()
 tools = Path(os.environ["ANDROID_SDK_ROOT"]) / "build-tools/35.0.0"
 root = Path(__file__).resolve().parents[1]
 provenance = json.loads((root / "PROVENANCE.json").read_text())
+source_manifest = ET.parse(root / "app/src/main/AndroidManifest.xml").getroot()
+android = "{http://schemas.android.com/apk/res/android}"
+expected_version = source_manifest.get(android + "versionName") + "-preview"
+expected_code = source_manifest.get(android + "versionCode")
 checks = 0
 
 
@@ -63,9 +68,9 @@ old_nodes = manifest(original)
 nodes = manifest(preview)
 check(old_nodes[0]["package"] == "com.voice.studio", "Original package mismatch")
 check(nodes[0]["package"] == "com.voice.studio.preview", "Preview would replace the original package")
-check(nodes[0]["android:versionName"] == "1.5.1-hybrid-preview", "Unexpected preview version")
+check(nodes[0]["android:versionName"] == expected_version, "Unexpected preview version")
 badging = run("aapt", "dump", "badging", preview)
-check("versionCode='17'" in badging, "Unexpected version code")
+check("versionCode='" + expected_code + "'" in badging, "Unexpected version code")
 check("application-label:'VoiceStudio 测试版'" in badging, "Preview lacks distinct launcher label")
 check("launchable-activity: name='com.voice.studio.MainActivity'" in badging, "Launcher class rewritten")
 old_authorities = {n["android:authorities"] for n in old_nodes if "android:authorities" in n}

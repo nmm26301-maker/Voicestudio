@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "checks": 44,
+  "package": "com.voice.studio.preview",
+  "label": "VoiceStudio",
+  "version": "1.5.2-hybrid",
+  "versionCode": 18,
+  "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
+  "apkSha256": "2da5e1b2539f1d1181ba8ffc2e0134e868c78a78949bf27f43123cd940312bd4",
+  "previousApkSha256": "172cb751f99607a1e58896d201ad192309983f635391c69a04d7f6ff041925a6",
+  "previousVersionCode": 17,
+  "scope": "Signed APK identity/version/provider continuity and unchanged assets/runtime verified. No device installation, data-retention or functional acceptance performed."
+}

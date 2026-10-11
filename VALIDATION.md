@@ -1,6 +1,19 @@
-# 当前验证：1.5.1-hybrid（versionCode 17）
+# 当前验证：1.5.2-hybrid（versionCode 18）
 
-2026-10-11 对本次源码执行了完整 Android 未签名构建及宿主回归。详情见 `validation/current-checks.json`、`validation/regression-1.5.1.log` 和 `CHANGELOG-1.5.1.md`。
+2026-10-11 完成正式名称 APK 构建：`com.voice.studio.preview`，名称“VoiceStudio”，签名沿用已交付的 1.5.1 测试版。
+
+- 完整 Java、Android 资源、D8、ARM64 APK 构建、v2/v3 签名与 16 KiB 对齐通过。
+- 44 项实际 APK 检查通过：此前测试包完整哈希核对、签名/包名/Provider 一致、版本代码 17→18、组件类存在、模型资源与原生库字节一致、不含签名私钥。见 `validation/upgrade-checks-1.5.2.json`。
+- 原有合成、Fish 模拟传输、队列/模型/字幕、音频、动效与界面源码宿主回归重新运行通过，见 `validation/regression-1.5.2.log`。
+- 原包名及独立正式版的签名构建保护通过；缺失/错误签名或冲突模式均拒绝构建。见 `validation/signing-guard-1.5.2.log`。
+
+**未完成：手机实际覆盖安装与数据保留、完整模型推理、麦克风/蓝牙、真实 Fish 账户和实际视频导出。** 正式名称不等于已完成这些功能验收。设备步骤见 [安装与验收](docs/INSTALL_1.5.2.md)。
+
+---
+
+# 历史验证：1.5.1-hybrid（versionCode 17）
+
+2026-10-11 对本次源码执行了完整 Android 未签名构建及宿主回归。详情见 `validation/current-checks-1.5.1-historical.json`、`validation/regression-1.5.1.log` 和 `CHANGELOG-1.5.1.md`。
 
 - ECJ 编译、Android 资源、D8、ARM64 APK 打包、版本元数据及 16 KiB ZIP 对齐通过。存在旧 API 弃用等编译警告，无编译错误。
 - 合成、Fish 模拟传输、采样/作品、分词、分段流水线、模型/文件/字幕、音频、动效宿主回归通过；本次没有真实 Fish 调用。

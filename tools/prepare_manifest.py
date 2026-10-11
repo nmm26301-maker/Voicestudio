@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Prepare the manual build manifest, optionally for an isolated preview app."""
+"""Prepare the manual build manifest for original, preview or standalone app."""
 import argparse
 import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser()
 parser.add_argument("source")
 parser.add_argument("destination")
-parser.add_argument("--preview", action="store_true")
+mode = parser.add_mutually_exclusive_group()
+mode.add_argument("--preview", action="store_true")
+mode.add_argument("--standalone", action="store_true")
 args = parser.parse_args()
 android = "{http://schemas.android.com/apk/res/android}"
 ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
@@ -17,7 +19,7 @@ for parent in root.iter():
     for child in list(parent):
         if child.get("{http://schemas.android.com/tools}node") == "remove":
             parent.remove(child)
-if args.preview:
+if args.preview or args.standalone:
     # Keep Java class names in their original namespace; only the installation
     # identity and provider authority change. Relative names must become full.
     package = namespace + ".preview"
@@ -33,6 +35,7 @@ if args.preview:
             if authority == namespace + ".audio":
                 component.set(android + "authorities", package + ".audio")
     root.set("package", package)
-    root.set(android + "versionName", root.get(android + "versionName") + "-preview")
-    root.find("application").set(android + "label", "VoiceStudio 测试版")
+    if args.preview:
+        root.set(android + "versionName", root.get(android + "versionName") + "-preview")
+        root.find("application").set(android + "label", "VoiceStudio 测试版")
 tree.write(args.destination, encoding="utf-8", xml_declaration=True)

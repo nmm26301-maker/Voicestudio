@@ -1,0 +1,43 @@
+Host segmentation benchmark (not phone inference): old=258.143712 ms, new=7.522759 ms
+Synthesis flow: 8560 assertions passed (host only).
+Fish mock transport: 55 assertions passed; no live API calls.
+Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
+Tokenizer / actual progress: 17548 checks passed (host JVM, not device inference)
+Staged chunk pipeline: 16646 checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.
+24 assertions passed: volume ordering, download names, missing/mixed/duplicate volumes, lazy reads and closing.
+27 model import assertions passed: integrity, size, path rejection, missing files and cleanup.
+43 preflight assertions passed: missing/mixed/duplicate/incomplete parts, ZIP compatibility and six-module catalog.
+35 cancellation/progress assertions passed: before extraction, during extraction, before activation, old-file preservation and retry.
+24 recovery assertions passed with host Context/AtomicFile adapters; Android lifecycle is not simulated.
+100 assertions passed: concurrent appends/edits, stale refresh, trash/restore, backup recovery and guarded deletion (host file adapters).
+32 assertions passed: subtitle ordering/Unicode, stale edit conflict, export repair and concurrent commit (host adapters)
+49 queue workflow assertions passed (host filesystem; no Android service simulation).
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/tests/AudioPipelineTest.java (at line 2)
+	import java.io.*;import java.util.*;
+	                        ^^^^^^^^^
+The import java.util is never used
+----------
+1 problem (1 warning)
+AudioChecks: 20 assertions passed; decoder/device checks separate.
+PCM16/24/32, float32, signed stereo, mono downmix and stereo silence checks passed.
+Duration ratio 0.5: 439.5070548312199 Hz
+Duration ratio 0.8: 439.875727183636 Hz
+Duration ratio 1.25: 440.2415403896548 Hz
+Duration ratio 2.0: 440.0904295403165 Hz
+Audio timing, resampling, synthetic metadata, WAV addressing and malformed WAV checks passed.
+17 assertions passed: PCM heartbeat, silent input, signed peak, clipping, recording limit
+11 assertions passed: finalized partial recording recovery, short/corrupt input rejection, existing input protection
+146 assertions passed: arbitrary chunk boundaries, sinc continuity, exact global duration, final drain
+3 dubbing assertions passed: complete 61-second clip, retained tail, oversized clip rejection.
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
+	import android.view.animation.Interpolator;
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The import android.view.animation.Interpolator is never used
+----------
+1 problem (1 warning)
+Motion curve: 8003 checks passed (host Java; Android animation lifecycle not simulated).
+Cosmic UI: 137 source/contrast checks passed; minimum shared text contrast 6.48:1. No native visual or lifecycle simulation.
+Inline generation routing: Omni/Fish stay on page; per-task resume/cancel wired. Source guard only.
+Host regression passed. Device UI, microphone, real model inference and Fish account calls require separate acceptance.
