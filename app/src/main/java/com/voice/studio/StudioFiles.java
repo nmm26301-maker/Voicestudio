@@ -207,8 +207,10 @@ final class StudioFiles {
         if (pending(context)) throw new IOException("请先暂停并等待整个队列停止，再删除任务");
         File record = job(context, id);
         JSONArray jobs = list(context);
+        String reference = "";
         for (int n = 0; n < jobs.length(); n++) {
             JSONObject item = jobs.getJSONObject(n);
+            if (item.optString("id").equals(id) && item.optBoolean("referenceOwned")) reference = item.optString("referenceAudio");
             if (!item.optString("id").equals(id)
                     && (item.optString("sourceJob").equals(id)
                             || item.optString("groupedSource").equals(id)))
@@ -220,8 +222,12 @@ final class StudioFiles {
         File[] results = dir(context, "audio").listFiles();
         if (results != null)
             for (File file : results)
-                if (file.getName().startsWith(id + ".") || file.getName().startsWith(id + "-a."))
+                if (file.getName().startsWith(id + ".") || file.getName().startsWith(id + "-"))
                     if (!file.delete()) throw new IOException("部分结果删除失败，请重试");
+        if (reference.matches("[a-f0-9-]+\\.wav")) {
+            File owned = new File(dir(context, "audio"), reference);
+            if (owned.exists() && !owned.delete()) throw new IOException("参考录音删除失败，请重试");
+        }
         OmniModels.remove(new File(dir(context, "jobs"), id));
         // Delete the recovery files too; otherwise AtomicFile can resurrect a deleted task.
         new AtomicFile(record).delete();

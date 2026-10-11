@@ -1,8 +1,10 @@
 # VoiceStudio repository
 
-Current source: **1.5.2-hybrid (versionCode 18)**. `VOICE_STANDALONE=1` produces the formal-name VoiceStudio build using the shipped preview package and signing identity, so it can update that branch. See CHANGELOG-1.5.2.md and validation/upgrade-checks-1.5.2.json. No private key or APK binary is committed in this public repository.
+Current source: **1.5.3-hybrid (versionCode 19)**. `VOICE_STANDALONE=1` produces the formal-name VoiceStudio build using the shipped preview package and signing identity, so it can update that branch. See CHANGELOG-1.5.3.md and validation/upgrade-checks-1.5.3.json. No private key or APK binary is committed in this public repository.
 
-The standalone signing key is retained in the user's private `VoiceStudio-1.5.2-Signing-Backup.zip`, under the historical filename `voicestudio-preview.p12`. Restore it to signing/ for future standalone updates. It is not the original 1.5.0 key.
+Each delivered release must be backed up privately with its exact APK and the unchanged signing key, preserving older versions. `tools/backup_release.py` verifies the matching certificate and archived bytes. Never commit the release ZIP or private key.
+
+The standalone signing key and 1.5.3 APK are retained in the user's private `VoiceStudio-1.5.3-Release-Backup.zip`, under the historical filename `voicestudio-preview.p12`. Restore it to signing/ for future standalone updates. It is not the original 1.5.0 key.
 
 A separate `VOICE_PREVIEW=1` build uses package `com.voice.studio.preview` and a dedicated preview key. The user's uploaded original APK matched the historical hash and certificate; the original private signing key remains unavailable. Preview certificate and isolation evidence are in validation/preview-checks-1.5.1.json. Preview is not an upgrade of the original installation.
 

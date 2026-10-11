@@ -10,3 +10,7 @@ build-manual/
 __pycache__/
 app/libs/*.aar
 app/libs/*.pending
+
+# Private release/signing backups must never enter the public repository.
+*-Release-Backup.zip
+*-Signing-Backup.zip

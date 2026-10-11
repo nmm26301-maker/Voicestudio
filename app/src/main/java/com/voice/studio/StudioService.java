@@ -422,7 +422,14 @@ public class StudioService extends Service {
             if (!source.isFile()) {
                 File pending = new File(source.getPath() + ".pending");
                 try {
-                    MediaFiles.decode(
+                    String recorded = job.optString("referenceAudio");
+                    if (!recorded.isEmpty()) {
+                        if (!recorded.matches("[a-f0-9-]+\\.wav")) throw new IOException("参考录音路径无效");
+                        try (InputStream in = new FileInputStream(new File(StudioFiles.dir(this, "audio"), recorded));
+                                OutputStream out = new FileOutputStream(pending)) {
+                            MediaFiles.copy(in, out, cancel, 500000000L);
+                        }
+                    } else MediaFiles.decode(
                             this,
                             android.net.Uri.parse(job.getString("uri")),
                             pending,
@@ -485,10 +492,15 @@ public class StudioService extends Service {
                     new JSONObject()
                             .put("name", job.optString("name", "我的音色"))
                             .put("id", id)
+                            .put("referenceText", transcript)
+                            .put("referenceStart", job.optDouble("start", 0))
+                            .put("referenceSeconds", job.optDouble("seconds", 6))
                             .put("created", System.currentTimeMillis());
             StudioFiles.save(new File(folder, id + ".json"), info);
             job.put("profileResult", id);
-            source.delete();
+            // Preserve the original reference recording for later listening.
+        } else if (type.equals("extractVoices")) {
+            extractVoices(job);
         } else if (type.equals("transcribe") || type.equals("dictation")) {
             if (!StudioFiles.ready(this, "whisper")) throw new IOException("请先导入 Whisper 识别模型");
             File folder = new File(StudioFiles.dir(this, "jobs"), id);
@@ -781,6 +793,68 @@ public class StudioService extends Service {
             } finally {
                 tmp.delete();
             }
+        }
+    }
+
+    void extractVoices(JSONObject job) throws Exception {
+        String id = job.getString("id"), sourceId = job.optString("sourceJob");
+        File folder = new File(StudioFiles.dir(this, "jobs"), sourceId.isEmpty() ? id : sourceId);
+        folder.mkdirs();
+        File input = new File(folder, "input.wav");
+        if (!input.isFile()) {
+            if (!sourceId.isEmpty()) throw new IOException("原任务音轨已丢失，请重新导入");
+            File pending = new File(folder, "input.pending.wav");
+            try {
+                MediaFiles.decode(this, android.net.Uri.parse(job.getString("uri")), pending, cancel, m -> state(job, "running", m));
+                OmniEngine.check(cancel);
+                if (!pending.renameTo(input)) throw new IOException("保存视频音轨失败");
+            } finally { pending.delete(); }
+        }
+        if (!job.has("segments")) {
+            if (!StudioFiles.ready(this, "whisper") || !StudioFiles.ready(this, "speaker")) throw new IOException("请先安装识别与说话人模型");
+            whisper = new WhisperEngine(new File(getFilesDir(), "whisper-model"), getAssets().open("whisper-mel80.bin"));
+            JSONArray segments = new JSONArray(), shortSegments = new JSONArray();
+            for (WhisperEngine.Segment segment : whisper.transcribe(input, "auto", false, cancel, m -> state(job, "running", m))) {
+                JSONObject item = new JSONObject().put("start", segment.start).put("end", segment.end).put("text", segment.text);
+                if (segment.end - segment.start >= .5) segments.put(item); else shortSegments.put(item.put("speaker", 0));
+            }
+            if (segments.length() == 0) throw new IOException("没有足够长的单人对白；请转写后人工校对人物片段");
+            whisper = null;
+            try (SpeakerEngine runtime = new SpeakerEngine(new File(getFilesDir(), "speaker-model"))) {
+                speaker = runtime;
+                JSONArray grouped = runtime.group(input, segments, job.optDouble("threshold", .55), cancel, m -> state(job, "running", m));
+                for (int n = 0; n < shortSegments.length(); n++) grouped.put(shortSegments.getJSONObject(n));
+                job.put("segments", grouped).put("shortSegments", shortSegments.length());
+            }
+            speaker = null;
+            // Keep subtitle checkpoints for manual correction and process recovery.
+            state(job, "running", "分组完成 · 正在提取人物声音");
+        }
+        JSONArray results = new JSONArray();
+        try (PcmAudio.Reader reader = new PcmAudio.Reader(input)) {
+            Map<Integer, JSONArray> groups = SpeakerClips.plan(job.getJSONArray("segments"), reader.seconds());
+            for (Map.Entry<Integer, JSONArray> entry : groups.entrySet()) {
+                OmniEngine.check(cancel);
+                int number = entry.getKey(); JSONArray ranges = entry.getValue();
+                String stem = id + "-" + Integer.toHexString(number);
+                File full = new File(StudioFiles.dir(this, "audio"), stem + ".wav");
+                File reference = new File(StudioFiles.dir(this, "audio"), stem + "-a.wav");
+                long[] counts = SpeakerClips.export(reader, ranges, full, reference, cancel);
+                long totalFrames = counts[0], referenceFrames = counts[1];
+                results.put(new JSONObject().put("speaker", number).put("name", "人物 " + number)
+                        .put("file", full.getName()).put("referenceFile", reference.getName())
+                        .put("seconds", totalFrames / (double)reader.rate).put("referenceSeconds", referenceFrames / (double)reader.rate)
+                        .put("canClone", referenceFrames >= reader.rate * 3L));
+                state(job, "running", "已提取人物 " + number + " · " + results.length() + " / " + groups.size());
+            }
+        }
+        OmniEngine.check(cancel);
+        job.put("speakerResults", results).put("output", id + ".json");
+        StudioFiles.writeText(StudioFiles.output(this, id, "json"), results.toString());
+        if (sourceId.isEmpty()) {
+            JSONArray segments = job.getJSONArray("segments");
+            StudioFiles.writeText(StudioFiles.output(this, id, "txt"), SubtitleDocument.plain(segments));
+            StudioFiles.writeText(StudioFiles.output(this, id, "srt"), SubtitleDocument.srt(segments));
         }
     }
 

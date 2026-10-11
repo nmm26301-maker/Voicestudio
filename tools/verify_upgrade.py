@@ -11,14 +11,22 @@ from pathlib import Path
 import re
 import subprocess
 import zipfile
+import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser()
 parser.add_argument("release")
-parser.add_argument("previous", help="Previously shipped 1.5.1 preview APK")
+parser.add_argument("previous", help="Previously shipped preview or standalone APK")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 tools = Path(os.environ["ANDROID_SDK_ROOT"]) / "build-tools/35.0.0"
 previous_checks = json.loads((root / "validation/preview-checks-1.5.1.json").read_text())
+known_previous = {previous_checks["previewApkSha256"]}
+for path in (root / "validation").glob("upgrade-checks-*.json"):
+    if path.stat().st_size == 0:  # A caller may redirect this run into the same directory.
+        continue
+    historical = json.loads(path.read_text())
+    if historical.get("certificateSha256") == previous_checks["previewCertificateSha256"]:
+        known_previous.add(historical["apkSha256"])
 checks = 0
 
 
@@ -53,12 +61,15 @@ def inspect(apk):
 
 old = inspect(args.previous)
 new = inspect(args.release)
-check(old["sha256"] == previous_checks["previewApkSha256"], "Previous APK differs from the shipped preview")
+check(old["sha256"] in known_previous, "Previous APK differs from the shipped preview")
 check(old["certificate"] == previous_checks["previewCertificateSha256"], "Previous certificate mismatch")
 check(new["package"] == old["package"] == "com.voice.studio.preview", "Package identity changed")
 check(new["certificate"] == old["certificate"], "Signing certificate changed; upgrade would fail")
 check(new["versionCode"] > old["versionCode"], "Version code must increase")
-check(new["versionCode"] == 18 and new["version"] == "1.5.2-hybrid", "Incorrect release version")
+manifest = ET.parse(root / "app/src/main/AndroidManifest.xml").getroot()
+android = "{http://schemas.android.com/apk/res/android}"
+expected_version = manifest.get(android + "versionName")
+check(new["versionCode"] == int(manifest.get(android + "versionCode")) and new["version"] == expected_version, "Incorrect release version")
 check(new["label"] == "VoiceStudio", "Release still has the preview launcher name")
 check(new["authorities"] == old["authorities"] == {"com.voice.studio.preview.audio"}, "Sharing identity changed")
 check(new["classes"] == old["classes"], "Application/component identity changed")
@@ -73,7 +84,11 @@ with zipfile.ZipFile(args.release) as built, zipfile.ZipFile(args.previous) as p
     dex = b"".join(built.read(n) for n in built.namelist() if re.fullmatch(r"classes\d*\.dex", n))
     for name in new["classes"]:
         check(("L" + name.replace(".", "/") + ";").encode() in dex, "Component absent: " + name)
-    check(b"VoiceStudio 1.5.2" in dex, "About page version is stale")
+    check(("VoiceStudio " + expected_version.split("-", 1)[0]).encode() in dex, "About page version is stale")
+    if new["versionCode"] >= 19:
+        for name in ("VoiceCapturePanel", "SpeakerClips"):
+            check(("Lcom/voice/studio/" + name + ";").encode() in dex, "Voice workflow class missing: " + name)
+        check(b"extractVoices" in dex, "Video voice task routing missing")
     check(b"content://com.voice.studio.audio/" not in dex, "Sharing points to the legacy app")
     for prefix in ("lib/", "assets/"):
         names = {n for n in built.namelist() if n.startswith(prefix)}

@@ -24,6 +24,7 @@ public class WorkspaceActivity extends Activity {
     final Map<TextView, String[]> requirements = new LinkedHashMap<>();
     String section = "转写", pendingResume = "";
     TextView recordingStatus;
+    VoiceCapturePanel voiceCapture;
     final Runnable recordingPoll = new Runnable() {
         public void run() {
             if (gone || !visible) return;
@@ -99,9 +100,12 @@ public class WorkspaceActivity extends Activity {
         button(setup, "下载与安装离线模型", () -> startActivity(new Intent(this, ModelDownloadsActivity.class)));
         button(setup, "导出设备与模型诊断", this::diagnostics);
         button(setup, "一键基础自检", this::deviceChecks);
-        LinearLayout voice = sectionCard("音色", "声音克隆与音色设计", "选取清晰、单人、3—10 秒 参考音频，并输入对应文字。");
-        requireModels(voice, "clone", "omni");
-        button(voice, "创建参考音色", () -> pick(71, "audio/*", false));
+        LinearLayout voice = sectionCard("音色", "人物音色实验室", "直接录音创建人物声音，或从视频中提取、试听并保存每位说话人的音色。");
+        voiceCapture = new VoiceCapturePanel(this, voice);
+        requireModels(voice, "clone", "omni", "whisper", "speaker");
+        button(voice, "从视频提取人物声音", () -> pick(90, "video/*", false));
+        button(voice, "打开人物提取结果", this::voiceExtractions);
+        button(voice, "导入已有音频 / 视频创建音色", () -> pick(71, "*/*", false));
         button(voice, "选择 / 删除已保存音色", this::profiles);
         button(voice, "设置自动音色与采样参数", this::settings);
         button(
@@ -280,6 +284,7 @@ public class WorkspaceActivity extends Activity {
             } catch (Exception ignored) {
             }
         if (request == 71 && !uris.isEmpty()) cloneDialog(uris.get(0));
+        if (request == 90 && !uris.isEmpty()) extractVideoDialog(uris.get(0));
         if (request == 72) importModels(uris, "clone");
         if (request == 76) importModels(uris, "whisper");
         if (request == 78) importModels(uris, "translation");
@@ -358,6 +363,135 @@ public class WorkspaceActivity extends Activity {
                 .setNegativeButton("取消", null)
 
                 .show();
+    }
+
+    void queueRecordedVoice(File audio, String title, String text) throws Exception {
+        String nm = title.trim(), transcript = text.trim();
+        if (nm.isEmpty() || nm.length() > 80) throw new IOException("请填写 1—80 字的人物名称");
+        if (!StudioFiles.ready(this, "clone")) throw new IOException("请先安装声音克隆模型；录音已经保留");
+        if (transcript.length() > 2000) throw new IOException("对应文字最多 2000 字");
+        if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper")) throw new IOException("请填写录音文字，或安装识别模型自动转写");
+        double seconds;
+        try (PcmAudio.Reader reader = new PcmAudio.Reader(audio)) { seconds = reader.seconds(); }
+        if (seconds < 3 || seconds > 10.01) throw new IOException("请录制 3—10 秒的清晰单人声音");
+        // Queue an immutable copy: re-recording the draft cannot change a pending task.
+        File copy = new File(StudioFiles.dir(this, "audio"), UUID.randomUUID() + ".wav");
+        try (InputStream in = new FileInputStream(audio); OutputStream out = new FileOutputStream(copy)) {
+            copy(in, out, 5000000L);
+        }
+        JSONObject job = new JSONObject().put("type", "clone").put("referenceAudio", copy.getName())
+                .put("referenceOwned", true).put("start", 0).put("seconds", Math.min(10, seconds))
+                .put("text", transcript).put("name", nm).put("title", "创建人物音色 · " + nm);
+        try { StudioService.enqueue(this, job); }
+        catch (Exception e) {
+            if (!job.has("id") || !StudioFiles.job(this, job.optString("id")).isFile()) copy.delete();
+            throw e;
+        }
+        toast("人物音色已加入任务；完成后在音色列表选择使用");
+    }
+
+    void extractVideoDialog(Uri video) {
+        LinearLayout box = new LinearLayout(this); box.setOrientation(1); box.setPadding(dp(20), dp(12), dp(20), dp(12));
+        label(box, "提取音轨 → 识别对白 → 按声音分组 → 分人物试听与创建音色", 14, true);
+        label(box, "需要识别与说话人模型。分组编号不是画面人物身份，请试听命名；背景音乐、多人同时讲话可能影响结果，可在字幕中手动校对。", 12, false);
+        EditText threshold = field(box, "人物分组阈值（0.2—0.95）", "0.55");
+        new CosmicDialogBuilder(this).submit("提取人物声音", () -> {
+            if (!StudioFiles.ready(this, "whisper") || !StudioFiles.ready(this, "speaker"))
+                throw new IOException("请先安装识别与说话人分组模型");
+            double value = Double.parseDouble(threshold.getText().toString());
+            if (!Double.isFinite(value) || value < .2 || value > .95) throw new IOException("分组阈值无效");
+            StudioService.enqueue(this, new JSONObject().put("type", "extractVoices").put("uri", video.toString())
+                    .put("threshold", value).put("title", "人物声音 · " + name(video)));
+            toast("视频人物提取已加入任务；完成后点击打开人物提取结果");
+        }).setTitle("从视频提取人物声音").setView(box).setNegativeButton("取消", null).show();
+    }
+
+    void extractFromTranscript(JSONObject source) throws Exception {
+        if (!source.has("segments")) throw new IOException("请先完成转写并校对字幕");
+        File input = new File(new File(StudioFiles.dir(this, "jobs"), source.getString("id")), "input.wav");
+        try (PcmAudio.Reader reader = new PcmAudio.Reader(input)) { SpeakerClips.plan(source.getJSONArray("segments"), reader.seconds()); }
+        StudioService.enqueue(this, new JSONObject().put("type", "extractVoices").put("sourceJob", source.getString("id"))
+                .put("segments", new JSONArray(source.getJSONArray("segments").toString()))
+                .put("title", "校对后人物声音 · " + source.optString("title")));
+        toast("已按校对后的人物编号提取；请在人物提取结果中查看");
+    }
+
+    void voiceExtractions() {
+        files.execute(() -> {
+            JSONArray list = StudioFiles.list(this); List<JSONObject> jobs = new ArrayList<>();
+            for (int n = 0; n < list.length(); n++) {
+                JSONObject j = list.optJSONObject(n);
+                if (j != null && j.has("speakerResults") && j.optString("state").equals("done")) jobs.add(j);
+            }
+            ui.post(() -> {
+                if (gone) return;
+                if (jobs.isEmpty()) { toast("还没有完成的人物提取结果，请查看任务进度"); return; }
+                String[] names = new String[jobs.size()];
+                for (int n = 0; n < names.length; n++) names[n] = jobs.get(n).optString("title");
+                new CosmicDialogBuilder(this).setTitle("人物提取结果").setItems(names, (d, n) -> speakerResults(jobs.get(n))).show();
+            });
+        });
+    }
+
+    void speakerResults(JSONObject job) {
+        JSONArray results = job.optJSONArray("speakerResults");
+        if (results == null || results.length() == 0) { toast("没有可用人物声音，请校对字幕与编号"); return; }
+        LinearLayout box = new LinearLayout(this); box.setOrientation(1); box.setPadding(dp(16), dp(8), dp(16), dp(16));
+        label(box, "按声音特征分组，请试听后对应人物命名。重叠对白尚不能逐人分离。", 13, false);
+        if (job.optInt("shortSegments") > 0) label(box, "有 " + job.optInt("shortSegments") + " 段过短对白未分组，请在字幕中校对人物编号后重新提取。", 12, false);
+        button(box, "试听原始音轨", () -> {
+            try {
+                String sourceId = job.optString("sourceJob", job.optString("id"));
+                previewInput(StudioFiles.read(StudioFiles.job(this, sourceId)));
+            } catch (Exception e) { toast(e.getMessage()); }
+        });
+        for (int n = 0; n < results.length(); n++) {
+            JSONObject person = results.optJSONObject(n); if (person == null) continue;
+            String title = person.optString("name", "人物 " + person.optInt("speaker"));
+            LinearLayout item = detachedCard(title, String.format(Locale.CHINA, "对白 %.1f 秒 · 参考片段 %.1f 秒", person.optDouble("seconds"), person.optDouble("referenceSeconds")));
+            File audio = new File(StudioFiles.dir(this, "audio"), person.optString("file"));
+            File ref = new File(StudioFiles.dir(this, "audio"), person.optString("referenceFile"));
+            button(item, "试听人物对白", () -> preview(audio, title));
+            button(item, "导出人物声音 WAV", () -> saveOutput(audio));
+            if (person.optBoolean("canClone")) {
+                button(item, "试听参考片段", () -> preview(ref, title + " · 参考"));
+                button(item, "命名并创建人物音色", () -> speakerCloneDialog(job, person));
+            } else label(item, "可导出对白；不足 3 秒，请补录此人物声音后创建音色。", 12, false);
+            box.addView(item);
+        }
+        button(box, "校对字幕 / 修改人物编号", () -> {
+            try {
+                JSONObject source = StudioFiles.read(StudioFiles.job(this, job.optString("sourceJob", job.optString("id"))));
+                editSegments(source);
+            } catch (Exception e) { toast(e.getMessage()); }
+        });
+        button(box, "按最新校对结果重新提取", () -> {
+            try {
+                JSONObject source = StudioFiles.read(StudioFiles.job(this, job.optString("sourceJob", job.optString("id"))));
+                extractFromTranscript(source);
+            } catch (Exception e) { toast(e.getMessage()); }
+        });
+        ScrollView scroller = new ScrollView(this); scroller.addView(box);
+        new CosmicDialogBuilder(this).setTitle("人物声音实验室").setView(scroller).setNegativeButton("关闭", null).show();
+    }
+
+    void speakerCloneDialog(JSONObject extraction, JSONObject person) {
+        LinearLayout box = new LinearLayout(this); box.setOrientation(1); box.setPadding(dp(20), dp(10), dp(20), dp(12));
+        EditText name = field(box, "人物名称", person.optString("name", "人物 " + person.optInt("speaker")));
+        EditText text = field(box, "参考片段说出的文字（留空自动识别）", ""); text.setMinLines(3);
+        label(box, "先试听参考片段，确认属于同一人物。创建后在保存音色中选择使用。", 12, false);
+        new CosmicDialogBuilder(this).submit("创建人物音色", () -> {
+            String nm = name.getText().toString().trim(), transcript = text.getText().toString().trim();
+            if (nm.isEmpty() || nm.length() > 80) throw new IOException("人物名称应为 1—80 字");
+            if (transcript.length() > 2000) throw new IOException("对应文字最多 2000 字");
+            if (!StudioFiles.ready(this, "clone")) throw new IOException("请先安装声音克隆模型");
+            if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper")) throw new IOException("请填写对应文字，或安装识别模型");
+            StudioService.enqueue(this, new JSONObject().put("type", "clone").put("sourceJob", extraction.getString("id"))
+                    .put("referenceAudio", person.getString("referenceFile")).put("start", 0)
+                    .put("seconds", person.getDouble("referenceSeconds")).put("text", transcript).put("name", nm)
+                    .put("title", "创建人物音色 · " + nm));
+            toast("人物音色已加入任务，完成后在保存音色列表使用");
+        }).setTitle("创建人物音色").setView(box).setNegativeButton("取消", null).show();
     }
 
     void importModels(List<Uri> uris, String module) {
@@ -449,10 +583,14 @@ public class WorkspaceActivity extends Activity {
                                                                                     .remove(
                                                                                             "selected-profile")
                                                                                     .apply();
+                                                                        new File(StudioFiles.dir(this, "profiles"), id + ".reference.wav").delete();
                                                                         toast("音色已删除");
                                                                     })
                                                             .show())
-                                    .setNegativeButton("取消", null)
+                                    .setNegativeButton("试听原声", (x, y) -> {
+                                        File audio = new File(StudioFiles.dir(this, "profiles"), id + ".reference.wav");
+                                        if (audio.isFile()) preview(audio, j.optString("name")); else toast("此旧音色没有保留原声录音");
+                                    })
                                     .show();
                         })
                 .show();
@@ -658,6 +796,7 @@ public class WorkspaceActivity extends Activity {
             separationResult(j);
             return;
         }
+        if (j.has("speakerResults")) { speakerResults(j); return; }
         if (j.has("groupedSource")) {
             try {
                 transcriptResult(
@@ -745,6 +884,7 @@ public class WorkspaceActivity extends Activity {
     }
 
     void startDictation() {
+        if (voiceCapture != null && voiceCapture.capturing) { toast("请先结束人物音色录音"); return; }
         if (checkSelfPermission("android.permission.RECORD_AUDIO")
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[] {"android.permission.RECORD_AUDIO"}, 80);
@@ -766,6 +906,11 @@ public class WorkspaceActivity extends Activity {
 
     public void onRequestPermissionsResult(int request, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(request, permissions, results);
+        if (request == 89) {
+            if (results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED && voiceCapture != null) voiceCapture.start();
+            else toast("未授权麦克风，请授权后点击开始录音");
+            return;
+        }
         if (request == 88) {
             String retry = pendingResume; pendingResume = "";
             if (results.length > 0 && results[0] == android.content.pm.PackageManager.PERMISSION_GRANTED && !retry.isEmpty()) resumeTask(retry);
@@ -880,7 +1025,8 @@ public class WorkspaceActivity extends Activity {
                             "导出 JSON",
                             "用校对字幕生成配音",
                             "按片段识别说话人",
-                            "试听原始音轨"
+                            "试听原始音轨",
+                            "提取每位人物的声音"
                         },
                         (d, n) -> {
                             try {
@@ -920,6 +1066,7 @@ public class WorkspaceActivity extends Activity {
                                 else if (n == 5) dubDialog(job);
                                 else if (n == 6) speakerDialog(job);
                                 else if (n == 7) previewInput(job);
+                                else if (n == 8) extractFromTranscript(job);
                                 else
                                     saveOutput(
                                             StudioFiles.output(
@@ -1621,6 +1768,12 @@ public class WorkspaceActivity extends Activity {
     }
 
     LinearLayout card(String title, String sub) {
+        LinearLayout c = detachedCard(title, sub);
+        root.addView(c);
+        return c;
+    }
+
+    LinearLayout detachedCard(String title, String sub) {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(1);
         c.setPadding(dp(18), dp(18), dp(18), dp(18));
@@ -1630,7 +1783,7 @@ public class WorkspaceActivity extends Activity {
         c.setBackground(CosmicUi.panel(this,CosmicUi.CYAN));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.topMargin = dp(16);
-        root.addView(c, lp);
+        c.setLayoutParams(lp);
         label(c, title, 18, true);
         label(c, sub, 12, false);
         return c;
@@ -1690,6 +1843,7 @@ public class WorkspaceActivity extends Activity {
 
     void jumpSection(String name) {
         if (!sections.containsKey(name)) return;
+        if (!name.equals("音色") && voiceCapture != null) voiceCapture.pause();
         section = name;
         for (Map.Entry<String, View> entry : sections.entrySet())
             entry.getValue().setVisibility(name.equals(entry.getKey()) ? View.VISIBLE : View.GONE);
@@ -1751,6 +1905,7 @@ public class WorkspaceActivity extends Activity {
     }
 
     protected void onSaveInstanceState(Bundle state) {
+        if (voiceCapture != null) voiceCapture.persist();
         if (export != null) state.putString("exportFile", export.getName());
         state.putString("section", section); state.putString("pendingResume", pendingResume);
         state.putInt("taskLimit", taskLimit);
@@ -1760,12 +1915,14 @@ public class WorkspaceActivity extends Activity {
 
     protected void onResume() {
         super.onResume(); visible = true;
+        if (voiceCapture != null) voiceCapture.refresh();
         refreshModels();
         ui.removeCallbacks(recordingPoll); ui.post(recordingPoll);
         ui.removeCallbacks(poll); ui.post(poll);
     }
 
     protected void onPause() {
+        if (voiceCapture != null) voiceCapture.pause();
         visible = false; ui.removeCallbacks(poll); ui.removeCallbacks(recordingPoll);
         if (preview != null) { preview.close(); preview = null; }
         super.onPause();
@@ -1773,6 +1930,7 @@ public class WorkspaceActivity extends Activity {
 
     protected void onDestroy() {
         gone = true;
+        if (voiceCapture != null) voiceCapture.pause();
         if (preview != null) { preview.close(); preview = null; }
         ui.removeCallbacksAndMessages(null);
         files.shutdown();

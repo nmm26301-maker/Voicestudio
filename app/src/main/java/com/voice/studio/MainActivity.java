@@ -1915,7 +1915,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.2 · 云端与离线合成",
+                "VoiceStudio 1.5.3 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");

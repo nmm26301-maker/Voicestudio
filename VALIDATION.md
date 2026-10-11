@@ -1,4 +1,15 @@
-# 当前验证：1.5.2-hybrid（versionCode 18）
+# 当前验证：1.5.3-hybrid（versionCode 19）
+
+- Java、Android 资源、D8、ARM64 APK 完整构建通过（旧 API 等编译警告，无错误）；v2/v3 签名与 16 KiB ZIP 对齐通过。
+- 已交付 1.5.2 正式 APK 及 1.5.1 测试 APK 分别作为上一版核对，47 项实际 APK 检查通过；包名、证书、组件类和分享身份不变，版本代码升为 19。新录音与人物提取类已包含在 DEX。见 `validation/upgrade-checks-1.5.3.json`、`validation/upgrade-from-preview-1.5.3.json`。
+- 完整宿主回归通过；新增真实 PCM 人物提取 653 项检查，验证不连续对白拼接、65 秒完整导出、10 秒参考上限、重叠/越界拒绝与取消。队列文件归属及引用保护共 55 项通过。见 `validation/regression-1.5.3.log`。
+- 完整发布备份包含实际 APK 与同一密钥，签名匹配与归档字节校验通过；拒绝覆盖旧备份。五项签名/模式构建保护重跑通过，见 `validation/signing-guard-1.5.3.log`。备份私下保存，不在仓库中提交二进制或密钥。
+
+**未完成：手机麦克风与权限交互、旋转/锁屏等生命周期验收、视频实际解码、Whisper/CAM++/克隆完整模型准确性及性能、手机覆盖安装和数据保留。** 宿主 WAV 导出测试不代表人物分组准确率；不能按画面识别人名，重叠对白尚不能逐人分离。手机步骤见 [人物音色验收](docs/INSTALL_1.5.3.md)。
+
+---
+
+# 历史验证：1.5.2-hybrid（versionCode 18）
 
 2026-10-11 完成正式名称 APK 构建：`com.voice.studio.preview`，名称“VoiceStudio”，签名沿用已交付的 1.5.1 测试版。
 

@@ -55,6 +55,23 @@ public class QueueWorkflowTest {
             Files.write(new File(StudioFiles.job(c, id(2)).getPath() + ".new").toPath(), new byte[]{1});
             StudioFiles.deleteJob(c, id(2));
             check(!new File(StudioFiles.job(c, id(2)).getPath() + ".new").exists(), "task deletion cleans interrupted writes");
+            File voiceInput = new File(StudioFiles.dir(c, "audio"), id(300) + ".wav");
+            Files.write(voiceInput.toPath(), new byte[]{1});
+            StudioFiles.save(StudioFiles.job(c, id(3)), task(3, "clone", "done").put("referenceOwned", true).put("referenceAudio", voiceInput.getName()));
+            File retained = new File(StudioFiles.dir(c, "profiles"), id(3) + ".reference.wav"); Files.write(retained.toPath(), new byte[]{2});
+            StudioFiles.deleteJob(c, id(3));
+            check(!voiceInput.exists(), "owned immutable queue input cleaned with task");
+            check(retained.isFile(), "deleting clone task preserves profile reference recording");
+            StudioFiles.save(StudioFiles.job(c, id(4)), task(4, "extractVoices", "done"));
+            File person = new File(StudioFiles.dir(c, "audio"), id(4) + "-1.wav"); Files.write(person.toPath(), new byte[]{1});
+            File unrelated = new File(StudioFiles.dir(c, "audio"), id(5) + "-1.wav"); Files.write(unrelated.toPath(), new byte[]{1});
+            StudioFiles.save(StudioFiles.job(c, id(6)), task(6, "clone", "paused").put("sourceJob", id(4)).put("referenceAudio", person.getName()));
+            rejects(() -> StudioFiles.deleteJob(c, id(4)), "pending character clone must retain speaker extraction");
+            StudioFiles.deleteJob(c, id(6));
+            check(person.exists(), "unowned shared speaker input preserved when clone task deleted");
+            StudioFiles.deleteJob(c, id(4));
+            check(!person.exists(), "per-speaker exports cleaned when parent task deleted");
+            check(unrelated.exists(), "unrelated speaker exports retained");
             // A real race between maintenance and a new task must admit exactly one side.
             for (int n = 0; n < 30; n++) {
                 final int number = n + 100;

@@ -1,0 +1,18 @@
+missing original key: PASS (rejected)
+Missing signing key: /workspace/scratch/0b8aa571e19e/Voicestudio/signing/voicestudio-development.p12
+Restore the original key for an upgrade, or set VOICE_UNSIGNED=1 for compile/package validation only.
+
+missing standalone key: PASS (rejected)
+Missing signing key: /workspace/scratch/0b8aa571e19e/voice-guards-ugm6kh_r/signing/voicestudio-preview.p12
+Restore the shipped preview signing backup to preserve upgrades and data.
+
+wrong standalone certificate: PASS (rejected)
+Signing certificate differs from the previous APK; refusing an incompatible upgrade.
+
+wrong original certificate: PASS (rejected)
+Signing certificate differs from the previous APK; refusing an incompatible upgrade.
+
+conflicting modes: PASS (rejected)
+Choose VOICE_PREVIEW or VOICE_STANDALONE, not both.
+
+existing release backup: PASS (overwrite rejected)
