@@ -1,0 +1,8 @@
+----------
+1. WARNING in /workspace/scratch/335650cf4093/work150/VoiceStudio/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
+	import android.view.animation.Interpolator;
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The import android.view.animation.Interpolator is never used
+----------
+1 problem (1 warning)
+Motion curve: 8003 checks passed (host Java; Android animation lifecycle not simulated).

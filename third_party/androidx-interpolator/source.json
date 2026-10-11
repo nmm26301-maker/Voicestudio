@@ -1,0 +1,12 @@
+[
+  {
+    "file": "FastOutSlowInInterpolator.java",
+    "url": "https://android.googlesource.com/platform/frameworks/support/+/f2e05c341382db64d127118a13451dcaa554b702/interpolator/interpolator/src/main/java/androidx/interpolator/view/animation/FastOutSlowInInterpolator.java?format=TEXT",
+    "sha256": "abfd07d603d0f0df645ad848fd82a58ae87c7f3b620f5f4c6bb14bc457822b62"
+  },
+  {
+    "file": "LookupTableInterpolator.java",
+    "url": "https://android.googlesource.com/platform/frameworks/support/+/f2e05c341382db64d127118a13451dcaa554b702/interpolator/interpolator/src/main/java/androidx/interpolator/view/animation/LookupTableInterpolator.java?format=TEXT",
+    "sha256": "f30845c76a51e12c956a3b5d551b83f5658ccebbd77b72049b8756d625cdebf4"
+  }
+]

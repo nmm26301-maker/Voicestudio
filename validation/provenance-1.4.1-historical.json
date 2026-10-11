@@ -1,0 +1,54 @@
+{
+  "package": "com.voice.studio",
+  "versionName": "1.4.1-hybrid",
+  "versionCode": 15,
+  "minimumAndroid": "8.0 (API26)",
+  "targetSdk": 34,
+  "abi": "arm64-v8a",
+  "sha256": "cfc6cf16275a0a33f478470c59f2cf6077f7f4c078357b5c81522d2cdc8760d4",
+  "sizeBytes": 33674781,
+  "signatureSchemes": [
+    "v2",
+    "v3"
+  ],
+  "signingCertificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+  "zipAlignment": "16 KiB",
+  "resourcesArscStored": true,
+  "networkPermission": true,
+  "modelModules": [
+    "clone",
+    "speaker",
+    "translation",
+    "separation",
+    "whisper",
+    "omni"
+  ],
+  "catalogCounts": {
+    "tts": 646,
+    "asr": 99,
+    "translation": 202,
+    "translationMappedToTts": 146
+  },
+  "androidDeviceValidation": "not performed; Android build, host regression and authored native buffer diagnostic only",
+  "figmaEditableScreens": 21,
+  "figmaCloudWrite": "not updated for 1.4.1; historical screen bundle retained",
+  "figmaEditorExecution": "not performed",
+  "figmaFileUrl": "https://www.figma.com/design/3OshVJkopPEm5kkAX803XD",
+  "diagnosticOnnxGraph": {
+    "kind": "authored Identity graph",
+    "sha256": "ecc4dabb47eb88d2f66a0564169cb1123e0a03c25a27aae5c4c2b265f19543e3",
+    "hostNativeExecution": "historical pass; not rerun in 1.3.9",
+    "androidExecution": "not performed"
+  },
+  "fullOmniInference": "not performed in 1.4.1",
+  "liveFishApi": "not performed in 1.4.1",
+  "originalFailure": "fixed unsupported Android regex flag 256 in OmniTokenizer",
+  "phoneOverallSpeedup": "not measured",
+  "fastDefaultSteps": 16,
+  "qualitySteps": 32,
+  "nativeBufferChecks": 26489,
+  "nativeStagedEngineChecks": 1460201,
+  "chunkPipelineChecks": 16646,
+  "phonePeakMemory": "not measured",
+  "stagedCodeMemoryLimitBytes": 512000
+}

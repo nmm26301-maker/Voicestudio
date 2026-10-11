@@ -1,0 +1,10 @@
+{
+  "module": "speaker",
+  "files": [
+    {
+      "name": "model.onnx",
+      "size": 28303423,
+      "sha256": "a6ac6a63997761ae2997373e2ee1c47040854b4b759ea41ec48e4e42df0f4d73"
+    }
+  ]
+}

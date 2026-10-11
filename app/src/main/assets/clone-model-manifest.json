@@ -1,0 +1,20 @@
+{
+  "module": "clone",
+  "files": [
+    {
+      "name": "acoustic_encoder.onnx",
+      "size": 205546480,
+      "sha256": "431a5e58528f33c1f001baa64f979572667ff69f26bc727701e3529932065401"
+    },
+    {
+      "name": "quantizer_encoder.onnx",
+      "size": 12131293,
+      "sha256": "e4f0b707b06c24f7343d0d2d9bd977c1a4560d64b84bd19f30cdde54da1731a9"
+    },
+    {
+      "name": "semantic_encoder.onnx",
+      "size": 436736856,
+      "sha256": "db5751893fb44487658e8de1a88096b5421c590ac203c8d124b6972a990c79d3"
+    }
+  ]
+}

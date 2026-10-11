@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "code": "omni",
+      "name": "基础语音合成",
+      "use": "646 项合成目录；配音、长文、有声书。",
+      "installedBytes": 714649579,
+      "files": [
+        {
+          "name": "VoiceStudio-OmniVoice-Models.part01",
+          "url": "https://chatgpt.com/api/library/files/libfile_0e3136d4c39081919ae4d76b84b820c7/download",
+          "bytes": 293565872,
+          "sha256": "2e873caac5bd59d1f624114d76304a2d4db452e0590d558ab881738b8529e939"
+        },
+        {
+          "name": "VoiceStudio-OmniVoice-Models.part02",
+          "url": "https://chatgpt.com/api/library/files/libfile_e9b2ba595cb48191b45a330873bebd73/download",
+          "bytes": 293565871,
+          "sha256": "5a658c9260314f7499da65697bf69f00cf0405f918271f595e658042f8ee60a6"
+        }
+      ]
+    },
+    {
+      "code": "clone",
+      "name": "声音克隆",
+      "use": "创建参考音色；合成还需要基础模型。",
+      "installedBytes": 654414629,
+      "files": [
+        {
+          "name": "VoiceStudio-clone-Models.part01",
+          "url": "https://chatgpt.com/api/library/files/libfile_0fe28e72d0508191ac34e8e84851c042/download",
+          "bytes": 243406830,
+          "sha256": "1c08276861bb6a8a94037a80f6817e1e163885f792c65b207ee1353523d2c26b"
+        },
+        {
+          "name": "VoiceStudio-clone-Models.part02",
+          "url": "https://chatgpt.com/api/library/files/libfile_d94fff5496a08191bf6071933e3095bd/download",
+          "bytes": 243406829,
+          "sha256": "4db46e27413d31dafce897a84b05aca4adfde44b3e26ceae5a7cd8d722802d59"
+        }
+      ]
+    },
+    {
+      "code": "whisper",
+      "name": "语音识别",
+      "use": "录音、转写、悬浮听写。",
+      "installedBytes": 43330712,
+      "files": [
+        {
+          "name": "VoiceStudio-whisper-Models.zip",
+          "url": "https://chatgpt.com/api/library/files/libfile_9f09be678b7881918295de3904d02187/download",
+          "bytes": 28172490,
+          "sha256": "5e805f187caf7780f66b6a3587dd409fbc127d4ce37d7b1d2770e9803b68c1a4"
+        }
+      ]
+    },
+    {
+      "code": "translation",
+      "name": "离线翻译",
+      "use": "文字和字幕翻译；与合成语言目录独立。",
+      "installedBytes": 903105793,
+      "files": [
+        {
+          "name": "VoiceStudio-translation-Models.part01.bin",
+          "url": "https://chatgpt.com/api/library/files/libfile_4df9871c3c4c81919a815c53a0ca9648/download",
+          "bytes": 262144000,
+          "sha256": "aa6d823fa82668dc14f850b1e6a933d081a55bdfc2782d4616da3db22cd11ca7"
+        },
+        {
+          "name": "VoiceStudio-translation-Models.part02.bin",
+          "url": "https://chatgpt.com/api/library/files/libfile_5d2d9d5963f88191b256086a86cd4bb2/download",
+          "bytes": 262144000,
+          "sha256": "622679a6a6b551bcfc70ec4f62e23d77bc95ecade26f206da1d0c6b354faa1c3"
+        },
+        {
+          "name": "VoiceStudio-translation-Models.part03.bin",
+          "url": "https://chatgpt.com/api/library/files/libfile_a0ff308309308191906b56859b5bb8ff/download",
+          "bytes": 179788241,
+          "sha256": "504b473eb9eae08952b1453145d06f2fae163fb177635d9ae30dc0489f435051"
+        }
+      ]
+    },
+    {
+      "code": "separation",
+      "name": "人声分离",
+      "use": "生成独立人声与伴奏音轨。",
+      "installedBytes": 66759214,
+      "files": [
+        {
+          "name": "VoiceStudio-separation-Models.zip",
+          "url": "https://chatgpt.com/api/library/files/libfile_ac437980d38c8191934b9d4332d62352/download",
+          "bytes": 62263675,
+          "sha256": "62bc9966b43faacd1611be65d5ff4bce1bf52a1a7ef95331f2c76048dc3c37f4"
+        }
+      ]
+    },
+    {
+      "code": "speaker",
+      "name": "说话人分组",
+      "use": "按字幕分组；需要已有识别结果。",
+      "installedBytes": 28303423,
+      "files": [
+        {
+          "name": "VoiceStudio-speaker-Models.zip",
+          "url": "https://chatgpt.com/api/library/files/libfile_48cbaf05c6cc81919d91341b98044339/download",
+          "bytes": 25884946,
+          "sha256": "d319946bb921fdd09a55787a9d367135cd17a09a65d389d1b1911f68413fe5f6"
+        }
+      ]
+    }
+  ]
+}

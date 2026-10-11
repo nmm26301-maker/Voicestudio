@@ -1,0 +1,10 @@
+{
+  "version": "1.3.5-offline",
+  "versionCode": 9,
+  "certificateMatches1_3_4": true,
+  "downloadFiles": 10,
+  "modules": 6,
+  "networkPermission": false,
+  "deviceDownloadTested": false,
+  "assertions": 207
+}

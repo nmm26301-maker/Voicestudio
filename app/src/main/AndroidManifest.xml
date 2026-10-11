@@ -1,0 +1,31 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" package="com.voice.studio" android:versionCode="16" android:versionName="1.5.0-hybrid">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <application android:name=".StudioApplication" android:label="VoiceStudio" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:largeHeap="true" android:usesCleartextTraffic="false" android:supportsRtl="true">
+        <provider android:name="ai.onnxruntime.TelemetryInitializer" tools:node="remove" />
+        <activity android:name=".MainActivity" android:launchMode="singleTask" android:exported="true" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.SEND" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
+            <intent-filter><action android:name="android.intent.action.PROCESS_TEXT" /><category android:name="android.intent.category.DEFAULT" /><data android:mimeType="text/plain" /></intent-filter>
+        </activity>
+        <activity android:name=".WorkspaceActivity" android:exported="false" />
+        <activity android:name=".ModelDownloadsActivity" android:exported="false" />
+        <activity android:name=".ModelInstallActivity" android:exported="false" />
+        <activity android:name=".RecordingActivity" android:exported="false" android:excludeFromRecents="true" android:theme="@style/RecordingTheme" />
+        <service android:name=".StudioService" android:exported="false" android:foregroundServiceType="specialUse|microphone"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-requested local or Fish Audio speech synthesis and reference voice encoding" /></service>
+        <provider android:name=".AudioProvider" android:authorities="com.voice.studio.audio" android:exported="false" android:grantUriPermissions="true" />
+    <service android:name=".DictationOverlay" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-visible movable offline dictation controls"/></service>
+    </application>
+</manifest>

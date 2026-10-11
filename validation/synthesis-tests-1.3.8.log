@@ -1,0 +1,3 @@
+Host segmentation benchmark (not phone inference): old=490.311433 ms, new=10.272465 ms
+Synthesis flow: 8560 assertions passed (host only).
+Fish mock transport: 55 assertions passed; no live API calls.

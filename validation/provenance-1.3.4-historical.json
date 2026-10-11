@@ -1,0 +1,43 @@
+{
+  "package": "com.voice.studio",
+  "versionName": "1.3.4-offline",
+  "versionCode": 8,
+  "minimumAndroid": "8.0 (API26)",
+  "targetSdk": 34,
+  "abi": "arm64-v8a",
+  "sha256": "9b1568e391181a63cf5f6e5936ef395f9dff05f3d8b8cc3a6d8f8a79bc380902",
+  "sizeBytes": 33592788,
+  "signatureSchemes": [
+    "v2",
+    "v3"
+  ],
+  "signingCertificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+  "zipAlignment": "16 KiB",
+  "resourcesArscStored": true,
+  "networkPermission": false,
+  "modelModules": [
+    "clone",
+    "speaker",
+    "translation",
+    "separation",
+    "whisper",
+    "omni"
+  ],
+  "catalogCounts": {
+    "tts": 646,
+    "asr": 99,
+    "translation": 202,
+    "translationMappedToTts": 146
+  },
+  "androidDeviceValidation": "not performed; host file tests and Android build only",
+  "figmaEditableScreens": 21,
+  "figmaCloudWrite": "not performed in 1.3.4; offline 1.3.2 21-screen bundle retained",
+  "figmaEditorExecution": "not performed",
+  "figmaFileUrl": "https://www.figma.com/design/3OshVJkopPEm5kkAX803XD",
+  "diagnosticOnnxGraph": {
+    "kind": "authored Identity graph",
+    "sha256": "ecc4dabb47eb88d2f66a0564169cb1123e0a03c25a27aae5c4c2b265f19543e3",
+    "hostNativeExecution": "passed; ONNX Runtime 1.30.0 Linux, network blocked",
+    "androidExecution": "not performed"
+  }
+}

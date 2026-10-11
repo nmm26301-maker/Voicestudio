@@ -1,0 +1,173 @@
+----------
+1. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/DictationOverlay.java (at line 24)
+	final Handler handler = new Handler();
+	                            ^^^^^^^^^
+The constructor Handler() is deprecated
+----------
+2. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/DictationOverlay.java (at line 296)
+	stopForeground(true);
+	^^^^^^^^^^^^^^^^^^^^
+The method stopForeground(boolean) from the type Service is deprecated
+----------
+----------
+3. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/DreamProgressView.java (at line 63)
+	int saved=canvas.save(); canvas.clipRect(left,y-d*9,right,y+d*9);
+	    ^^^^^
+The value of the local variable saved is not used
+----------
+----------
+4. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 433)
+	getWindow().setStatusBarColor(BG);
+	            ^^^^^^^^^^^^^^^^^^^^^
+The method setStatusBarColor(int) from the type Window is deprecated
+----------
+5. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 434)
+	getWindow().setNavigationBarColor(Color.WHITE);
+	            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setNavigationBarColor(int) from the type Window is deprecated
+----------
+6. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 437)
+	.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                                | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setSystemUiVisibility(int) from the type View is deprecated
+----------
+7. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 438)
+	View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+	     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The field View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR is deprecated
+----------
+8. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 439)
+	| View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The field View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR is deprecated
+----------
+9. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 2526)
+	} else super.onBackPressed();
+	             ^^^^^^^^^^^^^^^
+The method onBackPressed() from the type Activity is deprecated
+----------
+----------
+10. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/MediaFiles.java (at line 232)
+	MediaMetadataRetriever metadata = new MediaMetadataRetriever();
+	                       ^^^^^^^^
+Resource leak: 'metadata' is never closed
+----------
+----------
+11. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelInstallActivity.java (at line 60)
+	ArrayList<Uri> selected = getIntent().getParcelableArrayListExtra("modelUris");
+	                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method getParcelableArrayListExtra(String) from the type Intent is deprecated
+----------
+12. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelInstallActivity.java (at line 130)
+	} else super.onBackPressed();
+	             ^^^^^^^^^^^^^^^
+The method onBackPressed() from the type Activity is deprecated
+----------
+----------
+13. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelViews.java (at line 15)
+	owner.getWindow().setStatusBarColor(0xffF6F7FB); owner.getWindow().setNavigationBarColor(0xffF6F7FB);
+	                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setStatusBarColor(int) from the type Window is deprecated
+----------
+14. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelViews.java (at line 15)
+	owner.getWindow().setStatusBarColor(0xffF6F7FB); owner.getWindow().setNavigationBarColor(0xffF6F7FB);
+	                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setNavigationBarColor(int) from the type Window is deprecated
+----------
+15. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelViews.java (at line 16)
+	owner.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setSystemUiVisibility(int) from the type View is deprecated
+----------
+16. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelViews.java (at line 16)
+	owner.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The field View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR is deprecated
+----------
+17. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/ModelViews.java (at line 16)
+	owner.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The field View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR is deprecated
+----------
+----------
+18. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/RecordRoute.java (at line 23)
+	priorSco = manager.isBluetoothScoOn();
+	                   ^^^^^^^^^^^^^^^^^^
+The method isBluetoothScoOn() from the type AudioManager is deprecated
+----------
+19. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/RecordRoute.java (at line 51)
+	manager.startBluetoothSco();
+	        ^^^^^^^^^^^^^^^^^^^
+The method startBluetoothSco() from the type AudioManager is deprecated
+----------
+20. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/RecordRoute.java (at line 72)
+	if (startedSco) manager.stopBluetoothSco();
+	                        ^^^^^^^^^^^^^^^^^^
+The method stopBluetoothSco() from the type AudioManager is deprecated
+----------
+----------
+21. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/RecordingActivity.java (at line 12)
+	final Handler handler = new Handler();
+	                            ^^^^^^^^^
+The constructor Handler() is deprecated
+----------
+----------
+22. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/StudioService.java (at line 302)
+	stopForeground(true);
+	^^^^^^^^^^^^^^^^^^^^
+The method stopForeground(boolean) from the type Service is deprecated
+----------
+23. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/StudioService.java (at line 326)
+	android.media.MediaMetadataRetriever metadata = new android.media.MediaMetadataRetriever();
+	                                     ^^^^^^^^
+Resource leak: 'metadata' is never closed
+----------
+24. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/StudioService.java (at line 572)
+	JSONObject source = StudioFiles.read(StudioFiles.job(this, sourceId));
+	           ^^^^^^
+The value of the local variable source is not used
+----------
+----------
+25. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 24)
+	final Handler ui = new Handler();
+	                       ^^^^^^^^^
+The constructor Handler() is deprecated
+----------
+26. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 63)
+	getWindow().setStatusBarColor(0xffF6F7FB);
+	            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setStatusBarColor(int) from the type Window is deprecated
+----------
+27. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 64)
+	getWindow().setNavigationBarColor(0xffF6F7FB);
+	            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setNavigationBarColor(int) from the type Window is deprecated
+----------
+28. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 67)
+	.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                                | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setSystemUiVisibility(int) from the type View is deprecated
+----------
+29. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 68)
+	View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+	     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The field View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR is deprecated
+----------
+30. WARNING in /workspace/scratch/335650cf4093/work139/VoiceStudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 69)
+	| View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The field View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR is deprecated
+----------
+30 problems (30 warnings)
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1

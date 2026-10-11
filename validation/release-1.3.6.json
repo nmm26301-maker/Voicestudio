@@ -1,0 +1,10 @@
+{
+  "version": "1.3.6-offline",
+  "versionCode": 10,
+  "assertions": 285,
+  "sameSigningCertificate": true,
+  "aligned16KiB": true,
+  "networkPermission": false,
+  "modelManifestsUnchanged": true,
+  "phoneTested": false
+}

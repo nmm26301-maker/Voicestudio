@@ -1,0 +1,2 @@
+IPv4/IPv6 sockets blocked for this process and all children.
+Native ONNX Runtime 1.30 buffer reuse: 26489 checks passed. Authored graph; full OmniVoice and phone tests separate.

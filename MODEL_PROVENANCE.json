@@ -1,0 +1,164 @@
+{
+  "version": 2,
+  "files": [
+    {
+      "name": "tokenizer.json",
+      "size": 11423986,
+      "sha256": "408f669b7e2b045fdf54201d815bd364e6667dbd845115da81239c40bc6dcfd1",
+      "source_url": "https://huggingface.co/onnx-community/OmniVoice-Onnx/resolve/main/int4/tokenizer.json"
+    },
+    {
+      "name": "higgs_decoder.onnx",
+      "size": 86500102,
+      "sha256": "b28b3317a6cbf0d0f4a71b476ecb5c767612a31702da6561154783c94b6fa806",
+      "source_url": "https://huggingface.co/onnx-community/OmniVoice-Onnx/resolve/main/audio_tokenizer/higgs_decoder.onnx"
+    },
+    {
+      "name": "omnivoice.qint8_per_channel.onnx",
+      "size": 3951539,
+      "sha256": "f5751767fce63afa5fab6ba61daacab4f55cf57cfb98f007621873be00bde705",
+      "source_url": "https://huggingface.co/gluschenko/omnivoice-onnx/resolve/main/onnx/omnivoice.qint8_per_channel.onnx"
+    },
+    {
+      "name": "omnivoice.qint8_per_channel.onnx_data",
+      "size": 612773952,
+      "sha256": "983fbe174700f9537ca52dc0b49ea12a8e51c5cf56f01d127cf26d9fa990c365",
+      "source_url": "https://huggingface.co/gluschenko/omnivoice-onnx/resolve/main/onnx/omnivoice.qint8_per_channel.onnx_data"
+    }
+  ],
+  "retrieved_date": "2026-10-08",
+  "base_model": "https://huggingface.co/k2-fsa/OmniVoice",
+  "weights_license": "CC-BY-NC per original model card; upstream terms apply",
+  "modules": {
+    "clone": {
+      "files": [
+        {
+          "name": "acoustic_encoder.onnx",
+          "size": 205546480,
+          "sha256": "431a5e58528f33c1f001baa64f979572667ff69f26bc727701e3529932065401"
+        },
+        {
+          "name": "quantizer_encoder.onnx",
+          "size": 12131293,
+          "sha256": "e4f0b707b06c24f7343d0d2d9bd977c1a4560d64b84bd19f30cdde54da1731a9"
+        },
+        {
+          "name": "semantic_encoder.onnx",
+          "size": 436736856,
+          "sha256": "db5751893fb44487658e8de1a88096b5421c590ac203c8d124b6972a990c79d3"
+        }
+      ],
+      "decodedBytes": 654414629,
+      "sourceRepository": "https://huggingface.co/onnx-community/OmniVoice-Onnx"
+    },
+    "speaker": {
+      "files": [
+        {
+          "name": "model.onnx",
+          "size": 28303423,
+          "sha256": "a6ac6a63997761ae2997373e2ee1c47040854b4b759ea41ec48e4e42df0f4d73"
+        }
+      ],
+      "decodedBytes": 28303423,
+      "sourceRepository": "https://huggingface.co/FunAudioLLM/CosyVoice-300M"
+    },
+    "translation": {
+      "files": [
+        {
+          "name": "encoder_model_quantized.onnx",
+          "size": 419120483,
+          "sha256": "5cde664eacba07a62f198857ec6c06e09572b1ebb77c8137f1fa99ac604a3a28"
+        },
+        {
+          "name": "decoder_model_merged_quantized.onnx",
+          "size": 475505771,
+          "sha256": "dd66608c2a4194e78f95548fa0e64f24302303698c5b09fa8e1f9e16ec00676b"
+        },
+        {
+          "name": "tokenizer.bin",
+          "size": 8479539,
+          "sha256": "ebdd4a35343c44fe9a17f0474b2fe31370a3279cf82c99d57d5ac378ae5334b1"
+        }
+      ],
+      "decodedBytes": 903105793,
+      "sourceRepository": "https://huggingface.co/Xenova/nllb-200-distilled-600M",
+      "tokenizerConversion": "tools/prepare_nllb_tokenizer.py compiles the original tokenizer JSON into the Android binary BPE tables; vocabulary IDs and merge ranks retained."
+    },
+    "separation": {
+      "files": [
+        {
+          "name": "model.onnx",
+          "size": 66759214,
+          "sha256": "317554b07fe1ea5279a77f2b1520a41ea4b93432560c4ffd08792c30fddf9adc"
+        }
+      ],
+      "decodedBytes": 66759214,
+      "sourceRepository": "https://huggingface.co/masszhou/mdxnet",
+      "config": {
+        "primaryStem": "instrumental",
+        "fft": 6144,
+        "hop": 1024,
+        "bins": 3072,
+        "frames": 256,
+        "compensation": 1.022,
+        "upstreamTailMd5": "55657dd70583b0fedfba5f67df11d711"
+      }
+    },
+    "whisper": {
+      "files": [
+        {
+          "name": "encoder_model_quantized.onnx",
+          "size": 10124990,
+          "sha256": "2af4a414ca47aa30f61246017e5fe82b0a8d229281d1255ba666a2a7f6b84d19"
+        },
+        {
+          "name": "decoder_model_merged_quantized.onnx",
+          "size": 30719241,
+          "sha256": "25e807a962b6349356d0ea5d0dfe530b7e5bf0e2a484aeca0359d03143faddd3"
+        },
+        {
+          "name": "tokenizer.json",
+          "size": 2480466,
+          "sha256": "27fc476bfe7f17299480be2273fc0608e4d5a99aba2ab5dec5374b4482d1a566"
+        },
+        {
+          "name": "generation_config.json",
+          "size": 3772,
+          "sha256": "f5c67e5a4f7102f8cb4d058bc95da276bbc19eeec997267c3bb0f25ef68facd1"
+        },
+        {
+          "name": "config.json",
+          "size": 2243,
+          "sha256": "46aeea0a406afbeb563fc8e59ca10609203df4299af6a83f73752fef369efd2d"
+        }
+      ],
+      "decodedBytes": 43330712,
+      "sourceRepository": "https://huggingface.co/Xenova/whisper-tiny"
+    },
+    "omni": {
+      "files": [
+        {
+          "name": "tokenizer.json",
+          "size": 11423986,
+          "sha256": "408f669b7e2b045fdf54201d815bd364e6667dbd845115da81239c40bc6dcfd1"
+        },
+        {
+          "name": "higgs_decoder.onnx",
+          "size": 86500102,
+          "sha256": "b28b3317a6cbf0d0f4a71b476ecb5c767612a31702da6561154783c94b6fa806"
+        },
+        {
+          "name": "omnivoice.qint8_per_channel.onnx",
+          "size": 3951539,
+          "sha256": "f5751767fce63afa5fab6ba61daacab4f55cf57cfb98f007621873be00bde705"
+        },
+        {
+          "name": "omnivoice.qint8_per_channel.onnx_data",
+          "size": 612773952,
+          "sha256": "983fbe174700f9537ca52dc0b49ea12a8e51c5cf56f01d127cf26d9fa990c365"
+        }
+      ],
+      "decodedBytes": 714649579
+    }
+  }
+}

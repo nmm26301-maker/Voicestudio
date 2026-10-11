@@ -1,0 +1,61 @@
+{
+  "package": "com.voice.studio",
+  "versionName": "1.5.0-hybrid",
+  "versionCode": 16,
+  "minimumAndroid": "8.0 (API26)",
+  "targetSdk": 34,
+  "abi": "arm64-v8a",
+  "sha256": "0997c39c52973f7a87bded6f2399e550d2ea8387f8d673351fb2616bd3651cf9",
+  "sizeBytes": 33695626,
+  "signatureSchemes": [
+    "v2",
+    "v3"
+  ],
+  "signingCertificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+  "zipAlignment": "16 KiB",
+  "resourcesArscStored": true,
+  "networkPermission": true,
+  "modelModules": [
+    "clone",
+    "speaker",
+    "translation",
+    "separation",
+    "whisper",
+    "omni"
+  ],
+  "catalogCounts": {
+    "tts": 646,
+    "asr": 99,
+    "translation": 202,
+    "translationMappedToTts": 146
+  },
+  "androidDeviceValidation": "not performed; build and host regression tests only",
+  "figmaEditableScreens": 21,
+  "figmaCloudWrite": "not updated for 1.5.0; historical screen bundle retained",
+  "figmaEditorExecution": "not performed",
+  "figmaFileUrl": "https://www.figma.com/design/3OshVJkopPEm5kkAX803XD",
+  "diagnosticOnnxGraph": {
+    "kind": "authored Identity graph",
+    "sha256": "ecc4dabb47eb88d2f66a0564169cb1123e0a03c25a27aae5c4c2b265f19543e3",
+    "hostNativeExecution": "historical pass; not rerun in 1.3.9",
+    "androidExecution": "not performed"
+  },
+  "fullOmniInference": "not performed in 1.5.0",
+  "liveFishApi": "not performed in 1.5.0",
+  "originalFailure": "fixed unsupported Android regex flag 256 in OmniTokenizer",
+  "phoneOverallSpeedup": "not measured",
+  "fastDefaultSteps": 16,
+  "qualitySteps": 32,
+  "nativeBufferChecks": "26489 passed in 1.4.1; unchanged core, not rerun in 1.5.0",
+  "nativeStagedEngineChecks": "1460201 passed in 1.4.1; unchanged core, not rerun in 1.5.0",
+  "chunkPipelineChecks": 16646,
+  "phonePeakMemory": "not measured",
+  "stagedCodeMemoryLimitBytes": 512000,
+  "motionCurveChecks": 8003,
+  "uiContrastAndSourceChecks": 137,
+  "minimumSharedTextContrastRatio": 6.48,
+  "uiPreview": "static design illustration; examples, not a device screenshot",
+  "decorativeAnimation": "native Canvas; ~12.5 Hz maximum, paused during synthesis, power saving, activity pause and hidden window",
+  "progressAnimation": "native Canvas; ~20 Hz maximum while running and foreground; real inference fraction only",
+  "openSourceMotion": "pinned AndroidX FastOutSlowInInterpolator and LookupTableInterpolator; Apache-2.0, Java package changed only"
+}

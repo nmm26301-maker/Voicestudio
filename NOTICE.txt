@@ -1,0 +1,31 @@
+VoiceStudio Android offline preview, 2026-10-08
+
+Original model: k2-fsa/OmniVoice, Han Zhu and coauthors, Xiaomi Corp. and collaborators, 2026.
+https://huggingface.co/k2-fsa/OmniVoice
+https://github.com/k2-fsa/OmniVoice
+Original code Apache-2.0. Original pretrained model CC-BY-NC per official model card.
+Model is converted and INT8-quantized by gluschenko; decoder and tokenizer from onnx-community/OmniVoice-Onnx. Original pretrained-weight terms remain applicable. This package does not relicense those weights.
+https://huggingface.co/gluschenko/omnivoice-onnx
+https://huggingface.co/onnx-community/OmniVoice-Onnx
+Audio decoder: Higgs Audio V2 tokenizer, Boson AI, via the above ONNX conversion.
+Java generation port follows the original diffusion generation algorithm; Unicode duration estimator port follows Han Zhu/Xiaomi Apache-2.0 source.
+Android runtime: ONNX Runtime 1.30.0, Microsoft, MIT; third-party notices included in source third_party/.
+See MODEL_PROVENANCE.json for downloaded file SHA-256 values and exact source URLs.
+
+This is an experimental native Android port, not an official upstream Android distribution. All 646 languages and Android device behavior have not been validated.
+
+Additional modules in 1.3:
+Whisper: OpenAI MIT code/weights, ONNX conversion via Xenova/whisper-tiny.
+https://github.com/openai/whisper
+https://huggingface.co/Xenova/whisper-tiny
+NLLB-200 distilled 600M: Meta, CC-BY-NC-4.0 pretrained weights; ONNX conversion via Xenova.
+https://huggingface.co/facebook/nllb-200-distilled-600M
+https://huggingface.co/Xenova/nllb-200-distilled-600M
+https://creativecommons.org/licenses/by-nc/4.0/
+MDX-Net Inst HQ 3: masszhou/mdxnet repository lists MIT; related upstream UVR/MDX project terms apply.
+https://huggingface.co/masszhou/mdxnet
+CAM++ speaker embedding from FunAudioLLM/CosyVoice-300M, upstream lists Apache-2.0.
+https://huggingface.co/FunAudioLLM/CosyVoice-300M
+These weights are distributed separately, not relicensed by the application.
+
+AndroidX Interpolator: Copyright 2018 The Android Open Source Project. Apache License 2.0. Two source files vendored; only Java package changed. See third_party/androidx-interpolator. Material Motion documentation informed timings; Material Components is not bundled.

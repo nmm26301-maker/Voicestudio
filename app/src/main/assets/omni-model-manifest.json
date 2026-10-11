@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "name": "tokenizer.json",
+      "size": 11423986,
+      "sha256": "408f669b7e2b045fdf54201d815bd364e6667dbd845115da81239c40bc6dcfd1"
+    },
+    {
+      "name": "higgs_decoder.onnx",
+      "size": 86500102,
+      "sha256": "b28b3317a6cbf0d0f4a71b476ecb5c767612a31702da6561154783c94b6fa806"
+    },
+    {
+      "name": "omnivoice.qint8_per_channel.onnx",
+      "size": 3951539,
+      "sha256": "f5751767fce63afa5fab6ba61daacab4f55cf57cfb98f007621873be00bde705"
+    },
+    {
+      "name": "omnivoice.qint8_per_channel.onnx_data",
+      "size": 612773952,
+      "sha256": "983fbe174700f9537ca52dc0b49ea12a8e51c5cf56f01d127cf26d9fa990c365"
+    }
+  ]
+}

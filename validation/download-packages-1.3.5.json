@@ -1,0 +1,32 @@
+[
+  {
+    "module": "omni",
+    "files": 4,
+    "verified": true
+  },
+  {
+    "module": "clone",
+    "files": 3,
+    "verified": true
+  },
+  {
+    "module": "whisper",
+    "files": 5,
+    "verified": true
+  },
+  {
+    "module": "translation",
+    "files": 3,
+    "verified": true
+  },
+  {
+    "module": "separation",
+    "files": 1,
+    "verified": true
+  },
+  {
+    "module": "speaker",
+    "files": 1,
+    "verified": true
+  }
+]

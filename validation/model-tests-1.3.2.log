@@ -1,0 +1,4 @@
+24 assertions passed: volume ordering, download names, missing/mixed/duplicate volumes, lazy reads and closing.
+27 model import assertions passed: integrity, size, path rejection, missing files and cleanup.
+24 recovery assertions passed with host Context/AtomicFile adapters; Android lifecycle is not simulated.
+100 assertions passed: concurrent appends/edits, stale refresh, trash/restore, backup recovery and guarded deletion (host file adapters).

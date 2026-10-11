@@ -1,0 +1,6 @@
+Host segmentation benchmark (not phone inference): old=424.512856 ms, new=14.448197 ms
+Synthesis flow: 8560 assertions passed (host only).
+Fish mock transport: 55 assertions passed; no live API calls.
+Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
+Tokenizer / actual progress: 17548 checks passed (host JVM, not device inference)
+Staged chunk pipeline: 16646 checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.

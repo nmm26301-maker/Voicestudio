@@ -1,0 +1,19 @@
+{
+  "baseline": "VoiceStudio-1.4.1-Source.zip",
+  "byteIdentical": [
+    "OmniEngine",
+    "OmniChunkPipeline",
+    "OmniTensorRun",
+    "OmniStepSampler",
+    "StudioService",
+    "FishClient",
+    "StudioFiles",
+    "ModelImports",
+    "ModelPackageCheck",
+    "VoicePrompt",
+    "OmniTokenizer",
+    "SynthesisProgress",
+    "OmniModels",
+    "PcmAudio"
+  ]
+}

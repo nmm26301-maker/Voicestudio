@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=VoiceStudio Development, O=VoiceStudio, C=CN
+Signer #1 certificate SHA-256 digest: 7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33
+Signer #1 certificate SHA-1 digest: ff68c10751b292befc7c528967284922cbeeb5db
+Signer #1 certificate MD5 digest: fd1d162af975b3cae91b370ae778e22a
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 2048
+Signer #1 public key SHA-256 digest: 811a657760c3f709c19a8c6ff3b9a269cf6f742effd875e91adbfe316cc3bcb6
+Signer #1 public key SHA-1 digest: 129dad58c028e786f4036745f4308bedaf9a506e
+Signer #1 public key MD5 digest: 870a56763d82b4cd0b938eff5ca62071

@@ -1,0 +1,15 @@
+{
+  "parts": [
+    {
+      "file": "VoiceStudio-OmniVoice-Models.part01",
+      "bytes": 293565872,
+      "sha256": "2e873caac5bd59d1f624114d76304a2d4db452e0590d558ab881738b8529e939"
+    },
+    {
+      "file": "VoiceStudio-OmniVoice-Models.part02",
+      "bytes": 293565871,
+      "sha256": "5a658c9260314f7499da65697bf69f00cf0405f918271f595e658042f8ee60a6"
+    }
+  ],
+  "order": "part01 then part02; concatenate stream; app imports both selected files without external unpacking"
+}

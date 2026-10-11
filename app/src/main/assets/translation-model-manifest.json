@@ -1,0 +1,20 @@
+{
+  "module": "translation",
+  "files": [
+    {
+      "name": "encoder_model_quantized.onnx",
+      "size": 419120483,
+      "sha256": "5cde664eacba07a62f198857ec6c06e09572b1ebb77c8137f1fa99ac604a3a28"
+    },
+    {
+      "name": "decoder_model_merged_quantized.onnx",
+      "size": 475505771,
+      "sha256": "dd66608c2a4194e78f95548fa0e64f24302303698c5b09fa8e1f9e16ec00676b"
+    },
+    {
+      "name": "tokenizer.bin",
+      "size": 8479539,
+      "sha256": "ebdd4a35343c44fe9a17f0474b2fe31370a3279cf82c99d57d5ac378ae5334b1"
+    }
+  ]
+}

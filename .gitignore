@@ -1,0 +1,12 @@
+signing/
+*.p12
+*.jks
+*.keystore
+.env
+local.properties
+.gradle/
+**/build/
+build-manual/
+__pycache__/
+app/libs/*.aar
+app/libs/*.pending

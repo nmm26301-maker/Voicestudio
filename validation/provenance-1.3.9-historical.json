@@ -1,0 +1,46 @@
+{
+  "package": "com.voice.studio",
+  "versionName": "1.3.9-hybrid",
+  "versionCode": 13,
+  "minimumAndroid": "8.0 (API26)",
+  "targetSdk": 34,
+  "abi": "arm64-v8a",
+  "sha256": "c50bbe24e288570273f89ef3b0b4e202d7aae3b4608b26f6b56ed2c1f4a0a51e",
+  "sizeBytes": 33642013,
+  "signatureSchemes": [
+    "v2",
+    "v3"
+  ],
+  "signingCertificateSha256": "7e63e9ad6f5910ceb64e62e54009a200e50dcedc9709e396e6a393b38f0f5a33",
+  "zipAlignment": "16 KiB",
+  "resourcesArscStored": true,
+  "networkPermission": true,
+  "modelModules": [
+    "clone",
+    "speaker",
+    "translation",
+    "separation",
+    "whisper",
+    "omni"
+  ],
+  "catalogCounts": {
+    "tts": 646,
+    "asr": 99,
+    "translation": 202,
+    "translationMappedToTts": 146
+  },
+  "androidDeviceValidation": "not performed; Android build, host regression, native ICU regex compatibility and source routing guard only",
+  "figmaEditableScreens": 21,
+  "figmaCloudWrite": "not performed in 1.3.9; historical screen bundle retained",
+  "figmaEditorExecution": "not performed",
+  "figmaFileUrl": "https://www.figma.com/design/3OshVJkopPEm5kkAX803XD",
+  "diagnosticOnnxGraph": {
+    "kind": "authored Identity graph",
+    "sha256": "ecc4dabb47eb88d2f66a0564169cb1123e0a03c25a27aae5c4c2b265f19543e3",
+    "hostNativeExecution": "historical pass; not rerun in 1.3.9",
+    "androidExecution": "not performed"
+  },
+  "fullOmniInference": "not performed in 1.3.9",
+  "liveFishApi": "not performed in 1.3.9",
+  "originalFailure": "fixed unsupported Android regex flag 256 in OmniTokenizer"
+}
