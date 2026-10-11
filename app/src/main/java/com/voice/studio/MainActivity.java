@@ -869,14 +869,17 @@ public class MainActivity extends Activity {
         gap(content, 14);
         if("omni".equals(engine)) {
             LinearLayout mode=card();
-            info(mode,"生成速度",prefs.getInt("voice-steps",16)==16 ? "快速 · 16 步推理，减少计算等待" : "质量优先 · 32 步推理，需要更多等待");
+            int steps=prefs.getInt("voice-steps",16);
+            info(mode,"生成速度",steps==8 ? "极速 · 8 步（实验），减少模型运算" : steps==16 ? "快速 · 16 步，默认模式" : "质量优先 · 32 步");
             gap(mode,10);
-            TextView toggle=button(prefs.getInt("voice-steps",16)==16 ? "切换质量优先" : "切换快速生成",false,()->{
-                prefs.edit().putInt("voice-steps",prefs.getInt("voice-steps",16)==16 ? 32 : 16).apply();
-                render();
-            });
+            TextView toggle=button("选择生成速度",false,()->new CosmicDialogBuilder(this)
+                    .setTitle("本地生成速度")
+                    .setItems(new String[]{"极速 · 8 步（实验）","快速 · 16 步（默认）","质量优先 · 32 步"},(d,n)->{
+                        prefs.edit().putInt("voice-steps",new int[]{8,16,32}[n]).apply();
+                        render();
+                    }).setNegativeButton("取消",null).show());
             add(mode,toggle); gap(mode,7);
-            add(mode,text("快速模式的音质可能略有变化。语速只影响说话节奏；已提交的任务沿用原配置。",11,MUTED,false));
+            add(mode,text("8 步减少运算，音质与音色相似度需试听确认。语速调整说话节奏；已提交的任务沿用原配置。",11,MUTED,false));
             add(content,mode); gap(content,14);
         }
         LinearLayout speedRow = row();
@@ -1915,7 +1918,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.3 · 云端与离线合成",
+                "VoiceStudio 1.5.4 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");

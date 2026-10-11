@@ -10,8 +10,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class OmniEngine {
     interface Progress { void update(String message); }
     static final OmniTokenizerCache tokenizerCache = new OmniTokenizerCache();
-    long lastGenerationMillis, tokenizerNanos, loadNanos, inferenceNanos, decodeNanos;
-    int backboneLoads, decoderLoads, chunkCount;
+    long lastGenerationMillis, tokenizerNanos, loadNanos, inferenceNanos, decodeNanos, modelRunNanos, samplingNanos;
+    int backboneLoads, decoderLoads, chunkCount, backboneRuns;
     VoicePrompt automaticPrompt;
     volatile OrtSession.RunOptions running;
 
@@ -31,10 +31,12 @@ final class OmniEngine {
         if (text == null || text.trim().isEmpty() || text.length() > 12000)
             throw new IOException("文本需为 1—12000 字");
         if (!Float.isFinite(speed) || speed < .5 || speed > 2) throw new IOException("语速无效");
-        if (steps != 16 && steps != 32) throw new IOException("请选择 16 或 32 步");
+        if (steps != 8 && steps != 16 && steps != 32) throw new IOException("请选择 8、16 或 32 步");
         long generationStart = System.nanoTime();
         lastGenerationMillis = tokenizerNanos = loadNanos = inferenceNanos = decodeNanos = 0;
+        modelRunNanos = samplingNanos = 0;
         backboneLoads = decoderLoads = 0;
+        backboneRuns = 0;
         automaticPrompt = null;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
@@ -183,8 +185,13 @@ final class OmniEngine {
                             input[c * S + target + t] = codes[c * frames + t];
                             input[(8 + c) * S + t] = codes[c * frames + t];
                         }
+                    long runStart = System.nanoTime();
                     FloatBuffer logits = tensors.run(session, run, input);
+                    backboneRuns++;
+                    modelRunNanos += System.nanoTime() - runStart;
+                    long samplingStart = System.nanoTime();
                     remain -= sampler.update(logits, codes, frames, S, target, k, random);
+                    samplingNanos += System.nanoTime() - samplingStart;
                     check(cancelled);
                     progress.update("本机合成 · " + (step + 1) + " / " + steps + " 步");
                 }
@@ -204,7 +211,7 @@ final class OmniEngine {
             samples.get(pcm);
             if (ref != null && ref.rms < .1)
                 for (int i = 0; i < pcm.length; i++) pcm[i] *= ref.rms / .1;
-            VoicePrompt anchor = chunk.frames >= 75 && chunk.text.length() <= 2000
+            VoicePrompt anchor = ref == null && chunk.frames >= 75 && chunk.text.length() <= 2000
                     ? new VoicePrompt(chunk.text, chunk.codes.clone(), chunk.frames,
                             Math.max(.1, PcmAudio.rms(pcm))) : null;
             PcmAudio.fade(pcm);

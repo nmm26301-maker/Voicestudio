@@ -26,6 +26,9 @@ public class StagedEngineTest {
         check(engine.backboneLoads==expected&&engine.decoderLoads==expected,"native sessions actually reused");
         check(engine.lastGenerationMillis>0&&engine.loadNanos>0&&engine.inferenceNanos>0&&engine.decodeNanos>0,
                 "stage timings reflect executed operations");
+        check(engine.modelRunNanos>0 && engine.samplingNanos>0 &&
+                engine.inferenceNanos>=engine.modelRunNanos+engine.samplingNanos,
+                "separate model/sampler timings are actual subsets of inference");
         check(progress.stream().anyMatch(p->p.contains("本机合成 · 0 /")),"start is zero completed steps");
         check(progress.stream().filter(p->p.contains("本机合成 · "+steps+" / "+steps)).count()==chunks,
                 "each final step reported after run");
@@ -53,7 +56,39 @@ public class StagedEngineTest {
             VoicePrompt ref=new VoicePrompt("A calm voice walks across the stars. We keep the same voice.",new long[8*150],150,.05);
             compare(models,folder,text(),ref,16,1.3f);
             compare(models,folder,"Hello there.",ref,32,1);
+            int previousRuns=0;
+            for (int steps : new int[]{8,16,32}) {
+                OmniEngine counted = new OmniEngine();
+                counted.generate(models,"Hello there.","en",1,new File(folder,"counted.wav"),
+                        new AtomicBoolean(),m->{},ref,"None",steps,42);
+                check(counted.backboneRuns==steps,"native model run count matches chosen steps");
+                if (previousRuns>0) check(counted.backboneRuns==previousRuns*2,"doubling steps doubles actual model runs");
+                previousRuns=counted.backboneRuns;
+            }
+            for (VoicePrompt voice : new VoicePrompt[]{null, ref}) {
+                OmniEngine fast = new OmniEngine(); File wav = new File(folder,"eight.wav");
+                List<String> updates = new ArrayList<>();
+                fast.generate(models,text(),"en",1,wav,new AtomicBoolean(),updates::add,voice,"None",8,42);
+                int chunks = OmniEngine.split(text(),1,voice).size();
+                check(fast.chunkCount==chunks && chunks>1,"8 steps supports multi-chunk synthesis");
+                check(updates.stream().filter(p->p.contains("本机合成 · 8 / 8 步")).count()==chunks,
+                        "every 8-step chunk finishes");
+                check(updates.stream().noneMatch(p->p.matches(".*本机合成 · (9|1[0-9]|2[0-9]|3[0-9]) /.*")),
+                        "8-step mode performs no later step");
+                try(PcmAudio.Reader pcm=new PcmAudio.Reader(wav)) {
+                    check(pcm.rate==24000 && pcm.seconds()>0,"8-step output has valid PCM");
+                }
+                check(voice==null ? fast.automaticPrompt!=null : fast.automaticPrompt==null,
+                        "8-step automatic/reference voice ownership");
+                check(fast.running==null && fast.modelRunNanos>0 && fast.samplingNanos>0,
+                        "8-step model/sampler executed and run handle released");
+            }
             OmniEngine engine=new OmniEngine();AtomicBoolean cancel=new AtomicBoolean();
+            boolean invalid=false;
+            try {
+                engine.generate(models,"Hello there.","en",1,new File(folder,"invalid.wav"),cancel,m->{},ref,"None",4,42);
+            } catch(IOException expected) { invalid=true; }
+            check(invalid && !new File(folder,"invalid.wav").exists(),"unsupported steps rejected before file or model allocation");
             boolean failed=false;
             try {
                 engine.generate(models,text(),"en",1,new File(folder,"cancelled.wav"),cancel,

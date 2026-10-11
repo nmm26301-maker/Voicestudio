@@ -1,6 +1,8 @@
-# VoiceStudio 1.5.3 · 当前构建与使用说明
+# VoiceStudio 1.5.4 · 当前构建与使用说明
 
-当前源码为 `1.5.3-hybrid`、版本代码 19。正式名称为“VoiceStudio”；使用已交付测试版的包名和签名升级。版本变化见 [CHANGELOG-1.5.3.md](CHANGELOG-1.5.3.md)，安装与数据验收见 [安装说明](docs/INSTALL_1.5.3.md)。1.5.1 功能修复与待验收清单继续适用。
+当前源码为 `1.5.4-hybrid`、版本代码 20。正式名称为“VoiceStudio”；使用已交付测试版的包名和签名升级。版本变化见 [CHANGELOG-1.5.4.md](CHANGELOG-1.5.4.md)，安装与数据验收见 [安装说明](docs/INSTALL_1.5.4.md)。1.5.1 功能修复与待验收清单继续适用。
+
+创作页“生成速度”新增 8 步实验选项，默认 16 步保持不变；真实音质与手机总耗时需试听和测量。完整本轮证据与基准局限见 [VALIDATION.md](VALIDATION.md)。
 
 ## 构建
 
@@ -12,9 +14,9 @@ bash tests/run_regression.sh
 VOICE_UNSIGNED=1 bash tools/build.sh
 ```
 
-此模式完成 Java、资源、D8、ARM64 打包与 16 KiB 对齐，输出 `build-manual/VoiceStudio-1.5.3-Hybrid-unsigned.apk`，仅供构建验证，不能直接安装。
+此模式完成 Java、资源、D8、ARM64 打包与 16 KiB 对齐，输出 `build-manual/VoiceStudio-1.5.4-Hybrid-unsigned.apk`，仅供构建验证，不能直接安装。
 
-本次正式包使用 `VOICE_STANDALONE=1 bash tools/build.sh` 构建；先恢复 `signing/voicestudio-preview.p12`。输出 `build-manual/VoiceStudio-1.5.3-Hybrid-Standalone.apk`，名称“VoiceStudio”，可更新先前已交付的测试版。密钥与包名保持一致，实际数据保留尚需手机核对。
+本次正式包使用 `VOICE_STANDALONE=1 bash tools/build.sh` 构建；先恢复 `signing/voicestudio-preview.p12`。输出 `build-manual/VoiceStudio-1.5.4-Hybrid-Standalone.apk`，名称“VoiceStudio”，可更新先前已交付的测试版。密钥与包名保持一致，实际数据保留尚需手机核对。
 
 覆盖旧应用需要原开发签名文件 `signing/voicestudio-development.p12`。恢复原文件后执行 `bash tools/build.sh`；文件缺失时脚本明确报错，不再生成新的签名。签名不一致时不要卸载旧应用；应先找回原签名。本次环境没有原签名，因此没有验证覆盖安装。
 
@@ -24,7 +26,7 @@ VOICE_UNSIGNED=1 bash tools/build.sh
 
 文字生成留在原页面；任务通知打开任务分类。音频转写完成后，从任务结果进入字幕校对、说话人分组、翻译配音和导出。Fish 仍需用户自己的密钥与音色；模型需另行安装。
 
-当前检查记录为 `validation/current-checks.json` 与 `validation/*-1.5.3.log`。下面是原始历史资料，其中安装、签名和性能检查不表示当前版本已执行相同设备验收。
+当前检查记录为 `validation/current-checks.json` 与 `validation/*-1.5.4.log`。下面是原始历史资料，其中安装、签名和性能检查不表示当前版本已执行相同设备验收。
 
 ---
 

@@ -608,9 +608,11 @@ public class WorkspaceActivity extends Activity {
                 new ArrayAdapter<String>(
                         this,
                         android.R.layout.simple_spinner_dropdown_item,
-                        new String[] {"32 步 · 质量优先", "16 步 · 更快"}));
-        steps.setSelection(p.getInt("voice-steps", 16) == 16 ? 1 : 0);
+                        new String[] {"32 步 · 质量优先", "16 步 · 快速（默认）", "8 步 · 极速（实验）"}));
+        int savedSteps = p.getInt("voice-steps", 16);
+        steps.setSelection(savedSteps == 8 ? 2 : savedSteps == 32 ? 0 : 1);
         box.addView(steps);
+        label(box, "8 步减少模型运算，音质与音色相似度需试听确认；已排队任务沿用提交时的配置。", 12, false);
         EditText seed = field(box, "随机种子", Long.toString(p.getLong("voice-seed", 42)));
         new CosmicDialogBuilder(this).submit("保存", () -> {
             long value = Long.parseLong(seed.getText().toString());
@@ -622,7 +624,7 @@ public class WorkspaceActivity extends Activity {
                             instruction.isEmpty() ? "None" : instruction)
                     .putInt(
                             "voice-steps",
-                            steps.getSelectedItemPosition() == 0 ? 32 : 16)
+                            new int[]{32, 16, 8}[steps.getSelectedItemPosition()])
                     .putLong("voice-seed", value)
                     .apply();
             toast("设置已保存");

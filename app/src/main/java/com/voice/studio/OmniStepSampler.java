@@ -13,7 +13,12 @@ final class OmniStepSampler {
         best = new PriorityQueue<>((i,j) -> Double.compare(scores[i],scores[j]));
     }
     int update(FloatBuffer logits, long[] codes, int frames, int sequence, int target, int k, Random random) {
-        best.clear(); Arrays.fill(scores, Double.NEGATIVE_INFINITY);
+        int remaining = 0;
+        for (long code : codes) if (code == 1024) remaining++;
+        // When every masked position will be accepted, confidence normalization,
+        // Gumbel scores and heap ranking cannot affect any chosen token.
+        if (k >= remaining) return fillRemaining(logits, codes, frames, sequence, target, random, remaining);
+        best.clear();
         for(int c=0;c<8;c++) for(int t=0;t<frames;t++) {
             int index=c*frames+t;
             if(codes[index]!=1024) continue;
@@ -33,5 +38,24 @@ final class OmniStepSampler {
         }
         for(int index:best) codes[index]=predictions[index];
         return best.size();
+    }
+
+    private int fillRemaining(FloatBuffer logits, long[] codes, int frames, int sequence,
+            int target, Random random, int remaining) {
+        // Separate loop keeps the ordinary confidence path free of a per-value branch.
+        for (int c=0; c<8; c++) for (int t=0; t<frames; t++) {
+            int index=c*frames+t;
+            if (codes[index]!=1024) continue;
+            int ci=(c*sequence+target+t)*1025, ui=((8+c)*sequence+t)*1025, pred=0;
+            double bestValue=Double.NEGATIVE_INFINITY;
+            for (int v=0; v<1024; v++) {
+                double value=3.0*logits.get(ci+v)-2.0*logits.get(ui+v);
+                if (value>bestValue) { pred=v; bestValue=value; }
+            }
+            codes[index]=pred;
+            // Preserve RNG state, including for callers that reuse it later.
+            random.nextDouble();
+        }
+        return remaining;
     }
 }

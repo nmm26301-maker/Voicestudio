@@ -1,0 +1,10 @@
+{"scope":"Host Java complete sampler trajectories; no ONNX/model load/decode/phone inference","warmups":3,"samples":7,"results":[
+{"buffer":"heap","frames":100,"prefixFrames":150,"steps":16,"oldMedianMillis":80.631,"newMedianMillis":82.589,"reductionPercent":-2.43},
+{"buffer":"heap","frames":100,"prefixFrames":150,"steps":32,"oldMedianMillis":154.841,"newMedianMillis":153.186,"reductionPercent":1.07},
+{"buffer":"heap","frames":250,"prefixFrames":150,"steps":16,"oldMedianMillis":223.608,"newMedianMillis":219.259,"reductionPercent":1.94},
+{"buffer":"heap","frames":250,"prefixFrames":150,"steps":32,"oldMedianMillis":420.876,"newMedianMillis":431.565,"reductionPercent":-2.54},
+{"buffer":"native-direct","frames":100,"prefixFrames":150,"steps":16,"oldMedianMillis":73.355,"newMedianMillis":73.656,"reductionPercent":-0.41},
+{"buffer":"native-direct","frames":100,"prefixFrames":150,"steps":32,"oldMedianMillis":153.111,"newMedianMillis":155.386,"reductionPercent":-1.49},
+{"buffer":"native-direct","frames":250,"prefixFrames":150,"steps":16,"oldMedianMillis":188.751,"newMedianMillis":186.393,"reductionPercent":1.25},
+{"buffer":"native-direct","frames":250,"prefixFrames":150,"steps":32,"oldMedianMillis":354.734,"newMedianMillis":365.878,"reductionPercent":-3.14}
+]}
