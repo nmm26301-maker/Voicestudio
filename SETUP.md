@@ -1,6 +1,6 @@
-# VoiceStudio 1.5.6 · 当前构建与使用说明
+# VoiceStudio 1.5.7 · 当前构建与使用说明
 
-当前源码为 `1.5.6-hybrid`、版本代码 22。正式名称为“VoiceStudio”；使用已交付测试版的包名和签名升级。版本变化见 [CHANGELOG-1.5.6.md](CHANGELOG-1.5.6.md)，安装与数据验收见 [安装说明](docs/INSTALL_1.5.6.md)。1.5.1 功能修复与待验收清单继续适用。
+当前源码为 `1.5.7-hybrid`、版本代码 23。正式名称为“VoiceStudio”；使用已交付测试版的包名和签名升级。版本变化见 [CHANGELOG-1.5.7.md](CHANGELOG-1.5.7.md)，安装与数据验收见 [安装说明](docs/INSTALL_1.5.7.md)。1.5.1 功能修复与待验收清单继续适用。
 
 本次长文本按最多 128 段分组减少模型重载，并预分配可解析元数据的首轮输出。默认 16 步、多核采样及 8 步实验选项保留；手机总耗时、发热和完整模型需实测。完整本轮证据与基准局限见 [VALIDATION.md](VALIDATION.md)。
 
@@ -14,9 +14,9 @@ bash tests/run_regression.sh
 VOICE_UNSIGNED=1 bash tools/build.sh
 ```
 
-此模式完成 Java、资源、D8、ARM64 打包与 16 KiB 对齐，输出 `build-manual/VoiceStudio-1.5.6-Hybrid-unsigned.apk`，仅供构建验证，不能直接安装。
+此模式完成 Java、资源、D8、ARM64 打包与 16 KiB 对齐，输出 `build-manual/VoiceStudio-1.5.7-Hybrid-unsigned.apk`，仅供构建验证，不能直接安装。
 
-本次正式包使用 `VOICE_STANDALONE=1 bash tools/build.sh` 构建；先恢复 `signing/voicestudio-preview.p12`。输出 `build-manual/VoiceStudio-1.5.6-Hybrid-Standalone.apk`，名称“VoiceStudio”，可更新先前已交付的测试版。密钥与包名保持一致，实际数据保留尚需手机核对。
+本次正式包使用 `VOICE_STANDALONE=1 bash tools/build.sh` 构建；先恢复 `signing/voicestudio-preview.p12`。输出 `build-manual/VoiceStudio-1.5.7-Hybrid-Standalone.apk`，名称“VoiceStudio”，可更新先前已交付的测试版。密钥与包名保持一致，实际数据保留尚需手机核对。
 
 覆盖旧应用需要原开发签名文件 `signing/voicestudio-development.p12`。恢复原文件后执行 `bash tools/build.sh`；文件缺失时脚本明确报错，不再生成新的签名。签名不一致时不要卸载旧应用；应先找回原签名。本次环境没有原签名，因此没有验证覆盖安装。
 
@@ -26,7 +26,7 @@ VOICE_UNSIGNED=1 bash tools/build.sh
 
 文字生成留在原页面；任务通知打开任务分类。音频转写完成后，从任务结果进入字幕校对、说话人分组、翻译配音和导出。Fish 仍需用户自己的密钥与音色；模型需另行安装。
 
-当前检查记录为 `validation/current-checks.json` 与 `validation/*-1.5.6.log`。下面是原始历史资料，其中安装、签名和性能检查不表示当前版本已执行相同设备验收。
+当前检查记录为 `validation/current-checks.json` 与 `validation/*-1.5.7.log`。下面是原始历史资料，其中安装、签名和性能检查不表示当前版本已执行相同设备验收。
 
 ---
 
@@ -289,14 +289,16 @@ APK 不包含数 GB 的模型。模型先通过下载链接获取，再由用户
 
 ## 模型下载
 
+下表保留个人模型备份的文件名和导入步骤。公开源码不提供私有下载地址，请从你已有的模型备份中获取这些文件。
+
 | 模块 | 下载文件 | 应用内导入入口 | 导入后的大小 |
 | --- | --- | --- | --- |
-| 基础合成 | [VoiceStudio-OmniVoice-Models.part01](https://chatgpt.com/api/library/files/libfile_0e3136d4c39081919ae4d76b84b820c7/download) · [VoiceStudio-OmniVoice-Models.part02](https://chatgpt.com/api/library/files/libfile_e9b2ba595cb48191b45a330873bebd73/download) | 首页 → 设置 → 导入基础模型 | 682 MiB |
-| 声音克隆 | [VoiceStudio-clone-Models.part01](https://chatgpt.com/api/library/files/libfile_0fe28e72d0508191ac34e8e84851c042/download) · [VoiceStudio-clone-Models.part02](https://chatgpt.com/api/library/files/libfile_d94fff5496a08191bf6071933e3095bd/download) | 工作台 → 导入声音克隆模型 | 624 MiB |
-| 转写与听写 | [VoiceStudio-whisper-Models.zip](https://chatgpt.com/api/library/files/libfile_9f09be678b7881918295de3904d02187/download) | 工作台 → 导入 Whisper 识别模型 | 41 MiB |
-| 离线翻译 | [VoiceStudio-translation-Models.part01.bin](https://chatgpt.com/api/library/files/libfile_4df9871c3c4c81919a815c53a0ca9648/download) · [VoiceStudio-translation-Models.part02.bin](https://chatgpt.com/api/library/files/libfile_5d2d9d5963f88191b256086a86cd4bb2/download) · [VoiceStudio-translation-Models.part03.bin](https://chatgpt.com/api/library/files/libfile_a0ff308309308191906b56859b5bb8ff/download) | 工作台 → 导入离线翻译模型 | 861 MiB |
-| 人声分离 | [VoiceStudio-separation-Models.zip](https://chatgpt.com/api/library/files/libfile_ac437980d38c8191934b9d4332d62352/download) | 工作台 → 导入人声分离模型 | 64 MiB |
-| 说话人分组 | [VoiceStudio-speaker-Models.zip](https://chatgpt.com/api/library/files/libfile_48cbaf05c6cc81919d91341b98044339/download) | 工作台 → 导入说话人分组模型 | 27 MiB |
+| 基础合成 | `VoiceStudio-OmniVoice-Models.part01` · `VoiceStudio-OmniVoice-Models.part02` | 首页 → 设置 → 导入基础模型 | 682 MiB |
+| 声音克隆 | `VoiceStudio-clone-Models.part01` · `VoiceStudio-clone-Models.part02` | 工作台 → 导入声音克隆模型 | 624 MiB |
+| 转写与听写 | `VoiceStudio-whisper-Models.zip` | 工作台 → 导入 Whisper 识别模型 | 41 MiB |
+| 离线翻译 | `VoiceStudio-translation-Models.part01.bin` · `VoiceStudio-translation-Models.part02.bin` · `VoiceStudio-translation-Models.part03.bin` | 工作台 → 导入离线翻译模型 | 861 MiB |
+| 人声分离 | `VoiceStudio-separation-Models.zip` | 工作台 → 导入人声分离模型 | 64 MiB |
+| 说话人分组 | `VoiceStudio-speaker-Models.zip` | 工作台 → 导入说话人分组模型 | 27 MiB |
 
 分卷必须全部下载，并一次选择同一模块的所有分卷；完整 ZIP 直接选择导入。文件名保持不变。应用核对固定文件、大小和 SHA-256，全部通过后启用。正在生成时先暂停整个队列，再替换或移除模型。
 

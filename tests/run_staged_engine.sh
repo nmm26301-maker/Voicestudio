@@ -7,7 +7,7 @@ project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 output_dir="$(mktemp -d)"
 trap 'rm -rf "$output_dir"' EXIT
 sources=()
-for name in OmniEngine OmniChunkPipeline OmniTensorRun OmniOutputShape OmniStepSampler OmniSamplerWorkers OmniTokenizer OmniTokenizerCache OmniWordPattern OmniDuration OmniSegments PcmAudio VoicePrompt; do
+for name in OmniEngine OmniDecoderRun OmniChunkPipeline OmniTensorRun OmniOutputShape OmniStepSampler OmniSamplerWorkers OmniTokenizer OmniTokenizerCache OmniWordPattern OmniDuration OmniSegments PcmAudio VoicePrompt; do
     sources+=("$project_dir/app/src/main/java/com/voice/studio/$name.java")
 done
 java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$ORT_HOST_JAR:$JSON_JAR" -d "$output_dir" \

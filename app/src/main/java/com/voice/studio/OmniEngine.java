@@ -42,6 +42,7 @@ final class OmniEngine {
         samplingWorkers = parallelSamplingRounds = 0;
         prePinnedChunks = outputShapeFallbacks = 0;outputCopyBytes = 0;
         automaticPrompt = null;
+        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
         boolean automatic = ref == null;
@@ -92,18 +93,21 @@ final class OmniEngine {
                             "higgs_decoder.onnx").getAbsolutePath(), options);
                     loadNanos += System.nanoTime() - start;
                     decoderLoads++;
+                    OmniDecoderRun buffers = new OmniDecoderRun(env);
                     return new OmniChunkPipeline.Decoder<EncodedChunk, VoicePrompt>() {
                         public VoicePrompt decode(int index, EncodedChunk chunk, VoicePrompt voice) throws Exception {
                             check(cancelled);
                             progress.update("第 " + (index + 1) + " / " + parts.size() + " 段 · 本机解码音频…");
                             long start = System.nanoTime();
                             try {
-                                VoicePrompt result = decodeChunk(env, session, run, chunk, voice, writer, cancelled);
+                                VoicePrompt result = decodeChunk(buffers, session, run, chunk, voice, writer, cancelled);
                                 if (index + 1 < parts.size()) writer.silence(.12);
                                 return result;
                             } finally { decodeNanos += System.nanoTime() - start; }
                         }
-                        public void close() throws Exception { session.close(); }
+                        public void close() throws Exception {
+                            try { buffers.close(); } finally { session.close(); }
+                        }
                     };
                 }
             });
@@ -209,27 +213,30 @@ final class OmniEngine {
         return new EncodedChunk(text, codes, frames);
     }
 
-    private VoicePrompt decodeChunk(OrtEnvironment env, OrtSession decoder, OrtSession.RunOptions run,
+    int decodedPinnedChunks;
+    long decoderOutputCopyBytes;
+
+    private VoicePrompt decodeChunk(OmniDecoderRun buffers, OrtSession decoder, OrtSession.RunOptions run,
             EncodedChunk chunk, VoicePrompt ref, PcmAudio.Writer writer, AtomicBoolean cancelled) throws Exception {
-        try (OnnxTensor codeTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(chunk.codes),
-                new long[] {8, 1, chunk.frames});
-                OrtSession.Result result = decoder.run(Collections.singletonMap("codes", codeTensor), run)) {
-            check(cancelled);
-            FloatBuffer samples = ((OnnxTensor) result.get(0)).getFloatBuffer();
-            if (samples == null || !samples.hasRemaining()) throw new IOException("模型返回空音频");
-            float[] pcm = new float[samples.remaining()];
-            samples.get(pcm);
-            if (ref != null && ref.rms < .1)
-                for (int i = 0; i < pcm.length; i++) pcm[i] *= ref.rms / .1;
-            VoicePrompt anchor = ref == null && chunk.frames >= 75 && chunk.text.length() <= 2000
-                    ? new VoicePrompt(chunk.text, chunk.codes.clone(), chunk.frames,
-                            Math.max(.1, PcmAudio.rms(pcm))) : null;
-            PcmAudio.fade(pcm);
-            check(cancelled);
-            writer.write(pcm);
-            check(cancelled);
-            return anchor;
-        }
+        long copied = buffers.copiedOutputBytes;
+        int pinned = buffers.pinnedRuns;
+        FloatBuffer samples = buffers.run(decoder, run, chunk.codes, chunk.frames, cancelled);
+        decoderOutputCopyBytes += buffers.copiedOutputBytes - copied;
+        decodedPinnedChunks += buffers.pinnedRuns - pinned;
+        check(cancelled);
+        if (samples == null || !samples.hasRemaining()) throw new IOException("模型返回空音频");
+        float[] pcm = new float[samples.remaining()];
+        samples.get(pcm);
+        if (ref != null && ref.rms < .1)
+            for (int i = 0; i < pcm.length; i++) pcm[i] *= ref.rms / .1;
+        VoicePrompt anchor = ref == null && chunk.frames >= 75 && chunk.text.length() <= 2000
+                ? new VoicePrompt(chunk.text, chunk.codes.clone(), chunk.frames,
+                        Math.max(.1, PcmAudio.rms(pcm))) : null;
+        PcmAudio.fade(pcm);
+        check(cancelled);
+        writer.write(pcm);
+        check(cancelled);
+        return anchor;
     }
 
     static double time(double t) {

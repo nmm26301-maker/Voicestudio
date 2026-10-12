@@ -380,6 +380,8 @@ public class StudioService extends Service {
                         .put("prePinnedChunks", engine.prePinnedChunks)
                         .put("outputCopyBytes", engine.outputCopyBytes)
                         .put("outputShapeFallbacks", engine.outputShapeFallbacks)
+                        .put("decodedPinnedChunks", engine.decodedPinnedChunks)
+                        .put("decoderOutputCopyBytes", engine.decoderOutputCopyBytes)
                         .put("decodeMillis", engine.decodeNanos / 1000000)
                         .put("chunks", engine.chunkCount)
                         .put("backboneLoads", engine.backboneLoads)

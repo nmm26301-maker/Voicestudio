@@ -1,0 +1,28 @@
+{
+  "scope": "Host authored decoder graph; 12 equal-frame decodes including tensor preparation/copy/close; excludes model load, PCM write, real speech weights and phone",
+  "warmups": 6,
+  "samples": 11,
+  "cases": [
+    {
+      "frames": 50,
+      "oldMedianMs": 2.104163,
+      "newMedianMs": 1.128356,
+      "reductionPercent": 46.38,
+      "outputCopyBytesAvoided": 1056000
+    },
+    {
+      "frames": 250,
+      "oldMedianMs": 5.206935,
+      "newMedianMs": 4.601276,
+      "reductionPercent": 11.63,
+      "outputCopyBytesAvoided": 5280000
+    },
+    {
+      "frames": 500,
+      "oldMedianMs": 9.248941,
+      "newMedianMs": 8.697982,
+      "reductionPercent": 5.96,
+      "outputCopyBytesAvoided": 10560000
+    }
+  ]
+}
