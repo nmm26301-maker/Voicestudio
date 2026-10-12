@@ -1,0 +1,13 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Accelerated API: 64 checks passed; mock transport only, no live GPU/server speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Free GPU: 51 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+提交免费 GPU 合成任务…
+免费 GPU 排队或合成中…
+接收完整 GPU 音频…
+HF live duration=5640ms elapsed=12194ms bytes=270816; file validation, not semantic acceptance or phone benchmark

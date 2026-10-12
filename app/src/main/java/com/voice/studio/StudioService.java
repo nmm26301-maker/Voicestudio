@@ -20,6 +20,7 @@ public class StudioService extends Service {
     final OmniEngine engine = new OmniEngine();
     final FishClient fish = new FishClient();
     final AcceleratedSpeechClient accelerated = new AcceleratedSpeechClient();
+    final GradioSpeechClient gradio = new GradioSpeechClient();
     volatile WhisperEngine whisper;
     volatile NllbEngine translator;
     volatile SpeakerEngine speaker;
@@ -339,18 +340,43 @@ public class StudioService extends Service {
     void acceleratedSpeech(JSONObject job, File out) throws Exception {
         String endpoint = job.getString("endpoint");
         String current = getSharedPreferences("studio",0).getString("accelerated-url", "");
+        String provider=job.optString("provider","custom");
+        if(!provider.equals(getSharedPreferences("studio",0).getString("accelerated-provider","custom")))throw new IOException("GPU 平台已改变，请按新配置重新创建任务");
         if (!endpoint.equals(current)) throw new IOException("加速接口地址已改变，请按新配置重新创建任务");
-        File pending = new File(out.getPath()+".pending");
+        File pending = new File(out.getPath()+".pending"),reference=new File(out.getPath()+".reference.pending.wav");
         try {
             long start = System.nanoTime();
-            long millis = accelerated.generate(endpoint, new SecretStore(this,"accelerated").read(),
+            boolean useGradio=job.optString("protocol","rest").equals("gradio");
+            if(!job.optString("protocol","rest").equals(getSharedPreferences("studio",0).getString("accelerated-protocol","rest")))throw new IOException("GPU 调用方式已改变，请重新创建任务");
+            if(useGradio&&!provider.equals("hf"))throw new IOException("Space 平台配置无效");
+            long millis;
+            if(useGradio) {
+                String profile=job.optString("profile"),referenceText=null;File ref=null;
+                if(!profile.equals(getSharedPreferences("studio",0).getString("gpu-hf-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
+                if(!profile.isEmpty()) {
+                    if(!profile.matches("[a-f0-9-]{36}"))throw new IOException("参考人物音色编号无效");
+                    File folder=StudioFiles.dir(this,"profiles");JSONObject meta=StudioFiles.read(new File(folder,profile+".json"));
+                    double referenceStart=meta.optDouble("referenceStart",0),seconds=meta.optDouble("referenceSeconds",6);
+                    if(!Double.isFinite(referenceStart)||referenceStart<0||!Double.isFinite(seconds)||seconds<3||seconds>10)throw new IOException("远程参考录音需为 3—10 秒，请重新选择片段");
+                    try(PcmAudio.Reader reader=new PcmAudio.Reader(new File(folder,profile+".reference.wav"));PcmAudio.Writer writer=new PcmAudio.Writer(reference,24000)) {
+                        if(referenceStart+seconds>reader.seconds()+.02)throw new IOException("参考录音片段不完整，请重新创建音色");
+                        writer.write(PcmAudio.resample(reader.read(referenceStart,seconds),reader.rate,24000));
+                    }
+                    ref=reference;referenceText=meta.optString("referenceText","");
+                }
+                millis=gradio.generate(endpoint,new SecretStore(this,"gpu-hf").read(),job.getString("text"),job.optString("languageName","Auto"),
+                    (float)job.optDouble("speed",1),job.optInt("steps",32),ref,referenceText,pending,cancel,m->state(job,"running",m));
+            } else {
+                if(!provider.equals("custom")&&!provider.equals("modal"))throw new IOException("GPU 平台配置无效");
+                millis = accelerated.generate(endpoint, new SecretStore(this,provider.equals("modal")?"gpu-modal":"accelerated").read(),
                     job.optString("model"),job.optString("apiVoice","auto"),job.getString("text"),
                     job.optString("language","zh"),(float)job.optDouble("speed",1),job.optInt("steps",32),
                     job.optLong("seed",42),pending,cancel,m->state(job,"running",m));
+            }
             OmniEngine.check(cancel);
             job.put("duration",millis).put("generationMillis",(System.nanoTime()-start)/1000000);
             if(!pending.renameTo(out))throw new IOException("接口音频保存失败");
-        } finally {pending.delete();}
+        } finally {pending.delete();reference.delete();}
     }
 
     void speech(JSONObject job, String text, File out) throws Exception {
@@ -957,6 +983,7 @@ public class StudioService extends Service {
         engine.cancel();
         fish.cancel();
         accelerated.cancel();
+        gradio.cancel();
         if (whisper != null) whisper.cancel();
         if (translator != null) translator.cancel();
         if (speaker != null) speaker.cancel();
@@ -969,6 +996,7 @@ public class StudioService extends Service {
         engine.cancel();
         fish.cancel();
         accelerated.cancel();
+        gradio.cancel();
         if (whisper != null) whisper.cancel();
         if (translator != null) translator.cancel();
         if (speaker != null) speaker.cancel();

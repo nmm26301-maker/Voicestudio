@@ -68,18 +68,21 @@ final class AcceleratedSpeechClient {
                 byte[] buffer=new byte[32768];long total=0;int n;
                 while((n=input.read(buffer))!=-1){check(cancelled);total+=n;if(total>64L*1024*1024)throw new IOException("接口音频超过 64 MiB，请拆分文本");stream.write(buffer,0,n);}
             }
-            check(cancelled);AudioChecks.validate(output,"wav");
-            long millis;
-            try(PcmAudio.Reader reader=new PcmAudio.Reader(output)) {
-                millis=Math.round(reader.seconds()*1000);
-                if(millis<=0 || (OmniDuration.total(text)>=30 && millis<500))
-                    throw new IOException("接口返回的音频过短，可能只合成了开头，请检查服务器的完整文本处理");
-                for(double at=0;at<reader.seconds();at+=30){check(cancelled);reader.read(at,Math.min(30,reader.seconds()-at));}
-            }
-            check(cancelled);PcmAudio.markSynthetic(output);complete=true;return millis;
+            long millis=validate(output,text,cancelled);complete=true;return millis;
         } finally {active=null;connection.disconnect();if(!complete)output.delete();}
     }
-    private static void check(AtomicBoolean cancelled) throws InterruptedIOException {
+    static long validate(File output,String text,AtomicBoolean cancelled) throws Exception {
+        check(cancelled);AudioChecks.validate(output,"wav");
+        long millis;
+        try(PcmAudio.Reader reader=new PcmAudio.Reader(output)) {
+            millis=Math.round(reader.seconds()*1000);
+            if(millis<=0 || (OmniDuration.total(text)>=30 && millis<500))
+                throw new IOException("接口返回的音频过短，可能只合成了开头，请检查服务器的完整文本处理");
+            for(double at=0;at<reader.seconds();at+=30){check(cancelled);reader.read(at,Math.min(30,reader.seconds()-at));}
+        }
+        check(cancelled);PcmAudio.markSynthetic(output);return millis;
+    }
+    static void check(AtomicBoolean cancelled) throws InterruptedIOException {
         if(cancelled.get() || Thread.currentThread().isInterrupted())throw new InterruptedIOException("已暂停生成");
     }
 }

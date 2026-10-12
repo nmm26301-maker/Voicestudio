@@ -1,10 +1,10 @@
 # VoiceStudio repository
 
-Current source: **1.5.8-hybrid (versionCode 24)**. `VOICE_STANDALONE=1` produces the formal-name VoiceStudio build using the shipped preview package and signing identity, so it can update that branch. See CHANGELOG-1.5.8.md and validation/upgrade-checks-1.5.8.json. No private key or APK binary is committed in this public repository.
+Current source: **1.5.9-hybrid (versionCode 25)**. `VOICE_STANDALONE=1` produces the formal-name VoiceStudio build using the shipped preview package and signing identity, so it can update that branch. See CHANGELOG-1.5.9.md and validation/upgrade-checks-1.5.9.json. No private key or APK binary is committed in this public repository.
 
 Each delivered release must be backed up privately with its exact APK and the unchanged signing key, preserving older versions. `tools/backup_release.py` verifies the matching certificate and archived bytes. Never commit the release ZIP or private key.
 
-The standalone signing key, its password/alias instructions and 1.5.8 APK are retained in the user's private `VoiceStudio-1.5.8-Release-Backup.zip`, under the historical filename `voicestudio-preview.p12`. Restore it to signing/ for future standalone updates. It is not the original 1.5.0 key.
+The standalone signing key, its password/alias instructions and 1.5.9 APK are retained in the user's private `VoiceStudio-1.5.9-Release-Backup.zip`, under the historical filename `voicestudio-preview.p12`. Restore it to signing/ for future standalone updates. It is not the original 1.5.0 key.
 
 A separate `VOICE_PREVIEW=1` build uses package `com.voice.studio.preview` and a dedicated preview key. The user's uploaded original APK matched the historical hash and certificate; the original private signing key remains unavailable. Preview certificate and isolation evidence are in validation/preview-checks-1.5.1.json. Preview is not an upgrade of the original installation.
 
@@ -26,4 +26,4 @@ See SETUP.md and PROVENANCE.json for build steps and the precise scope of histor
 
 ## GitHub private backup requirement
 
-The user requires every delivered APK, the unchanged signing key and its password to be backed up on GitHub, preserving earlier releases. The proposed destination is the private `nmm26301-maker/Zizai` repository under `backups/VoiceStudio/<version>/`. Complete ZIPs for 1.5.1 through 1.5.8 are prepared, but this task has not committed them there: automatic review requires explicit authorization of that exact credential destination. Once that authorization is given, retain it for later releases; do not request it again for routine backups to the same destination. Never put these files in the public VoiceStudio repository.
+The user requires every delivered APK, the unchanged signing key and its password to be backed up on GitHub, preserving earlier releases. The proposed destination is the private `nmm26301-maker/Zizai` repository under `backups/VoiceStudio/<version>/`. Complete ZIPs for 1.5.1 through 1.5.9 are prepared, but this task has not committed them there: automatic review requires explicit authorization of that exact credential destination. Once that authorization is given, retain it for later releases; do not request it again for routine backups to the same destination. Never put these files in the public VoiceStudio repository.

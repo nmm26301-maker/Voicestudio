@@ -1341,7 +1341,7 @@ public class MainActivity extends Activity {
     LinearLayout archiveCard(JSONObject item) {
         LinearLayout card=card(); card.setBackground(border(SPACE_CARD,0xff2E3A59,21));
         String file=item.optString("file"), format=file.endsWith("wav") ? "WAV" : "MP3";
-        String source="accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
+        String source="kaggle".equals(item.optString("engine")) ? "KAGGLE GPU" : "accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
         LinearLayout top=row(); TextView badge=text(source+" / "+format,10,CYAN,true); badge.setLetterSpacing(.07f); flexible(top,badge);
         TextView star=archiveButton(item.optBoolean("favorite") ? "★" : "☆",false,()->{
             if(updateWork(item,"favorite",!item.optBoolean("favorite")))render();
@@ -1704,13 +1704,143 @@ public class MainActivity extends Activity {
         add(content, c);
     }
 
+    String omniLanguageEnglish() {
+        for(int i=0;i<omniLanguages.length();i++){JSONObject language=omniLanguages.optJSONObject(i);if(language!=null&&language.optString("id").equals(omniLang))return language.optString("name","Auto");}
+        return "Auto";
+    }
+
+    String gpuProvider() { return prefs.getString("accelerated-provider","custom"); }
+
+    void freeGpuSettings() {
+        if(gpuProvider().equals("custom"))prefs.edit().putString("gpu-custom-url",prefs.getString("accelerated-url", ""))
+            .putString("gpu-custom-model",prefs.getString("accelerated-model","k2-fsa/OmniVoice")).putString("gpu-custom-voice",prefs.getString("accelerated-voice","auto")).apply();
+        LinearLayout intro=card();
+        info(intro,"免费 GPU","使用自己的账号额度。选择平台后在创作页生成；额度不足会提示，不会自动切换收费服务。文字和主动选择的参考录音会发往该平台。");
+        add(content,intro);gap(content,12);
+        LinearLayout hf=card();info(hf,"Hugging Face ZeroGPU","官方 OmniVoice 可直接尝试。匿名和免费账号有每日计算额度、可能排队；不是音频时长额度。自己部署需满足账号条件。浏览器登录和应用 Token 分别配置。");
+        add(hf,button("注册 / 申请 Hugging Face",false,()->openUrl("https://huggingface.co/join")));
+        add(hf,button("查看 ZeroGPU 额度与申请条件",false,()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
+        add(hf,button("打开官方 OmniVoice / 登录",false,()->openUrl("https://huggingface.co/spaces/k2-fsa/OmniVoice")));
+        add(hf,button("申请 / 管理 HF Token",false,()->openUrl("https://huggingface.co/settings/tokens")));
+        add(hf,button("配置并使用 ZeroGPU",gpuProvider().equals("hf")&&engine.equals("accelerated"),()->gradioConfig()));
+        add(content,hf);gap(content,12);
+        LinearLayout modal=card();info(modal,"Modal 免费计算额度","Starter 当前每月提供 30 美元计算额度。需要把项目中的服务部署到自己的 Modal 账号并填写返回的 HTTPS 地址。超额可能收费，额度以账号为准。");
+        add(modal,button("注册 / 申请 Modal",false,()->openUrl("https://modal.com/signup")));
+        add(modal,button("查看免费额度 / 价格",false,()->openUrl("https://modal.com/pricing")));
+        add(modal,button("打开 Modal 控制台",false,()->openUrl("https://modal.com/apps")));
+        add(modal,button("部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/FREE_GPU.md#modal")));
+        add(modal,button("配置并使用 Modal",gpuProvider().equals("modal")&&engine.equals("accelerated"),()->modalConfig()));
+        add(content,modal);gap(content,12);
+        LinearLayout kaggle=card();info(kaggle,"Kaggle 免费 GPU 任务","导出创作页全文为 Notebook，在 Kaggle 开启 GPU 和 Internet 后运行，再把 WAV 导回作品。Kaggle 没有常驻语音 API；GPU 额度和验证条件以账号页面为准。");
+        add(kaggle,button("注册 / 申请 Kaggle",false,()->openUrl("https://www.kaggle.com/account/login?phase=startRegisterTab")));
+        add(kaggle,button("账号验证 / 查看 GPU 额度",false,()->openUrl("https://www.kaggle.com/settings")));
+        add(kaggle,button("创建 / 导入 GPU Notebook",false,()->openUrl("https://www.kaggle.com/code")));
+        add(kaggle,button("导出当前全文 GPU 任务",true,()->exportKaggle()));
+        add(kaggle,button("导入 Kaggle 生成的 WAV",false,()->importKaggle()));
+        add(content,kaggle);gap(content,12);
+    }
+
+    void gradioConfig() {
+        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(20),dp(12),dp(20),dp(12));
+        EditText url=field("https://作者-空间名.hf.space",prefs.getString("gpu-hf-url",GradioSpeechClient.OFFICIAL),false);
+        String token="";try{token=new SecretStore(this,"gpu-hf").read();}catch(Exception ignored){}
+        EditText key=field("可选 HF Token；匿名可留空",token,true);key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        add(form,url);add(form,key);
+        String[] profile={prefs.getString("gpu-hf-profile","")};
+        CheckBox upload=new CheckBox(this);upload.setText("合成时上传所选参考录音（3—10 秒）");upload.setTextColor(INK);upload.setChecked(!profile[0].isEmpty());add(form,upload);
+        add(form,button("选择已保存人物音色",false,()->pickGpuProfile(profile)));
+        add(form,text("未选择录音时使用自动音色。录音仅发送给上方 Space；官方 Space 不接受本机采样种子。自建 Space 需采用项目中的兼容模板。",12,MUTED,false));
+        ScrollView scroll=new ScrollView(this);scroll.addView(form);
+        AlertDialog dialog=new CosmicDialogBuilder(this).setTitle("ZeroGPU 合成设置").setView(scroll).setNegativeButton("取消",null).setPositiveButton("保存并使用",null).create();
+        dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+            try {
+                String address=GradioSpeechClient.base(url.getText().toString()),value=key.getText().toString().trim();AcceleratedSpeechClient.token(value);
+                if(upload.isChecked()&&profile[0].isEmpty())throw new IOException("请先选择参考录音，或关闭上传选项");
+                new SecretStore(this,"gpu-hf").save(value);
+                prefs.edit().putString("gpu-hf-url",address).putString("gpu-hf-profile",upload.isChecked()?profile[0]:"")
+                    .putString("accelerated-url",address).putString("accelerated-provider","hf").putString("accelerated-protocol","gradio")
+                    .putString("accelerated-model","k2-fsa/OmniVoice").putString("accelerated-voice",upload.isChecked()?"参考人物音色":"自动音色").apply();
+                engine="accelerated";saveSettings();dialog.dismiss();change("创作");
+            }catch(Exception e){toast(e.getMessage());}
+        }));dialog.show();
+    }
+
+    void pickGpuProfile(String[] selected) {
+        List<String> ids=new ArrayList<>(),names=new ArrayList<>();File[] files=StudioFiles.dir(this,"profiles").listFiles();
+        if(files!=null)for(File file:files)if(file.getName().endsWith(".json"))try{
+            JSONObject item=StudioFiles.read(file);String id=item.getString("id");
+            if(id.matches("[a-f0-9-]{36}")&&new File(file.getParentFile(),id+".reference.wav").isFile()){ids.add(id);names.add(item.optString("name","人物音色"));}
+        }catch(Exception ignored){}
+        if(ids.isEmpty()){toast("请先在工具 → 音色中录音并保存人物音色");return;}
+        new CosmicDialogBuilder(this).setTitle("选择会上传的参考人物录音").setItems(names.toArray(new String[0]),(d,n)->{selected[0]=ids.get(n);toast("已选："+names.get(n));}).show();
+    }
+
+    void modalConfig() {
+        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(20),dp(12),dp(20),dp(12));
+        EditText url=field("https://你的服务.modal.run",prefs.getString("gpu-modal-url",""),false);
+        String token="";try{token=new SecretStore(this,"gpu-modal").read();}catch(Exception ignored){}
+        EditText key=field("服务 VOICE_API_TOKEN（不是 Modal 账号密钥）",token,true);key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        add(form,url);add(form,key);add(form,text("部署项目 server/modal_app.py 后粘贴地址与自己设置的服务密钥。默认每天 10 次、每次最多 2000 字，使用自动音色。",12,MUTED,false));
+        AlertDialog dialog=new CosmicDialogBuilder(this).setTitle("Modal GPU 合成设置").setView(form).setNegativeButton("取消",null).setPositiveButton("保存并使用",null).create();
+        dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{
+            String address=AcceleratedSpeechClient.endpoint(url.getText().toString()),value=key.getText().toString().trim();AcceleratedSpeechClient.token(value);
+            if(value.isEmpty())throw new IOException("请填写部署时设置的服务密钥");
+            new SecretStore(this,"gpu-modal").save(value);
+            prefs.edit().putString("gpu-modal-url",address).putString("accelerated-url",address).putString("accelerated-provider","modal")
+                .putString("accelerated-protocol","rest").putString("accelerated-model","k2-fsa/OmniVoice").putString("accelerated-voice","auto").apply();
+            engine="accelerated";saveSettings();dialog.dismiss();change("创作");
+        }catch(Exception e){toast(e.getMessage());}}));dialog.show();
+    }
+
+    void exportKaggle() {
+        saveDraft();try {
+            JSONObject task=AcceleratedSpeechClient.request(draft,"","auto",omniLang,speed,prefs.getInt("accelerated-steps",32),prefs.getLong("voice-seed",42));
+            File target=new File(getCacheDir(),"VoiceStudio-Kaggle.ipynb");
+            try(OutputStream out=new FileOutputStream(target)){out.write(KaggleTask.notebook(task).toString(2).getBytes("UTF-8"));}
+            startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/octet-stream")
+                .putExtra(Intent.EXTRA_TITLE,"VoiceStudio-Kaggle.ipynb"),91);
+        }catch(Exception e){toast(e.getMessage()==null?"任务导出失败":e.getMessage());}
+    }
+
+    void importKaggle() {
+        try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*"),92);}
+        catch(Exception e){toast("手机没有可用的文件选择器");}
+    }
+
+    void kaggleResult(int request,int result,Intent data) {
+        if(result!=RESULT_OK || data==null || data.getData()==null)return;
+        final Uri uri=data.getData();fileExecutor.execute(()->{
+            File pending=null,target=null;boolean complete=false;
+            try {
+                if(request==91){
+                    try(InputStream in=new FileInputStream(new File(getCacheDir(),"VoiceStudio-Kaggle.ipynb"));OutputStream out=getContentResolver().openOutputStream(uri,"wt")){
+                        if(out==null)throw new IOException("无法保存任务");byte[] b=new byte[8192];int n;while((n=in.read(b))!=-1)out.write(b,0,n);
+                    }
+                }else {
+                    String id=UUID.randomUUID().toString();target=StudioFiles.output(this,id,"wav");pending=new File(target.getPath()+".pending");
+                    try(InputStream in=getContentResolver().openInputStream(uri);OutputStream out=new FileOutputStream(pending)){
+                        if(in==null)throw new IOException("无法读取 WAV");long total=0;byte[] b=new byte[32768];int n;while((n=in.read(b))!=-1){total+=n;if(total>64L*1024*1024)throw new IOException("WAV 超过 64 MiB");out.write(b,0,n);}
+                    }
+                    long duration=AcceleratedSpeechClient.validate(pending,"",new AtomicBoolean());
+                    if(!pending.renameTo(target))throw new IOException("保存作品失败");
+                    StudioFiles.history(this,new JSONObject().put("id",id).put("file",target.getName()).put("engine","kaggle").put("type","tts")
+                        .put("title","Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
+                    complete=true;
+                }
+                handler.post(()->{if(!destroyed){toast(request==91?"任务已导出，请在 Kaggle 导入并运行":"GPU 作品已导入");if(request==92)change("作品");}});
+            }catch(Exception e){String message=e.getMessage();handler.post(()->{if(!destroyed)toast(message==null?"文件操作失败":message);});}
+            finally{if(pending!=null)pending.delete();if(target!=null&&!complete)target.delete();}
+        });
+    }
+
     void acceleratedSettings() {
+        freeGpuSettings();
         LinearLayout c=card();
-        info(c,"GPU 加速接口","连接你已部署的 OmniVoice 兼容服务。点击生成会把文字发给该服务；本机参考录音不会自动上传。速度取决于服务器和网络。");
+        info(c,"自定义 GPU 加速接口","连接你已部署的 OmniVoice 兼容服务。点击生成会把文字发给该服务；本机参考录音不会自动上传。速度取决于服务器和网络。");
         gap(c,12);
-        final EditText address=field("https://你的服务地址/v1",prefs.getString("accelerated-url",""),false);
-        final EditText modelInput=field("服务端模型 ID",prefs.getString("accelerated-model","k2-fsa/OmniVoice"),false);
-        final EditText voiceInput=field("服务端音色，如 auto / female_zh",prefs.getString("accelerated-voice","auto"),false);
+        final EditText address=field("https://你的服务地址/v1",prefs.getString("gpu-custom-url",""),false);
+        final EditText modelInput=field("服务端模型 ID",prefs.getString("gpu-custom-model","k2-fsa/OmniVoice"),false);
+        final EditText voiceInput=field("服务端音色，如 auto / female_zh",prefs.getString("gpu-custom-voice","auto"),false);
         String token="";
         try {token=new SecretStore(this,"accelerated").read();}catch(Exception e){toast("加速接口密钥无法读取，请重新保存");}
         final EditText keyInput=field("接口 API Key（服务不要求时留空）",token,true);
@@ -1723,7 +1853,7 @@ public class MainActivity extends Activity {
                 AcceleratedSpeechClient.token(key);
                 AcceleratedSpeechClient.request("配置检查",apiModel,apiVoice,omniLang,1,16,42);
                 new SecretStore(this,"accelerated").save(key);
-                prefs.edit().putString("accelerated-url",url).putString("accelerated-model",apiModel).putString("accelerated-voice",apiVoice).apply();
+                prefs.edit().putString("accelerated-url",url).putString("accelerated-model",apiModel).putString("accelerated-voice",apiVoice).putString("gpu-custom-url",url).putString("gpu-custom-model",apiModel).putString("gpu-custom-voice",apiVoice).putString("accelerated-provider","custom").putString("accelerated-protocol","rest").apply();
                 engine="accelerated";saveSettings();hideKeyboard();toast("已保存，生成时连接该服务");change("创作");
             }catch(Exception e){toast(e.getMessage()==null?"接口配置保存失败":e.getMessage());}
         }));
@@ -1958,7 +2088,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.8 · 云端与离线合成",
+                "VoiceStudio 1.5.9 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");
@@ -2062,12 +2192,16 @@ public class MainActivity extends Activity {
         }
         if ("accelerated".equals(engine)) {
             try {
+                if(gpuProvider().equals("modal")&&s.length()>2000)throw new IOException("Modal 免费服务模板每次最多 2000 字，请分段生成");
                 String address=prefs.getString("accelerated-url","");
-                AcceleratedSpeechClient.endpoint(address);
+                boolean gradio=prefs.getString("accelerated-protocol","rest").equals("gradio");
+                if(gradio)GradioSpeechClient.base(address);else AcceleratedSpeechClient.endpoint(address);
                 AcceleratedSpeechClient.request(s,prefs.getString("accelerated-model","k2-fsa/OmniVoice"),
                         prefs.getString("accelerated-voice","auto"),omniLang,speed,prefs.getInt("accelerated-steps",32),prefs.getLong("voice-seed",42));
                 JSONObject job=new JSONObject().put("type","tts").put("deduplicate",true).put("engine","accelerated")
-                        .put("endpoint",address).put("model",prefs.getString("accelerated-model","k2-fsa/OmniVoice"))
+                        .put("endpoint",address).put("provider",gpuProvider()).put("protocol",gradio?"gradio":"rest")
+                        .put("languageName",omniLanguageEnglish()).put("profile",gradio?prefs.getString("gpu-hf-profile",""):"")
+                        .put("model",prefs.getString("accelerated-model","k2-fsa/OmniVoice"))
                         .put("apiVoice",prefs.getString("accelerated-voice","auto")).put("text",s).put("language",omniLang)
                         .put("speed",speed).put("steps",prefs.getInt("accelerated-steps",32)).put("seed",prefs.getLong("voice-seed",42))
                         .put("voice",selectedVoiceName());
@@ -2572,6 +2706,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if(request==91 || request==92){kaggleResult(request,result,data);return;}
         if (request == 83) {
             if (result == RESULT_OK && data != null) {
                 List<Uri> files = new ArrayList<>();

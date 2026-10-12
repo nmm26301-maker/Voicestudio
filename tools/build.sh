@@ -45,10 +45,10 @@ artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
 out_dir="$(mktemp -d "$artifact_dir/compile.XXXXXX")"
 aapt_flags=()
-apk_name="VoiceStudio-1.5.8-Hybrid.apk"
+apk_name="VoiceStudio-1.5.9-Hybrid.apk"
 if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
-    apk_name="VoiceStudio-1.5.8-Hybrid-debug.apk"
+    apk_name="VoiceStudio-1.5.9-Hybrid-debug.apk"
 fi
 manifest_flags=()
 if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
@@ -59,7 +59,24 @@ if [ "${VOICE_STANDALONE:-0}" = "1" ]; then
     manifest_flags+=(--standalone)
     apk_name="${apk_name%.apk}-Standalone.apk"
 fi
-unzip -q "$ort_aar" classes.jar "jni/arm64-v8a/*" -d "$out_dir/ort"
+python3 - "$ort_aar" "$out_dir/ort" <<'PY'
+import hashlib, pathlib, sys, zipfile
+root = pathlib.Path(sys.argv[2])
+expected = {
+    'jni/arm64-v8a/libonnxruntime.so': 'df5d25c72a868dca773597c71e2000756d43fe4d70ade516d3693c54e12e0ada',
+    'jni/arm64-v8a/libonnxruntime4j_jni.so': '0695257178815f8c58c1719ba07d6d5d91a2b339634328cca2a0a98aa7ff2952',
+}
+with zipfile.ZipFile(sys.argv[1]) as archive:
+    for name in ['classes.jar', *expected]:
+        data = archive.read(name)
+        if name in expected and hashlib.sha256(data).hexdigest() != expected[name]:
+            raise RuntimeError('Pinned ONNX native library mismatch: ' + name)
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        if path.read_bytes() != data:
+            raise RuntimeError('Incomplete runtime extraction: ' + name)
+PY
 mkdir -p "$out_dir/classes" "$out_dir/dex" "$out_dir/res" "$out_dir/generated"
 "$android_tools/aapt2" compile --dir "$project_dir/app/src/main/res" -o "$out_dir/res"
 python3 "$project_dir/tools/prepare_manifest.py" "$project_dir/app/src/main/AndroidManifest.xml" "$out_dir/AndroidManifest.xml" "${manifest_flags[@]}"

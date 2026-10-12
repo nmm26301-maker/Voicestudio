@@ -14,7 +14,7 @@ final class SecretStore {
     private final Context context;
     SecretStore(Context c) { context=c;alias="voicestudio.api.v1";preference="secure"; }
     SecretStore(Context c, String scope) {
-        if(!"accelerated".equals(scope))throw new IllegalArgumentException("Unknown secret scope");
+        if(!"accelerated".equals(scope)&&!"gpu-hf".equals(scope)&&!"gpu-modal".equals(scope))throw new IllegalArgumentException("Unknown secret scope");
         context=c;alias="voicestudio.api.v1."+scope;preference="secure."+scope;
     }
     private SecretKey key() throws Exception {

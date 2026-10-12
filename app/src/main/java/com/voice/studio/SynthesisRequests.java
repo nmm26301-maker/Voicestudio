@@ -13,7 +13,10 @@ final class SynthesisRequests {
         if (!engine.equals(existing.optString("engine", "omni"))
                 || !request.optString("text").equals(existing.optString("text"))
                 || Double.compare(request.optDouble("speed", 1), existing.optDouble("speed", 1)) != 0) return false;
-        if (engine.equals("accelerated")) return request.optString("endpoint").equals(existing.optString("endpoint"))
+        if (engine.equals("accelerated")) return request.optString("provider","custom").equals(existing.optString("provider","custom"))
+                && request.optString("protocol","rest").equals(existing.optString("protocol","rest"))
+                && request.optString("profile").equals(existing.optString("profile"))
+                && request.optString("endpoint").equals(existing.optString("endpoint"))
                 && request.optString("model").equals(existing.optString("model"))
                 && request.optString("apiVoice").equals(existing.optString("apiVoice"))
                 && request.optString("language","zh").equals(existing.optString("language","zh"))
