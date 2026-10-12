@@ -20,6 +20,7 @@ public class OmniTensorRunTest {
                         FloatBuffer output=tensors.run(session,run,ids);
                         check(output.isReadOnly(),"read-only scoring view");check(output.remaining()==ids.length,"learned actual output shape");
                         for(int i=0;i<ids.length;i++)check(output.get(i)==ids[i],"updated direct inputs / pinned output exact");
+                        check(tensors.metadataPinned && tensors.copiedOutputBytes==0,"metadata pin avoids first output copy");
                     }
                     run.setTerminate(true);boolean stopped=false;try { tensors.run(session,run,ids); }catch(OrtException e) { stopped=true; }
                     check(stopped,"cancellation forwarded to native runtime");run.setTerminate(false);

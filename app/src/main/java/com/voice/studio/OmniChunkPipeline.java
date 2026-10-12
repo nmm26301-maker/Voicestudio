@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Stage chunks without keeping the backbone and decoder resident together. */
 final class OmniChunkPipeline {
-    // Each chunk has at most 8 * 250 int64 codes: staging stays below 500 KiB.
-    static final int BATCH_SIZE = 32;
+    // 128 * 8 * 250 int64 codes is 2,048,000 bytes; large graphs still never overlap.
+    static final int BATCH_SIZE = 128;
 
     interface Encoder<C, V> extends AutoCloseable {
         C encode(int index, V voice) throws Exception;

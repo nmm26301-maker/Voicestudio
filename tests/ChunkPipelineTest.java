@@ -47,16 +47,16 @@ public class ChunkPipelineTest {
         }
     }
     public static void main(String[] args)throws Exception {
-        for(int count:new int[]{0,1,2,3,10,31,32,33,64,65,110})
+        for(int count:new int[]{0,1,2,3,10,31,32,33,64,65,110,127,128,129,256,257,513})
             for(int anchor:new int[]{0,1,3,200}) for(boolean provided:new boolean[]{false,true}) {
                 AtomicBoolean cancel=new AtomicBoolean();Fixture f=new Fixture(cancel,anchor);
                 Integer ref=provided?777:null;
                 Integer result=OmniChunkPipeline.run(count,ref,cancel,f);
                 int single=provided?0:Math.min(count,anchor+1);
                 int remaining=count-single;
-                int loads=single+(remaining+31)/32;
+                int loads=single+(remaining+127)/128;
                 check(f.encoders==loads&&f.decoders==loads,"expected bounded load count");
-                check(f.maxPending<=32,"bounded code staging");check(f.active==0,"no resident sessions");
+                check(f.maxPending<=128,"bounded code staging");check(f.active==0,"no resident sessions");
                 check(f.output.size()==count,"no lost or duplicate chunks");
                 for(int i=0;i<count;i++) {
                     check(f.output.get(i)==i,"original output order");
@@ -76,6 +76,19 @@ public class ChunkPipelineTest {
             try { OmniChunkPipeline.run(10,777,cancel,f); } catch(IOException expected) { failed=true; }
             check(failed,"failure/cancellation propagated");check(f.active==0,"failure closes owned session");
             if(failure==0||failure==3||failure==5)check(f.decoders==0,"cancelled codes never decoded");
+        }
+        for(int at:new int[]{31,32,127,128,129,256}) for(int mode=0;mode<4;mode++) {
+            AtomicBoolean cancel=new AtomicBoolean();Fixture f=new Fixture(cancel,0);
+            if(mode==0)f.failEncode=at;
+            if(mode==1)f.failDecode=at;
+            if(mode==2)f.cancelEncode=at;
+            if(mode==3)f.cancelDecode=at;
+            boolean failed=false;
+            try { OmniChunkPipeline.run(300,777,cancel,f); } catch(IOException expected) { failed=true; }
+            check(failed && f.active==0,"boundary failure closes the current large graph");
+            int completed=mode==0||mode==2 ? (at/128)*128 : mode==1 ? at : at+1;
+            check(f.output.size()==completed,"only ordered completed output retained at boundary");
+            check(f.maxPending<=128,"boundary cancellation keeps code staging bounded");
         }
         System.out.println("Staged chunk pipeline: "+checks+" checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.");
     }

@@ -12,6 +12,8 @@ final class OmniEngine {
     static final OmniTokenizerCache tokenizerCache = new OmniTokenizerCache();
     long lastGenerationMillis, tokenizerNanos, loadNanos, inferenceNanos, decodeNanos, modelRunNanos, samplingNanos;
     int backboneLoads, decoderLoads, chunkCount, backboneRuns, samplingWorkers, parallelSamplingRounds;
+    int prePinnedChunks, outputShapeFallbacks;
+    long outputCopyBytes;
     VoicePrompt automaticPrompt;
     volatile OrtSession.RunOptions running;
 
@@ -38,6 +40,7 @@ final class OmniEngine {
         backboneLoads = decoderLoads = 0;
         backboneRuns = 0;
         samplingWorkers = parallelSamplingRounds = 0;
+        prePinnedChunks = outputShapeFallbacks = 0;outputCopyBytes = 0;
         automaticPrompt = null;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
@@ -199,6 +202,9 @@ final class OmniEngine {
                     check(cancelled);
                     progress.update("本机合成 · " + (step + 1) + " / " + steps + " 步");
                 }
+                if (tensors.metadataPinned) prePinnedChunks++;
+                outputShapeFallbacks += tensors.metadataShapeFallbacks;
+                outputCopyBytes += tensors.copiedOutputBytes;
         }
         return new EncodedChunk(text, codes, frames);
     }

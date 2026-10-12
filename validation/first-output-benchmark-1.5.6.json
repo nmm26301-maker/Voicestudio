@@ -1,0 +1,28 @@
+{
+  "scope": "Host native authored broadcast graph; first tensor setup/run/close with loaded session; excludes real model loads/phone",
+  "warmups": 4,
+  "samples": 9,
+  "results": [
+    {
+      "sequence": 64,
+      "oldMedianMillis": 2.669,
+      "newMedianMillis": 1.234,
+      "reductionPercent": 53.76,
+      "firstCopyBytesAvoided": 4198400
+    },
+    {
+      "sequence": 250,
+      "oldMedianMillis": 5.787,
+      "newMedianMillis": 4.345,
+      "reductionPercent": 24.91,
+      "firstCopyBytesAvoided": 16400000
+    },
+    {
+      "sequence": 850,
+      "oldMedianMillis": 25.411,
+      "newMedianMillis": 13.768,
+      "reductionPercent": 45.82,
+      "firstCopyBytesAvoided": 55760000
+    }
+  ]
+}

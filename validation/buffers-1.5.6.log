@@ -1,0 +1,4 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+IPv4/IPv6 sockets blocked for this process and all children.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Native ONNX Runtime 1.30 buffer reuse: 26609 checks passed. Authored graph; full OmniVoice and phone tests separate.

@@ -1,0 +1,6 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+IPv4/IPv6 sockets blocked for this process and all children.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+2026-10-11 21:50:32.753934103 [E:onnxruntime:, sequential_executor.cc:671 ExecuteKernel] Non-zero status code returned while running Cast node. Name:'' Status Message: /onnxruntime_src/onnxruntime/core/framework/op_kernel.cc:83 virtual OrtValue* onnxruntime::OpKernelContext::OutputMLValue(int, const onnxruntime::TensorShape&) [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : The output OrtValue provided for output 'logits' of node '' (Cast) has shape {2,8,13} but the computed output shape for this run is {2,8,14}. When calling Run() with pre-allocated output OrtValues on a model with dynamic output shapes, either supply unallocated output OrtValues or ensure the pre-allocated shapes match the expected output shapes for each run.
+
+Native first output: 4587 checks passed against frozen 1.5.5; metadata/static pins, unknown/half/bad-symbol fallback, exact outputs and first-run cancellation/retry.

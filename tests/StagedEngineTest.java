@@ -14,7 +14,7 @@ public class StagedEngineTest {
         return out.toString();
     }
     static void compare(File models,File folder,String text,VoicePrompt ref,int steps,float speed)throws Exception {
-        OmniEngine engine=new OmniEngine(); LegacyOmniEngine154 old=new LegacyOmniEngine154();
+        OmniEngine engine=new OmniEngine(); LegacyOmniEngine155 old=new LegacyOmniEngine155();
         File before=new File(folder,"before.wav"),after=new File(folder,"after.wav");
         List<String> progress=new ArrayList<>();
         old.generate(models,text,"en",speed,before,new AtomicBoolean(),m->{},ref,"None",steps,42);
@@ -22,8 +22,14 @@ public class StagedEngineTest {
         int chunks=OmniEngine.split(text,speed,ref).size();
         check(engine.chunkCount==chunks,"all chunks generated");
         int first=ref==null&&engine.automaticPrompt!=null?1:0;
-        int expected=first+(chunks-first+31)/32;
+        int expected=first+(chunks-first+127)/128;
         check(engine.backboneLoads==expected&&engine.decoderLoads==expected,"native sessions actually reused");
+        if (chunks>32) {
+            check(engine.backboneLoads<old.backboneLoads,"long input genuinely opens fewer models");
+            System.out.println("Native reload fixture: "+chunks+" chunks, old loads="+(old.backboneLoads+old.decoderLoads)+
+                    ", new loads="+(engine.backboneLoads+engine.decoderLoads)+"; not real model timing.");
+        }
+        check(engine.prePinnedChunks==chunks && engine.outputCopyBytes==0,"first-run logits use direct pinned storage");
         check(engine.lastGenerationMillis>0&&engine.loadNanos>0&&engine.inferenceNanos>0&&engine.decodeNanos>0,
                 "stage timings reflect executed operations");
         check(engine.modelRunNanos>0 && engine.samplingNanos>0 &&
@@ -59,6 +65,12 @@ public class StagedEngineTest {
             VoicePrompt ref=new VoicePrompt("A calm voice walks across the stars. We keep the same voice.",new long[8*150],150,.05);
             compare(models,folder,text(),ref,16,1.3f);
             compare(models,folder,"Hello there.",ref,32,1);
+            StringBuilder longText=new StringBuilder();
+            for(int i=0;i<80;i++)longText.append("A calm voice walks across the stars. We keep the same voice. ");
+            String longInput=longText.toString();
+            int longChunks=OmniEngine.split(longInput,1,ref).size();
+            check(longChunks>32 && longChunks<=128,"fixture crosses old reload boundary");
+            compare(models,folder,longInput,ref,8,1);
             int previousRuns=0;
             for (int steps : new int[]{8,16,32}) {
                 OmniEngine counted = new OmniEngine();
@@ -102,6 +114,6 @@ public class StagedEngineTest {
             engine.generate(models,"Hello there.","en",1,new File(folder,"retry.wav"),cancel,m->{},ref,"None",16,42);
             check(engine.lastGenerationMillis>0&&engine.backboneLoads==1&&engine.decoderLoads==1,"same engine retries after cancellation");
         } finally { for(File file:folder.listFiles())file.delete();folder.delete(); }
-        System.out.println("Native staged engine: "+checks+" checks passed against frozen 1.5.4. Synthetic graphs, not speech weights / phone benchmark.");
+        System.out.println("Native staged engine: "+checks+" checks passed against frozen 1.5.5. Synthetic graphs, not speech weights / phone benchmark.");
     }
 }

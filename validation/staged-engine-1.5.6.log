@@ -1,0 +1,5 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+IPv4/IPv6 sockets blocked for this process and all children.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Native reload fixture: 80 chunks, old loads=6, new loads=2; not real model timing.
+Native staged engine: 13207781 checks passed against frozen 1.5.5. Synthetic graphs, not speech weights / phone benchmark.
