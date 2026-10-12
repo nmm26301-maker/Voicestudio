@@ -13,8 +13,9 @@ public class SynthesisFlowTest {
         try { work.run(); throw new AssertionError("expected failure"); } catch (IOException expected) { checks++; }
     }
     // Original splitter retained only as an independent oracle for multi-language behavior.
+    static double boost(double value) { return value<50 ? 50*Math.pow(value/50,1.0/3) : value; }
     static double oldDuration(String text, float speed, VoicePrompt ref) {
-        return (ref == null ? OmniDuration.frames(text) : ref.frames * OmniDuration.total(text) / Math.max(1,OmniDuration.total(ref.text))) / speed;
+        return (ref == null ? OmniDuration.frames(text) : boost(ref.frames * OmniDuration.total(text) / Math.max(1,OmniDuration.total(ref.text)))) / speed;
     }
     static List<String> original(String text, float speed, VoicePrompt ref) {
         List<String> out=new ArrayList<>(); String remaining=text.trim();

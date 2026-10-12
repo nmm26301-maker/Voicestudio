@@ -19,6 +19,7 @@ public class StudioService extends Service {
     final AtomicBoolean cancel = new AtomicBoolean();
     final OmniEngine engine = new OmniEngine();
     final FishClient fish = new FishClient();
+    final AcceleratedSpeechClient accelerated = new AcceleratedSpeechClient();
     volatile WhisperEngine whisper;
     volatile NllbEngine translator;
     volatile SpeakerEngine speaker;
@@ -335,6 +336,23 @@ public class StudioService extends Service {
         } finally { pendingFile.delete(); }
     }
 
+    void acceleratedSpeech(JSONObject job, File out) throws Exception {
+        String endpoint = job.getString("endpoint");
+        String current = getSharedPreferences("studio",0).getString("accelerated-url", "");
+        if (!endpoint.equals(current)) throw new IOException("加速接口地址已改变，请按新配置重新创建任务");
+        File pending = new File(out.getPath()+".pending");
+        try {
+            long start = System.nanoTime();
+            long millis = accelerated.generate(endpoint, new SecretStore(this,"accelerated").read(),
+                    job.optString("model"),job.optString("apiVoice","auto"),job.getString("text"),
+                    job.optString("language","zh"),(float)job.optDouble("speed",1),job.optInt("steps",32),
+                    job.optLong("seed",42),pending,cancel,m->state(job,"running",m));
+            OmniEngine.check(cancel);
+            job.put("duration",millis).put("generationMillis",(System.nanoTime()-start)/1000000);
+            if(!pending.renameTo(out))throw new IOException("接口音频保存失败");
+        } finally {pending.delete();}
+    }
+
     void speech(JSONObject job, String text, File out) throws Exception {
         if (!StudioFiles.ready(this, "omni")) throw new IOException("请先导入基础模型");
         VoicePrompt ref = StudioFiles.voice(this, job.optString("profile"));
@@ -407,20 +425,22 @@ public class StudioService extends Service {
         String type = job.optString("type", "tts");
         if (type.equals("tts")) {
             boolean cloud = "fish".equals(job.optString("engine"));
+            boolean api = "accelerated".equals(job.optString("engine"));
             File audio = StudioFiles.output(this, id, cloud ? "mp3" : "wav");
             long existing = SynthesisOutput.existing(audio, cloud ? "mp3" : "wav", StudioService::audioDuration);
             if (existing > 0) {
                 state(job, "running", "复用已生成音频，恢复保存记录…");
                 job.put("duration", existing);
             } else if (cloud) fishSpeech(job, audio);
+            else if (api) acceleratedSpeech(job, audio);
             else {
                 speech(job, job.getString("text"), audio);
                 job.put("duration", audioDuration(audio, "wav"));
             }
             OmniEngine.check(cancel);
             job.put("output", audio.getName()).put("file", audio.getName())
-                    .put("engine", cloud ? "fish" : "omni")
-                    .put("model", cloud ? job.optString("model", "s2.1-pro-free") : "OmniVoice INT8")
+                    .put("engine", cloud ? "fish" : api ? "accelerated" : "omni")
+                    .put("model", cloud ? job.optString("model", "s2.1-pro-free") : api ? job.optString("model", "OmniVoice 加速接口") : "OmniVoice INT8")
                     .put("voice", job.optString("voice", "OmniVoice"))
                     .put("title", AudioChecks.shortTitle(job.getString("text")));
             job.put("audioOutput", audio.getName());
@@ -936,6 +956,7 @@ public class StudioService extends Service {
     void cancelEngines() {
         engine.cancel();
         fish.cancel();
+        accelerated.cancel();
         if (whisper != null) whisper.cancel();
         if (translator != null) translator.cancel();
         if (speaker != null) speaker.cancel();
@@ -947,6 +968,7 @@ public class StudioService extends Service {
         stopMic.set(true);
         engine.cancel();
         fish.cancel();
+        accelerated.cancel();
         if (whisper != null) whisper.cancel();
         if (translator != null) translator.cancel();
         if (speaker != null) speaker.cancel();

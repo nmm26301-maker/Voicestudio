@@ -121,8 +121,8 @@ final class OmniEngine {
     }
 
     static double duration(String text, float speed, VoicePrompt ref) {
-        return (ref == null ? OmniDuration.frames(text) : ref.frames * OmniDuration.total(text)
-                / Math.max(1, OmniDuration.total(ref.text))) / speed;
+        return (ref == null ? OmniDuration.frames(text) : OmniDuration.boost(ref.frames * OmniDuration.total(text)
+                / Math.max(1, OmniDuration.total(ref.text)))) / speed;
     }
 
     static List<String> split(String text, float speed, VoicePrompt ref) {
@@ -143,16 +143,7 @@ final class OmniEngine {
             AtomicBoolean cancelled, Progress progress, VoicePrompt ref, String instruct,
             int steps, long seed, OmniSamplerWorkers workers) throws Exception {
         check(cancelled);
-        long[] prefix =
-                tokenizer.encode(
-                        "<|lang_start|>"
-                                + language
-                                + "<|lang_end|><|instruct_start|>"
-                                + instruct
-                                + "<|instruct_end|><|text_start|>"
-                                + (ref == null ? "" : ref.text + " ")
-                                + text
-                                + "<|text_end|>");
+        long[] prefix = tokenizer.encode(OmniPrompt.build(text, language, instruct, ref));
         int frames = Math.max(1, (int) duration(text, speed, ref)),
                 P = prefix.length,
                 R = ref == null ? 0 : ref.frames,
@@ -225,6 +216,8 @@ final class OmniEngine {
         decodedPinnedChunks += buffers.pinnedRuns - pinned;
         check(cancelled);
         if (samples == null || !samples.hasRemaining()) throw new IOException("模型返回空音频");
+        if (samples.remaining() != Math.multiplyExact(chunk.frames, 960))
+            throw new IOException("解码音频长度与模型帧数不一致，已停止保存不完整作品");
         float[] pcm = new float[samples.remaining()];
         samples.get(pcm);
         if (ref != null && ref.rms < .1)

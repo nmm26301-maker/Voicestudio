@@ -13,6 +13,12 @@ final class SynthesisRequests {
         if (!engine.equals(existing.optString("engine", "omni"))
                 || !request.optString("text").equals(existing.optString("text"))
                 || Double.compare(request.optDouble("speed", 1), existing.optDouble("speed", 1)) != 0) return false;
+        if (engine.equals("accelerated")) return request.optString("endpoint").equals(existing.optString("endpoint"))
+                && request.optString("model").equals(existing.optString("model"))
+                && request.optString("apiVoice").equals(existing.optString("apiVoice"))
+                && request.optString("language","zh").equals(existing.optString("language","zh"))
+                && request.optInt("steps",32)==existing.optInt("steps",32)
+                && request.optLong("seed",42)==existing.optLong("seed",42);
         if (engine.equals("fish")) return request.optString("model", "s2.1-pro-free").equals(existing.optString("model", "s2.1-pro-free"))
                 && request.optString("reference").equals(existing.optString("reference"));
         return request.optString("language", "zh").equals(existing.optString("language", "zh"))

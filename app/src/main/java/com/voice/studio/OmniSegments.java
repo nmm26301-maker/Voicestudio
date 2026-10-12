@@ -10,10 +10,10 @@ final class OmniSegments {
         return estimate < 50 ? 50 * Math.pow(estimate / 50, 1.0 / 3) : estimate;
     }
     static double duration(double weight, float speed, VoicePrompt ref) {
-        return (ref == null ? frames(weight) : ref.frames * weight / Math.max(1, OmniDuration.total(ref.text))) / speed;
+        return (ref == null ? frames(weight) : OmniDuration.boost(ref.frames * weight / Math.max(1, OmniDuration.total(ref.text)))) / speed;
     }
     static double estimate(double weight, float speed, double referenceScale) {
-        return (referenceScale == 0 ? frames(weight) : referenceScale * weight) / speed;
+        return (referenceScale == 0 ? frames(weight) : OmniDuration.boost(referenceScale * weight)) / speed;
     }
     static List<String> split(String text, float speed, VoicePrompt ref) {
         List<String> result = new ArrayList<>();

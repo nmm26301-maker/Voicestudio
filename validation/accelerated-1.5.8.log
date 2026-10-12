@@ -1,0 +1,5 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Accelerated API: 64 checks passed; mock transport only, no live GPU/server speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.

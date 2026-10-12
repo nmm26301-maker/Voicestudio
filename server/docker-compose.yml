@@ -1,0 +1,41 @@
+services:
+  omnivoice:
+    build:
+      context: https://github.com/hsiang-han/OmniVoice-Triton-API.git#1ffadfd44b81bc6ee8f156bff493c13e55e9e7fb
+      dockerfile: docker/gpu/Dockerfile
+    environment:
+      MODEL_ID: k2-fsa/OmniVoice
+      RUNNER_MODE: triton
+      NUM_STEPS: "32"
+      DTYPE: fp16
+      DEVICE: cuda:0
+    volumes:
+      - models:/root/.cache/huggingface
+    shm_size: 4gb
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+  https:
+    image: caddy:2
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN in server/.env}
+      API_TOKEN: ${API_TOKEN:?Set API_TOKEN in server/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - omnivoice
+    restart: unless-stopped
+volumes:
+  models:
+  caddy_data:
+  caddy_config:

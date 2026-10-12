@@ -47,8 +47,12 @@ final class OmniDuration {
     return w;
   }
 
+  static double boost(double estimate) {
+    return estimate < 50 ? 50 * Math.pow(estimate / 50, 1.0 / 3) : estimate;
+  }
+
   static double frames(String text) {
     double e = total(text) * 25 / total("Nice to meet you.");
-    return e < 50 ? 50 * Math.pow(e / 50, 1.0 / 3) : e;
+    return boost(e);
   }
 }

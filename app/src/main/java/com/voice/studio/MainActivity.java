@@ -338,6 +338,8 @@ public class MainActivity extends Activity {
     }
 
     String readyMessage() {
+        if ("accelerated".equals(engine)) return prefs.getString("accelerated-url", "").isEmpty()
+                ? "先在设置填写已部署的加速服务地址" : "加速接口已配置 · 生成时联网";
         if ("fish".equals(engine)) {
             if (getSharedPreferences("secure", 0).getString("token", "").isEmpty()) return "Fish：先在设置保存 API Key";
             if (voiceId.isEmpty()) return "Fish：先在音色页添加并选择 Voice ID";
@@ -377,7 +379,7 @@ public class MainActivity extends Activity {
         else registerReceiver(noisyReceiver, noisyFilter);
         noisyRegistered = true;
         engine = prefs.getString("engine", "omni");
-        if (!Arrays.asList("fish", "omni", "local").contains(engine)) engine = "omni";
+        if (!Arrays.asList("fish", "omni", "local", "accelerated").contains(engine)) engine = "omni";
         omniLang = prefs.getString("omniLang", "zh");
         try {
             android.system.Os.setenv("ORT_DISABLE_TELEMETRY", "1", true);
@@ -468,7 +470,7 @@ public class MainActivity extends Activity {
     private void acceptText(Intent i) {
         if ("com.voice.studio.SELECT_ENGINE".equals(i.getAction())) {
             String selected = i.getStringExtra("engine");
-            if (Arrays.asList("fish", "omni", "local").contains(selected)) { engine = selected; saveSettings(); }
+            if (Arrays.asList("fish", "omni", "local", "accelerated").contains(selected)) { engine = selected; saveSettings(); }
             String text = i.getStringExtra("retryText");
             if (text != null && !text.trim().isEmpty() && text.length() <= 12000) {
                 if (!draft.equals(text)) undoDraft = draft;
@@ -850,7 +852,7 @@ public class MainActivity extends Activity {
         add(
                 desc,
                 text(
-                        "fish".equals(engine) ? "云端合成 · 按文本识别语言" : "omni".equals(engine) ? "原生 646 种语言 · 本机推理" : "使用手机已安装的离线语音包",
+                        "accelerated".equals(engine) ? "使用配置的 GPU 服务 · 联网合成" : "fish".equals(engine) ? "云端合成 · 按文本识别语言" : "omni".equals(engine) ? "原生 646 种语言 · 本机推理" : "使用手机已安装的离线语音包",
                         12,
                         MUTED,
                         false));
@@ -862,20 +864,22 @@ public class MainActivity extends Activity {
         add(
                 voice,
                 button(
-                        "设计与克隆音色",
+                        "accelerated".equals(engine) ? "设置服务器音色" : "设计与克隆音色",
                         false,
-                        () -> openWorkspace("音色")));
+                        () -> { if("accelerated".equals(engine))change("音色");else openWorkspace("音色"); }));
         add(content, voice);
         gap(content, 14);
-        if("omni".equals(engine)) {
+        if("omni".equals(engine) || "accelerated".equals(engine)) {
+            final boolean remoteMode="accelerated".equals(engine);
+            final String stepKey=remoteMode?"accelerated-steps":"voice-steps";
             LinearLayout mode=card();
-            int steps=prefs.getInt("voice-steps",16);
-            info(mode,"生成速度",steps==8 ? "极速 · 8 步（实验），减少模型运算" : steps==16 ? "快速 · 16 步，默认模式" : "质量优先 · 32 步");
+            int steps=prefs.getInt(stepKey,remoteMode?32:16);
+            info(mode,"生成步数",steps==8 ? "8 步（实验），需检查语音完整性" : steps==16 ? "快速 · 16 步" : "质量优先 · 32 步");
             gap(mode,10);
             TextView toggle=button("选择生成速度",false,()->new CosmicDialogBuilder(this)
-                    .setTitle("本地生成速度")
-                    .setItems(new String[]{"极速 · 8 步（实验）","快速 · 16 步（默认）","质量优先 · 32 步"},(d,n)->{
-                        prefs.edit().putInt("voice-steps",new int[]{8,16,32}[n]).apply();
+                    .setTitle(remoteMode?"加速服务生成步数":"本地生成步数")
+                    .setItems(new String[]{"8 步（实验，需检查完整性）","16 步（快速）","32 步（质量优先）"},(d,n)->{
+                        prefs.edit().putInt(stepKey,new int[]{8,16,32}[n]).apply();
                         render();
                     }).setNegativeButton("取消",null).show());
             add(mode,toggle); gap(mode,7);
@@ -968,7 +972,7 @@ public class MainActivity extends Activity {
     }
 
     void voicePage() {
-        heading("找到你的声音", "选择 Fish Audio、OmniVoice 或手机语音。");
+        heading("找到你的声音", "选择本机合成、加速接口或手机语音。");
         LinearLayout toggle = row();
         flexible(toggle, button("Fish Audio", "fish".equals(engine), () -> {
             engine = "fish"; saveSettings(); render();
@@ -996,7 +1000,12 @@ public class MainActivity extends Activity {
                             render();
                         }));
         add(content, toggle);
+        gap(content, 10);
+        add(content, button("GPU 加速接口", "accelerated".equals(engine), () -> {
+            engine = "accelerated"; saveSettings(); render();
+        }));
         gap(content, 20);
+        if ("accelerated".equals(engine)) { acceleratedSettings(); return; }
         if ("fish".equals(engine)) {
             fishVoicePage(); return;
         }
@@ -1332,7 +1341,7 @@ public class MainActivity extends Activity {
     LinearLayout archiveCard(JSONObject item) {
         LinearLayout card=card(); card.setBackground(border(SPACE_CARD,0xff2E3A59,21));
         String file=item.optString("file"), format=file.endsWith("wav") ? "WAV" : "MP3";
-        String source="fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
+        String source="accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
         LinearLayout top=row(); TextView badge=text(source+" / "+format,10,CYAN,true); badge.setLetterSpacing(.07f); flexible(top,badge);
         TextView star=archiveButton(item.optBoolean("favorite") ? "★" : "☆",false,()->{
             if(updateWork(item,"favorite",!item.optBoolean("favorite")))render();
@@ -1695,6 +1704,35 @@ public class MainActivity extends Activity {
         add(content, c);
     }
 
+    void acceleratedSettings() {
+        LinearLayout c=card();
+        info(c,"GPU 加速接口","连接你已部署的 OmniVoice 兼容服务。点击生成会把文字发给该服务；本机参考录音不会自动上传。速度取决于服务器和网络。");
+        gap(c,12);
+        final EditText address=field("https://你的服务地址/v1",prefs.getString("accelerated-url",""),false);
+        final EditText modelInput=field("服务端模型 ID",prefs.getString("accelerated-model","k2-fsa/OmniVoice"),false);
+        final EditText voiceInput=field("服务端音色，如 auto / female_zh",prefs.getString("accelerated-voice","auto"),false);
+        String token="";
+        try {token=new SecretStore(this,"accelerated").read();}catch(Exception e){toast("加速接口密钥无法读取，请重新保存");}
+        final EditText keyInput=field("接口 API Key（服务不要求时留空）",token,true);
+        keyInput.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        add(c,address);gap(c,10);add(c,modelInput);gap(c,10);add(c,voiceInput);gap(c,10);add(c,keyInput);gap(c,12);
+        add(c,button("保存并使用加速接口",true,()->{
+            try {
+                String url=AcceleratedSpeechClient.endpoint(address.getText().toString());
+                String key=keyInput.getText().toString().trim(),apiModel=modelInput.getText().toString().trim(),apiVoice=voiceInput.getText().toString().trim();
+                AcceleratedSpeechClient.token(key);
+                AcceleratedSpeechClient.request("配置检查",apiModel,apiVoice,omniLang,1,16,42);
+                new SecretStore(this,"accelerated").save(key);
+                prefs.edit().putString("accelerated-url",url).putString("accelerated-model",apiModel).putString("accelerated-voice",apiVoice).apply();
+                engine="accelerated";saveSettings();hideKeyboard();toast("已保存，生成时连接该服务");change("创作");
+            }catch(Exception e){toast(e.getMessage()==null?"接口配置保存失败":e.getMessage());}
+        }));
+        gap(c,10);
+        add(c,text("可对接开源 OmniVoice-Triton-API。需要自己可用的服务地址；APK 不包含免费的 GPU 服务。当前请求 WAV 格式，音色名称需与服务器一致。语速和种子是否生效取决于服务。",12,MUTED,false));
+        add(c,button("查看开源服务部署说明",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/ACCELERATED_API.md")));
+        add(content,c);
+    }
+
     void motionSettings() {
         LinearLayout c=card(); info(c,"界面与动效","深空配色、轨道光环与柔和转场。合成与省电模式下暂停装饰动效。");gap(c,12);
         boolean enabled=prefs.getBoolean("ui-motion",true);
@@ -1732,6 +1770,7 @@ public class MainActivity extends Activity {
     }
 
     String selectedVoiceName() {
+        if ("accelerated".equals(engine)) return "加速接口 · " + prefs.getString("accelerated-voice", "auto");
         if ("fish".equals(engine)) return "Fish Audio · " + voiceName;
         if ("omni".equals(engine)) {
             String profile = prefs.getString("selected-profile", "");
@@ -1843,6 +1882,7 @@ public class MainActivity extends Activity {
     void offlineSettings() {
         heading("设置", "云端与本机合成，按需选择。");
         motionSettings(); gap(content,16);
+        acceleratedSettings(); gap(content,16);
         fishSettings();
         gap(content, 16);
         add(content, button("作品回收站", false, this::trashWorks));
@@ -1918,7 +1958,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.7 · 云端与离线合成",
+                "VoiceStudio 1.5.8 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");
@@ -2018,6 +2058,21 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 generationError(e.getMessage() == null ? "Fish 密钥无法读取，请在设置重新保存" : e.getMessage());
             }
+            return;
+        }
+        if ("accelerated".equals(engine)) {
+            try {
+                String address=prefs.getString("accelerated-url","");
+                AcceleratedSpeechClient.endpoint(address);
+                AcceleratedSpeechClient.request(s,prefs.getString("accelerated-model","k2-fsa/OmniVoice"),
+                        prefs.getString("accelerated-voice","auto"),omniLang,speed,prefs.getInt("accelerated-steps",32),prefs.getLong("voice-seed",42));
+                JSONObject job=new JSONObject().put("type","tts").put("deduplicate",true).put("engine","accelerated")
+                        .put("endpoint",address).put("model",prefs.getString("accelerated-model","k2-fsa/OmniVoice"))
+                        .put("apiVoice",prefs.getString("accelerated-voice","auto")).put("text",s).put("language",omniLang)
+                        .put("speed",speed).put("steps",prefs.getInt("accelerated-steps",32)).put("seed",prefs.getLong("voice-seed",42))
+                        .put("voice",selectedVoiceName());
+                saveSettings();trackJob(StudioService.enqueue(this,job),job);
+            }catch(Exception e){generationError(e.getMessage());}
             return;
         }
         if ("omni".equals(engine)) {
