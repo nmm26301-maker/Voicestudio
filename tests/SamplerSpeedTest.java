@@ -17,7 +17,7 @@ public class SamplerSpeedTest {
         FloatBuffer result = parent.slice();
         return kind == 2 ? result.asReadOnlyBuffer() : result;
     }
-    static void compare(int frames, int prefix, int steps, int kind, int mode) {
+    static void compare(int frames, int prefix, int steps, int kind, int mode) throws Exception {
         int sequence = frames + prefix, total = 8 * frames;
         FloatBuffer writable = buffer(16 * sequence * 1025, kind == 2 ? 1 : kind);
         Random values = new Random(154 + mode);
@@ -48,7 +48,7 @@ public class SamplerSpeedTest {
         check(remaining == 0, "all codes filled");
         for (long code : after) check(code >= 0 && code < 1024, "valid code");
     }
-    static void edges() {
+    static void edges() throws Exception {
         int frames = 3, prefix = 2, sequence = frames + prefix, total = 8 * frames;
         FloatBuffer logits = buffer(16 * sequence * 1025, 1);
         Random values = new Random(154);
@@ -67,7 +67,7 @@ public class SamplerSpeedTest {
         check(new OmniStepSampler(total).update(logits, done, frames, sequence, prefix, 0, new Random()) == 0,
                 "nothing masked");
     }
-    static long trajectory(boolean legacy, FloatBuffer logits, int frames, int prefix, int steps) {
+    static long trajectory(boolean legacy, FloatBuffer logits, int frames, int prefix, int steps) throws Exception {
         int total = 8 * frames, sequence = frames + prefix, remaining = total;
         long[] codes = new long[total]; Arrays.fill(codes, 1024);
         Random random = new Random(42);
@@ -87,7 +87,7 @@ public class SamplerSpeedTest {
         sink ^= Arrays.hashCode(codes);
         return elapsed;
     }
-    static void benchmark() {
+    static void benchmark() throws Exception {
         System.out.println("{\"scope\":\"Host Java complete sampler trajectories; no ONNX/model load/decode/phone inference\",\"warmups\":3,\"samples\":7,\"results\":[");
         boolean first = true;
         for (int kind : new int[]{0, 1}) for (int frames : new int[]{100, 250}) for (int steps : new int[]{16, 32}) {
@@ -120,7 +120,7 @@ public class SamplerSpeedTest {
         }
         System.out.println("\n]}");
     }
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         if (args.length > 0 && "--benchmark".equals(args[0])) { benchmark(); return; }
         for (int frames : new int[]{1, 4, 17}) for (int prefix : new int[]{0, 3, 150})
             for (int steps : new int[]{8, 16, 32}) for (int kind = 0; kind < 3; kind++)

@@ -11,7 +11,7 @@ final class OmniEngine {
     interface Progress { void update(String message); }
     static final OmniTokenizerCache tokenizerCache = new OmniTokenizerCache();
     long lastGenerationMillis, tokenizerNanos, loadNanos, inferenceNanos, decodeNanos, modelRunNanos, samplingNanos;
-    int backboneLoads, decoderLoads, chunkCount, backboneRuns;
+    int backboneLoads, decoderLoads, chunkCount, backboneRuns, samplingWorkers, parallelSamplingRounds;
     VoicePrompt automaticPrompt;
     volatile OrtSession.RunOptions running;
 
@@ -37,6 +37,7 @@ final class OmniEngine {
         modelRunNanos = samplingNanos = 0;
         backboneLoads = decoderLoads = 0;
         backboneRuns = 0;
+        samplingWorkers = parallelSamplingRounds = 0;
         automaticPrompt = null;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
@@ -50,6 +51,7 @@ final class OmniEngine {
         OrtEnvironment env = OrtEnvironment.getEnvironment();
         env.setTelemetry(false);
         try (OrtSession.SessionOptions options = new OrtSession.SessionOptions();
+                OmniSamplerWorkers workers = new OmniSamplerWorkers(Runtime.getRuntime().availableProcessors(), cancelled);
                 OrtSession.RunOptions run = new OrtSession.RunOptions();
                 PcmAudio.Writer writer = new PcmAudio.Writer(output, 24000)) {
             options.setIntraOpNumThreads(Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors())));
@@ -73,7 +75,7 @@ final class OmniEngine {
                                 return encodeChunk(env, session, run, tokenizer, parts.get(index), language,
                                         automatic && voice != null ? 1 : speed, cancelled,
                                         m -> progress.update("第 " + (index + 1) + " / " + parts.size() + " 段 · " + m),
-                                        voice, voice == null ? instruct : "None", steps, seed);
+                                        voice, voice == null ? instruct : "None", steps, seed, workers);
                             } finally { inferenceNanos += System.nanoTime() - start; }
                         }
                         public void close() throws Exception { session.close(); }
@@ -103,6 +105,8 @@ final class OmniEngine {
                 }
             });
             if (automatic) automaticPrompt = anchor;
+            samplingWorkers = workers.largestWorkerCount;
+            parallelSamplingRounds = workers.parallelRounds;
         } finally { running = null; }
         check(cancelled);
         PcmAudio.markSynthetic(output);
@@ -130,7 +134,7 @@ final class OmniEngine {
     private EncodedChunk encodeChunk(OrtEnvironment env, OrtSession session, OrtSession.RunOptions run,
             OmniTokenizer tokenizer, String text, String language, float speed,
             AtomicBoolean cancelled, Progress progress, VoicePrompt ref, String instruct,
-            int steps, long seed) throws Exception {
+            int steps, long seed, OmniSamplerWorkers workers) throws Exception {
         check(cancelled);
         long[] prefix =
                 tokenizer.encode(
@@ -168,7 +172,7 @@ final class OmniEngine {
             if (i < frames) attention[S + i] = 1;
         }
         int remain = total;
-        OmniStepSampler sampler = new OmniStepSampler(total);
+        OmniStepSampler sampler = new OmniStepSampler(total, workers);
         Random random = new Random(seed);
         progress.update("本机合成 · 0 / " + steps + " 步");
         try (OmniTensorRun tensors = new OmniTensorRun(env, S, input, mask, attention, positions)) {

@@ -1,0 +1,10 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/tests/ParallelSamplerTest.java (at line 25)
+	return tied ? new Random(42) { public double nextDouble() { return .5; } } : new Random(42);
+	                  ^^^^^^^^^^
+The serializable class  does not declare a static final serialVersionUID field of type long
+----------
+1 problem (1 warning)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Parallel sampler: 19033 checks passed against frozen 1.5.4; exact token/RNG/buffer state, cancellation, interruption, joined failures and bounded worker reuse.

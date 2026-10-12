@@ -14,7 +14,7 @@ public class StagedEngineTest {
         return out.toString();
     }
     static void compare(File models,File folder,String text,VoicePrompt ref,int steps,float speed)throws Exception {
-        OmniEngine engine=new OmniEngine(); LegacyOmniEngine140 old=new LegacyOmniEngine140();
+        OmniEngine engine=new OmniEngine(); LegacyOmniEngine154 old=new LegacyOmniEngine154();
         File before=new File(folder,"before.wav"),after=new File(folder,"after.wav");
         List<String> progress=new ArrayList<>();
         old.generate(models,text,"en",speed,before,new AtomicBoolean(),m->{},ref,"None",steps,42);
@@ -29,6 +29,9 @@ public class StagedEngineTest {
         check(engine.modelRunNanos>0 && engine.samplingNanos>0 &&
                 engine.inferenceNanos>=engine.modelRunNanos+engine.samplingNanos,
                 "separate model/sampler timings are actual subsets of inference");
+        if (Runtime.getRuntime().availableProcessors()>1)
+            check(engine.samplingWorkers>=2 && engine.samplingWorkers<=4 && engine.parallelSamplingRounds>0,
+                    "native engine actually uses bounded parallel scoring");
         check(progress.stream().anyMatch(p->p.contains("本机合成 · 0 /")),"start is zero completed steps");
         check(progress.stream().filter(p->p.contains("本机合成 · "+steps+" / "+steps)).count()==chunks,
                 "each final step reported after run");
@@ -37,7 +40,7 @@ public class StagedEngineTest {
             for(double at=0;at<a.seconds();at+=30) {
                 float[] x=a.read(at,Math.min(30,a.seconds()-at));float[] y=b.read(at,Math.min(30,b.seconds()-at));
                 check(x.length==y.length,"same sample count");
-                for(int i=0;i<x.length;i++)check(Math.abs(x[i]-y[i])<=2f/32768,"direct PCM avoids second quantization; within 2 LSB");
+                for(int i=0;i<x.length;i++)check(x[i]==y[i],"exact same PCM as previous release");
             }
         }
         if(ref==null && old.automaticPrompt!=null) {
@@ -99,6 +102,6 @@ public class StagedEngineTest {
             engine.generate(models,"Hello there.","en",1,new File(folder,"retry.wav"),cancel,m->{},ref,"None",16,42);
             check(engine.lastGenerationMillis>0&&engine.backboneLoads==1&&engine.decoderLoads==1,"same engine retries after cancellation");
         } finally { for(File file:folder.listFiles())file.delete();folder.delete(); }
-        System.out.println("Native staged engine: "+checks+" checks passed against frozen 1.4.0. Synthetic graphs, not speech weights / phone benchmark.");
+        System.out.println("Native staged engine: "+checks+" checks passed against frozen 1.5.4. Synthetic graphs, not speech weights / phone benchmark.");
     }
 }

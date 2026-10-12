@@ -1,0 +1,8 @@
+{"scope":"Host warm complete Java sampling trajectories vs frozen 1.5.4; excludes ONNX/loading/decode/phone","warmups":4,"samples":9,"maximumWorkers":4,"results":[
+{"frames":100,"prefixFrames":150,"steps":8,"oldMedianMillis":36.932,"newMedianMillis":14.774,"reductionPercent":60.00},
+{"frames":100,"prefixFrames":150,"steps":16,"oldMedianMillis":71.080,"newMedianMillis":34.206,"reductionPercent":51.88},
+{"frames":100,"prefixFrames":150,"steps":32,"oldMedianMillis":136.597,"newMedianMillis":60.031,"reductionPercent":56.05},
+{"frames":250,"prefixFrames":150,"steps":8,"oldMedianMillis":88.109,"newMedianMillis":41.285,"reductionPercent":53.14},
+{"frames":250,"prefixFrames":150,"steps":16,"oldMedianMillis":186.253,"newMedianMillis":76.862,"reductionPercent":58.73},
+{"frames":250,"prefixFrames":150,"steps":32,"oldMedianMillis":357.193,"newMedianMillis":153.519,"reductionPercent":57.02}
+]}

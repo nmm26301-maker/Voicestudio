@@ -18,6 +18,7 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$ou
  "$project_dir/app/src/main/java/com/voice/studio/SynthesisProgress.java" \
  "$project_dir/app/src/main/java/com/voice/studio/OmniTokenizerCache.java" \
  "$project_dir/app/src/main/java/com/voice/studio/OmniStepSampler.java" \
+ "$project_dir/app/src/main/java/com/voice/studio/OmniSamplerWorkers.java" \
  "$project_dir/app/src/main/java/com/voice/studio/WorksCatalog.java" \
  "$project_dir/app/src/main/java/com/voice/studio/WaveformEnvelope.java" \
  "$project_dir/app/src/main/java/com/voice/studio/PcmAudio.java" \

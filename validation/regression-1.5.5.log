@@ -1,0 +1,84 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Host segmentation benchmark (not phone inference): old=245.391833 ms, new=7.207823 ms
+Synthesis flow: 8560 assertions passed (host only).
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Fish mock transport: 55 assertions passed; no live API calls.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Tokenizer / actual progress: 17548 checks passed (host JVM, not device inference)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Staged chunk pipeline: 16646 checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Sampler 1.5.4: 32656 checks passed against frozen 1.5.3; exact tokens, RNG and buffer state at 8/16/32 steps.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/tests/ParallelSamplerTest.java (at line 25)
+	return tied ? new Random(42) { public double nextDouble() { return .5; } } : new Random(42);
+	                  ^^^^^^^^^^
+The serializable class  does not declare a static final serialVersionUID field of type long
+----------
+1 problem (1 warning)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Parallel sampler: 19033 checks passed against frozen 1.5.4; exact token/RNG/buffer state, cancellation, interruption, joined failures and bounded worker reuse.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+24 assertions passed: volume ordering, download names, missing/mixed/duplicate volumes, lazy reads and closing.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+27 model import assertions passed: integrity, size, path rejection, missing files and cleanup.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+43 preflight assertions passed: missing/mixed/duplicate/incomplete parts, ZIP compatibility and six-module catalog.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+35 cancellation/progress assertions passed: before extraction, during extraction, before activation, old-file preservation and retry.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+24 recovery assertions passed with host Context/AtomicFile adapters; Android lifecycle is not simulated.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+100 assertions passed: concurrent appends/edits, stale refresh, trash/restore, backup recovery and guarded deletion (host file adapters).
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+32 assertions passed: subtitle ordering/Unicode, stale edit conflict, export repair and concurrent commit (host adapters)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+55 queue workflow assertions passed (host filesystem; no Android service simulation).
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/tests/AudioPipelineTest.java (at line 2)
+	import java.io.*;import java.util.*;
+	                        ^^^^^^^^^
+The import java.util is never used
+----------
+1 problem (1 warning)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+AudioChecks: 20 assertions passed; decoder/device checks separate.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+PCM16/24/32, float32, signed stereo, mono downmix and stereo silence checks passed.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Duration ratio 0.5: 439.5070548312199 Hz
+Duration ratio 0.8: 439.875727183636 Hz
+Duration ratio 1.25: 440.2415403896548 Hz
+Duration ratio 2.0: 440.0904295403165 Hz
+Audio timing, resampling, synthetic metadata, WAV addressing and malformed WAV checks passed.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+17 assertions passed: PCM heartbeat, silent input, signed peak, clipping, recording limit
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+11 assertions passed: finalized partial recording recovery, short/corrupt input rejection, existing input protection
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+146 assertions passed: arbitrary chunk boundaries, sinc continuity, exact global duration, final drain
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+3 dubbing assertions passed: complete 61-second clip, retained tail, oversized clip rejection.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
+	import android.view.animation.Interpolator;
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The import android.view.animation.Interpolator is never used
+----------
+1 problem (1 warning)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Motion curve: 8003 checks passed (host Java; Android animation lifecycle not simulated).
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Speaker extraction: 653 checks passed (real PCM ranges/export; no model inference).
+Cosmic UI: 137 source/contrast checks passed; minimum shared text contrast 6.48:1. No native visual or lifecycle simulation.
+Inline generation routing: Omni/Fish stay on page; per-task resume/cancel wired. Source guard only.
+Host regression passed. Device UI, microphone, real model inference and Fish account calls require separate acceptance.

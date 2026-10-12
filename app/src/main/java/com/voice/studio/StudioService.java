@@ -375,6 +375,8 @@ public class StudioService extends Service {
                         .put("modelRunMillis", engine.modelRunNanos / 1000000)
                         .put("samplingMillis", engine.samplingNanos / 1000000)
                         .put("modelRuns", engine.backboneRuns)
+                        .put("samplingWorkers", engine.samplingWorkers)
+                        .put("parallelSamplingRounds", engine.parallelSamplingRounds)
                         .put("decodeMillis", engine.decodeNanos / 1000000)
                         .put("chunks", engine.chunkCount)
                         .put("backboneLoads", engine.backboneLoads)

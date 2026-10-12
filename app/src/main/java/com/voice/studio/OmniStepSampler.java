@@ -1,6 +1,7 @@
 package com.voice.studio;
 
 import java.nio.FloatBuffer;
+import java.io.IOException;
 import java.util.*;
 
 /** Same guidance and random selection as the original, with reusable scratch memory. */
@@ -8,11 +9,19 @@ final class OmniStepSampler {
     final int[] predictions;
     final double[] scores, values = new double[1025];
     final PriorityQueue<Integer> best;
+    final int[] pending;
+    final OmniSamplerWorkers workers;
     OmniStepSampler(int count) {
+        this(count, null);
+    }
+    OmniStepSampler(int count, OmniSamplerWorkers workers) {
+        this.workers = workers;
+        pending = new int[count];
         predictions = new int[count]; scores = new double[count];
         best = new PriorityQueue<>((i,j) -> Double.compare(scores[i],scores[j]));
     }
-    int update(FloatBuffer logits, long[] codes, int frames, int sequence, int target, int k, Random random) {
+    int update(FloatBuffer logits, long[] codes, int frames, int sequence, int target, int k, Random random) throws IOException {
+        if (workers != null) return parallelUpdate(logits, codes, frames, sequence, target, k, random);
         int remaining = 0;
         for (long code : codes) if (code == 1024) remaining++;
         // When every masked position will be accepted, confidence normalization,
@@ -37,6 +46,47 @@ final class OmniStepSampler {
             best.add(index); if(best.size()>k) best.poll();
         }
         for(int index:best) codes[index]=predictions[index];
+        return best.size();
+    }
+
+    private int parallelUpdate(FloatBuffer logits, long[] codes, int frames, int sequence,
+            int target, int k, Random random) throws IOException {
+        int remaining = 0;
+        for (int i=0; i<codes.length; i++) if (codes[i]==1024) pending[remaining++]=i;
+        final boolean acceptAll = k >= remaining;
+        workers.run(remaining, (start, end, scratch) -> {
+            FloatBuffer view = logits.asReadOnlyBuffer();
+            for (int row=start; row<end; row++) {
+                workers.check();
+                int index=pending[row], c=index/frames, t=index%frames;
+                int ci=(c*sequence+target+t)*1025, ui=((8+c)*sequence+t)*1025, pred=0;
+                double bestValue=Double.NEGATIVE_INFINITY, max=Double.NEGATIVE_INFINITY;
+                for (int v=0; v<(acceptAll ? 1024 : 1025); v++) {
+                    double value=3.0*view.get(ci+v)-2.0*view.get(ui+v);
+                    if (v<1024 && value>bestValue) { pred=v; bestValue=value; }
+                    if (!acceptAll) { scratch[v]=value; max=Math.max(max,value); }
+                }
+                predictions[index]=pred;
+                if (!acceptAll) {
+                    double sum=0;
+                    for (int v=0; v<1025; v++) sum+=Math.exp(scratch[v]-max);
+                    scores[index]=bestValue-max-Math.log(sum);
+                }
+            }
+        });
+        // Keep RNG draws and heap insertion in the exact original position order.
+        best.clear();
+        for (int row=0; row<remaining; row++) {
+            int index=pending[row];
+            if (acceptAll) { codes[index]=predictions[index]; random.nextDouble(); }
+            else {
+                scores[index]=(scores[index]-5*(index/frames))/5.0
+                        -Math.log(-Math.log(Math.max(1e-10,Math.min(1-1e-10,random.nextDouble()))));
+                best.add(index); if (best.size()>k) best.poll();
+            }
+        }
+        if (acceptAll) return remaining;
+        for (int index:best) codes[index]=predictions[index];
         return best.size();
     }
 
