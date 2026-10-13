@@ -45,10 +45,10 @@ artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
 out_dir="$(mktemp -d "$artifact_dir/compile.XXXXXX")"
 aapt_flags=()
-apk_name="VoiceStudio-1.5.10-Hybrid.apk"
+apk_name="VoiceStudio-1.5.11-Hybrid.apk"
 if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
-    apk_name="VoiceStudio-1.5.10-Hybrid-debug.apk"
+    apk_name="VoiceStudio-1.5.11-Hybrid-debug.apk"
 fi
 manifest_flags=()
 if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
@@ -104,7 +104,32 @@ if [ "${VOICE_UNSIGNED:-0}" = "1" ]; then
     "$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$unsigned_name"
     echo "Unsigned validation build: $artifact_dir/$unsigned_name (not an installable upgrade)"
 else
-    "$android_tools/apksigner" sign --ks "$key_path" --ks-pass pass:android --key-pass pass:android --ks-key-alias "$key_alias" --out "$artifact_dir/$apk_name" "$out_dir/aligned.apk"
+    # Sign on the local temporary filesystem, then publish verified bytes atomically.
+    # This avoids partial/mapped output on mounted workspaces after Java exits.
+    signed_dir="$(mktemp -d)"
+    trap 'rm -rf "$signed_dir"' EXIT
+    "$android_tools/apksigner" sign --ks "$key_path" --ks-pass pass:android --key-pass pass:android --ks-key-alias "$key_alias" --out "$signed_dir/$apk_name" "$out_dir/aligned.apk"
+    "$android_tools/apksigner" verify --verbose "$signed_dir/$apk_name"
+    "$android_tools/zipalign" -c -P 16 4 "$signed_dir/$apk_name"
+    python3 - "$signed_dir/$apk_name" "$artifact_dir/$apk_name" <<'PYTHON'
+import io, os, pathlib, sys, zipfile
+payload = pathlib.Path(sys.argv[1]).read_bytes()
+with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+    if archive.testzip() is not None:
+        raise RuntimeError("Signed APK ZIP verification failed")
+target = pathlib.Path(sys.argv[2])
+pending = target.with_suffix(".pending")
+try:
+    with pending.open("wb") as stream:
+        stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
+    if pending.read_bytes() != payload:
+        raise RuntimeError("Incomplete signed APK publication")
+    pending.replace(target)
+finally:
+    pending.unlink(missing_ok=True)
+PYTHON
     "$android_tools/apksigner" verify --verbose "$artifact_dir/$apk_name"
     "$android_tools/zipalign" -c -P 16 4 "$artifact_dir/$apk_name"
 fi

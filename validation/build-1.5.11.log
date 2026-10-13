@@ -1,0 +1,151 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+----------
+1. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/CosmicUi.java (at line 27)
+	a.getWindow().setStatusBarColor(BG); a.getWindow().setNavigationBarColor(BG);
+	              ^^^^^^^^^^^^^^^^^^^^^
+The method setStatusBarColor(int) from the type Window is deprecated
+----------
+2. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/CosmicUi.java (at line 27)
+	a.getWindow().setStatusBarColor(BG); a.getWindow().setNavigationBarColor(BG);
+	                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+The method setNavigationBarColor(int) from the type Window is deprecated
+----------
+3. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/CosmicUi.java (at line 28)
+	a.getWindow().getDecorView().setSystemUiVisibility(0);
+	                             ^^^^^^^^^^^^^^^^^^^^^^^^
+The method setSystemUiVisibility(int) from the type View is deprecated
+----------
+----------
+4. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/DictationOverlay.java (at line 24)
+	final Handler handler = new Handler();
+	                            ^^^^^^^^^
+The constructor Handler() is deprecated
+----------
+5. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/DictationOverlay.java (at line 296)
+	stopForeground(true);
+	^^^^^^^^^^^^^^^^^^^^
+The method stopForeground(boolean) from the type Service is deprecated
+----------
+----------
+6. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/DreamProgressView.java (at line 3)
+	import android.animation.ValueAnimator;
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The import android.animation.ValueAnimator is never used
+----------
+7. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/DreamProgressView.java (at line 64)
+	int saved=canvas.save(); canvas.clipRect(left,y-d*9,right,y+d*9);
+	    ^^^^^
+The value of the local variable saved is not used
+----------
+----------
+8. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
+	import android.view.animation.Interpolator;
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The import android.view.animation.Interpolator is never used
+----------
+----------
+9. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 49)
+	final Map<String,float[]> waveformCache=new LinkedHashMap<String,float[]>(64,.75f,true) {
+	                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The serializable class  does not declare a static final serialVersionUID field of type long
+----------
+10. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/MainActivity.java (at line 2836)
+	} else super.onBackPressed();
+	             ^^^^^^^^^^^^^^^
+The method onBackPressed() from the type Activity is deprecated
+----------
+----------
+11. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/MediaFiles.java (at line 232)
+	MediaMetadataRetriever metadata = new MediaMetadataRetriever();
+	                       ^^^^^^^^
+Resource leak: 'metadata' is never closed
+----------
+----------
+12. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/ModelInstallActivity.java (at line 60)
+	ArrayList<Uri> selected = getIntent().getParcelableArrayListExtra("modelUris");
+	                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The method getParcelableArrayListExtra(String) from the type Intent is deprecated
+----------
+13. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/ModelInstallActivity.java (at line 133)
+	} else super.onBackPressed();
+	             ^^^^^^^^^^^^^^^
+The method onBackPressed() from the type Activity is deprecated
+----------
+----------
+14. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/ModelViews.java (at line 6)
+	import android.view.View;
+	       ^^^^^^^^^^^^^^^^^
+The import android.view.View is never used
+----------
+----------
+15. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/RecordRoute.java (at line 23)
+	priorSco = manager.isBluetoothScoOn();
+	                   ^^^^^^^^^^^^^^^^^^
+The method isBluetoothScoOn() from the type AudioManager is deprecated
+----------
+16. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/RecordRoute.java (at line 51)
+	manager.startBluetoothSco();
+	        ^^^^^^^^^^^^^^^^^^^
+The method startBluetoothSco() from the type AudioManager is deprecated
+----------
+17. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/RecordRoute.java (at line 72)
+	if (startedSco) manager.stopBluetoothSco();
+	                        ^^^^^^^^^^^^^^^^^^
+The method stopBluetoothSco() from the type AudioManager is deprecated
+----------
+----------
+18. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/RecordingActivity.java (at line 12)
+	final Handler handler = new Handler();
+	                            ^^^^^^^^^
+The constructor Handler() is deprecated
+----------
+----------
+19. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/StudioApplication.java (at line 24)
+	if(level>=android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) OmniEngine.tokenizerCache.clear();
+	                                              ^^^^^^^^^^^^^^^^^^^^^^^
+The field ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW is deprecated
+----------
+----------
+20. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/StudioService.java (at line 301)
+	stopForeground(true);
+	^^^^^^^^^^^^^^^^^^^^
+The method stopForeground(boolean) from the type Service is deprecated
+----------
+21. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/StudioService.java (at line 325)
+	android.media.MediaMetadataRetriever metadata = new android.media.MediaMetadataRetriever();
+	                                     ^^^^^^^^
+Resource leak: 'metadata' is never closed
+----------
+22. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/StudioService.java (at line 643)
+	JSONObject source = StudioFiles.read(StudioFiles.job(this, sourceId));
+	           ^^^^^^
+The value of the local variable source is not used
+----------
+----------
+23. WARNING in /workspace/scratch/0b8aa571e19e/Voicestudio/app/src/main/java/com/voice/studio/WorkspaceActivity.java (at line 38)
+	final Handler ui = new Handler();
+	                       ^^^^^^^^^
+The constructor Handler() is deprecated
+----------
+23 problems (23 warnings)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1

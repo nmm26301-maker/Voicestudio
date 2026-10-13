@@ -100,6 +100,50 @@ final class GradioSpeechClient {
         }
         throw new IOException("GPU 连接中断，没有收到完整结果；可以重新生成");
     }
+    private static final class DownloadStatus extends IOException {
+        private static final long serialVersionUID=1L;
+        final int code;
+        DownloadStatus(int code){super("音频下载 HTTP "+code+"，已保存生成结果，可稍后继续任务");this.code=code;}
+    }
+    private static boolean retryDownload(IOException error) {
+        if(error instanceof DownloadStatus){int code=((DownloadStatus)error).code;return code==502||code==503||code==504;}
+        return error instanceof SocketTimeoutException || error instanceof SocketException || error instanceof EOFException;
+    }
+    private static void retryPause(int attempt,AtomicBoolean cancelled) throws InterruptedIOException {
+        for(int i=0;i<attempt*5;i++) {
+            AcceleratedSpeechClient.check(cancelled);
+            try{Thread.sleep(50);}catch(InterruptedException error){Thread.currentThread().interrupt();throw new InterruptedIOException("已暂停生成");}
+        }
+        AcceleratedSpeechClient.check(cancelled);
+    }
+    /** Retry only a known audio GET; synthesis POSTs and queue streams are never replayed. */
+    private void download(URL url,String key,File output,AtomicBoolean cancelled,AcceleratedSpeechClient.Progress progress) throws Exception {
+        for(int attempt=0;attempt<3;attempt++) {
+            HttpURLConnection download=null;
+            try {
+                download=open(url,key,"GET",cancelled);
+                int code=download.getResponseCode();if(code!=200)throw new DownloadStatus(code);
+                String type=download.getContentType();
+                if(type!=null&&(type.toLowerCase(java.util.Locale.ROOT).contains("json")||type.toLowerCase(java.util.Locale.ROOT).contains("text")))throw new IOException("Space 返回了文字，没有返回 WAV 音频");
+                long expected=download.getContentLengthLong();
+                if(expected>64L*1024*1024)throw new IOException("音频超过 64 MiB，请拆分文本");
+                progress.update("接收完整 GPU 音频…");
+                try(InputStream in=download.getInputStream();OutputStream out=new FileOutputStream(output)) {
+                    long total=0;byte[] x=new byte[32768];int n;
+                    while((n=in.read(x))!=-1){AcceleratedSpeechClient.check(cancelled);total+=n;if(total>64L*1024*1024)throw new IOException("音频超过 64 MiB，请拆分文本");out.write(x,0,n);}
+                    if(expected>=0&&total!=expected)throw new EOFException("音频下载未完成");
+                }
+                return;
+            }catch(IOException error) {
+                output.delete();AcceleratedSpeechClient.check(cancelled);
+                if(attempt==2||!retryDownload(error))throw error;
+                // Release the previous connection before waiting, including on cancellation.
+                if(download!=null){close(download);download=null;}
+                progress.update("下载连接中断，正在重试 "+(attempt+1)+" / 2（无需重新合成）…");
+                retryPause(attempt+1,cancelled);
+            }finally{if(download!=null)close(download);}
+        }
+    }
     long generate(String address,String key,String text,String language,float speed,int steps,File reference,
             File output,AtomicBoolean cancelled,AcceleratedSpeechClient.Progress progress) throws Exception {
         return generate(address,key,text,language,speed,steps,reference,null,output,cancelled,progress);
@@ -141,13 +185,7 @@ final class GradioSpeechClient {
                 try {status(queue);progress.update("免费 GPU 排队或合成中…");try(InputStream in=queue.getInputStream()){result=events(in,cancelled,progress);}}finally{close(queue);}
                 audio=result.getJSONObject(0);fileUrl(origin,audio);state.put("audio",audio).put("phase","download");checkpoint.save();
             }
-            URL url=fileUrl(origin,audio);HttpURLConnection download=open(url,key,"GET",cancelled);
-            try {
-                status(download);progress.update("接收完整 GPU 音频…");
-                try(InputStream in=download.getInputStream();OutputStream out=new FileOutputStream(output)) {
-                    long total=0;byte[] x=new byte[32768];int n;while((n=in.read(x))!=-1){AcceleratedSpeechClient.check(cancelled);total+=n;if(total>64L*1024*1024)throw new IOException("音频超过 64 MiB，请拆分文本");out.write(x,0,n);}
-                }
-            }finally{close(download);}
+            download(fileUrl(origin,audio),key,output,cancelled,progress);
             long millis;
             try {millis=AcceleratedSpeechClient.validate(output,text,cancelled);}
             catch(AcceleratedSpeechClient.IncompleteSpeech error) {

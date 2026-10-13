@@ -265,7 +265,7 @@ public class MainActivity extends Activity {
         float fraction = active ? SynthesisProgress.fraction(currentStage()) : done ? 1 : -1;
         dreamProgress.configure(active, fraction);
         dreamProgress.setVisibility(active || done ? View.VISIBLE : View.GONE);
-        String label = fraction >= 0 && active ? "本段推理 " + Math.round(fraction * 100) + "% · " : "";
+        String label = fraction >= 0 && active ? SynthesisProgress.label(currentStage()) + Math.round(fraction * 100) + "% · " : "";
         generationTime.setText(active ? label + "已等待 " + elapsedSeconds() + " 秒 · 可留在这里等待"
                 : done ? "已保存到作品" : "草稿已保留，可调整配置后重新生成");
         String detail = failed && trackedJob != null ? "失败阶段：" + trackedJob.optString("failureStage", "生成声音") + "\n" + trackedJob.optString("failureDetail", "暂无详细错误") : "";
@@ -2103,7 +2103,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.10 · 云端与离线合成",
+                "VoiceStudio 1.5.11 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");

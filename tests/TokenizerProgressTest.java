@@ -70,6 +70,11 @@ public class TokenizerProgressTest {
         check(SynthesisProgress.fraction("本机合成 · 16 / 16 步")==1,"final inference step");
         for(String stage:new String[]{"加载本机 OmniVoice 模型…","第 2 / 4 段 · 本机解码音频…","Fish 正在生成并接收音频…","本机合成 · 33 / 32 步","本机合成 · 1 / 0 步","本机合成 · 999999999999 / 32 步"})
             check(SynthesisProgress.fraction(stage)==-1,"indeterminate or invalid "+stage);
+        check(SynthesisProgress.fraction("已保存 1 / 4 段 · 第 2 段 · 排队中")==.25f,"durable remote fraction");
+        check(SynthesisProgress.fraction("已保存 0 / 4 段 · 下载重试")==0,"queued chunk does not count as saved");
+        check(SynthesisProgress.fraction("已保存 4 / 4 段 · 正在合并完整音频")==1,"all chunks saved, final merge still pending");
+        check(SynthesisProgress.label("已保存 1 / 4 段").equals("分段已保存 "),"remote label is not inference percent");
+        for(String s:new String[]{"已保存 9 / 4 段","已保存 1 / 0 段","已保存 99999999999 / 4 段"})check(SynthesisProgress.fraction(s)==-1,"invalid remote counter");
         check(SynthesisProgress.active("queued")&&SynthesisProgress.active("running"),"queued/running busy");
         for(String state:new String[]{"done","failed","paused","idle"})check(!SynthesisProgress.active(state),"terminal releases UI "+state);
         System.out.println("Tokenizer / actual progress: "+checks+" checks passed (host JVM, not device inference)");

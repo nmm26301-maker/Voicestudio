@@ -6,7 +6,7 @@ final class PcmAudio {
     static final class Reader implements Closeable {
         final RandomAccessFile file;
         int rate, channels, width, encoding;
-        long frames, offset;
+        long frames, offset, dataBytes;
 
         Reader(File path) throws IOException {
             file = new RandomAccessFile(path, "r");
@@ -30,7 +30,9 @@ final class PcmAudio {
                         rate = (int) readLE(file, 4);
                         readLE(file, 4);
                         readLE(file, 2);
-                        width = (int) readLE(file, 2) / 8;
+                        int bits = (int) readLE(file, 2);
+                        if (bits % 8 != 0) throw new IOException("WAV 位深无效");
+                        width = bits / 8;
                         fmt = true;
                     }
                     if (name.equals("data")) {
@@ -42,6 +44,8 @@ final class PcmAudio {
                                 || width > 4
                                 || rate < 8000
                                 || rate > 192000) throw new IOException("WAV 格式无效");
+                        dataBytes = size;
+                        if (size % (channels * width) != 0) throw new IOException("WAV 末尾采样不完整");
                         frames = size / (channels * width);
                         data = true;
                         break;
@@ -64,6 +68,25 @@ final class PcmAudio {
 
         double seconds() {
             return (double) frames / rate;
+        }
+
+        /** Read every byte without allocating decoded audio. Integers have no invalid bit patterns. */
+        void validateSamples(java.util.concurrent.atomic.AtomicBoolean cancelled) throws IOException {
+            file.seek(offset);
+            byte[] bytes = new byte[32768];
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            long remaining = dataBytes;
+            while (remaining > 0) {
+                if (cancelled.get() || Thread.currentThread().isInterrupted()) throw new InterruptedIOException("已暂停生成");
+                int count = (int) Math.min(bytes.length, remaining);
+                file.readFully(bytes, 0, count);
+                if (encoding == 3) {
+                    buffer.clear(); buffer.limit(count);
+                    while (buffer.remaining() >= 4) if (!Float.isFinite(buffer.getFloat())) throw new IOException("音频包含无效数值");
+                }
+                remaining -= count;
+            }
+            if (cancelled.get() || Thread.currentThread().isInterrupted()) throw new InterruptedIOException("已暂停生成");
         }
 
         float[] read(double start, double seconds) throws IOException {

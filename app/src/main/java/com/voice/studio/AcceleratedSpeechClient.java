@@ -95,7 +95,7 @@ final class AcceleratedSpeechClient {
             millis=Math.round(reader.seconds()*1000);
             if(millis<=0 || millis<minimumDuration(text))
                 throw new IncompleteSpeech();
-            for(double at=0;at<reader.seconds();at+=30){check(cancelled);reader.read(at,Math.min(30,reader.seconds()-at));}
+            reader.validateSamples(cancelled);
         }
         check(cancelled);PcmAudio.markSynthetic(output);return millis;
     }

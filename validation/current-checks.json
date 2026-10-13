@@ -1,54 +1,60 @@
 {
-  "version": "1.5.10-hybrid",
-  "versionCode": 26,
+  "version": "1.5.11-hybrid",
+  "versionCode": 27,
   "checkedOn": "2026-10-13",
-  "baseCommit": "8e755216b44283acdbdaa44e21077bf7c43d4384",
-  "androidCompilation": "passed; ECJ/resources/D8/ARM64, existing 23 warnings",
-  "apkZipAlignment": "16 KiB passed",
-  "apkSignature": "v2/v3; unchanged certificate",
-  "apkSha256": "aae763bc7c8d0f54901d74910bd0c96eddbcd40320eba26d849f63ab58acced7",
+  "baseCommit": "037493f45eb2b643b581f499f97df93c431b5c55",
+  "androidCompilation": "passed; ECJ/resources/D8/ARM64, 23 existing warnings",
   "upgrade": {
     "status": "passed",
     "checks": 47,
     "package": "com.voice.studio.preview",
     "label": "VoiceStudio",
-    "version": "1.5.10-hybrid",
-    "versionCode": 26,
+    "version": "1.5.11-hybrid",
+    "versionCode": 27,
     "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
-    "apkSha256": "aae763bc7c8d0f54901d74910bd0c96eddbcd40320eba26d849f63ab58acced7",
-    "previousApkSha256": "57271ed98b1f7121072cc41d0b76b343b368cf6c151d9720f3f42f5db903f158",
-    "previousVersionCode": 25,
+    "apkSha256": "70f020b15314b7d7c51082a170a8b7f0b73b7bfcd867f685c4018eb94d0afb83",
+    "previousApkSha256": "aae763bc7c8d0f54901d74910bd0c96eddbcd40320eba26d849f63ab58acced7",
+    "previousVersionCode": 26,
     "scope": "Signed APK identity/version/provider continuity and unchanged assets/runtime verified. No device installation, data-retention or functional acceptance performed."
   },
-  "hostRegression": "passed; regression-1.5.10.log before final rejected-HTTP classification; relevant final API/pipeline tests rerun",
-  "acceleratedMockChecks": 67,
-  "upstreamPromptDurationChecks": 38,
-  "freeGpuProtocolChecks": 52,
-  "remotePipelineChecks": 10841,
-  "hfLive": {
-    "protocol": "anonymous OmniVoice Gradio 6 text-only, 16 steps, 2 chunks",
-    "chunkDurationMillis": [
-      31720,
-      6280
-    ],
-    "totalDurationMillis": 38000,
-    "mergedSha256": "4d77e5353148e68ba482e62fe881865ab0a0d9edf0f76417c1a9473ae19aa04e",
-    "cacheVerification": "final pipeline reused real completed chunks; PCM/merged SHA equal; additional HTTP 0",
-    "cacheHostElapsedMillis": [
-      64,
-      31
-    ],
-    "firstGenerationElapsedMillis": "not retained as a reliable measurement",
-    "scope": "server WAV and cache/file acceptance, not transcript or phone speed/quality acceptance"
+  "hostRegression": "passed; regression-1.5.11.log, process exit 0",
+  "targetedTests": {
+    "audioValidation": 42,
+    "downloadRecovery": 123,
+    "remotePipeline": 10841,
+    "gradio": 52,
+    "accelerated": 67
   },
-  "referenceUpload": "mock upload/caching verified; prior public reference upload approval still absent, no new public upload attempt",
-  "checkpointScope": "no credential stored; full settings and reference digest bound; completed clips retained; GET-only download resume; ambiguous submitted segment requires explicit re-submit confirmation",
-  "automaticVoice": "can change across long-text segments; explicitly selected reference recommended",
-  "modalDeployment": "not deployed on user account; template retained",
-  "kaggleExecution": "not run on user account; workflow retained",
+  "validationBenchmark": {
+    "scope": "host 300s mono PCM16 full-file validation only; not device or GPU inference speed",
+    "runs": 7,
+    "previousMedianMillis": 57.818,
+    "currentMedianMillis": 1.704,
+    "audioBufferBytes": 32768,
+    "source": "accelerated-1.5.11.log"
+  },
+  "downloadRetry": {
+    "maxAdditionalGETs": 2,
+    "backoffMillis": [
+      250,
+      500
+    ],
+    "transient": [
+      "SocketTimeoutException",
+      "SocketException",
+      "EOFException",
+      "HTTP 502",
+      "HTTP 503",
+      "HTTP 504"
+    ],
+    "automaticPOSTreplay": false,
+    "automaticSSEreplay": false
+  },
+  "progress": "durable completed segment fraction; final merge/validation still required",
+  "apkPublication": "signed in local temporary directory, verified, copied with fsync/readback/atomic rename; final actual delivered APK reverified",
   "phoneSpeed": "not measured",
   "semanticSpeechQuality": "not established",
   "device": "not tested",
-  "releaseBackup": "exact APK plus unchanged key/password/alias instructions; private GitHub credential upload still awaits destination authorization",
-  "finalApiSuite": "passed; accelerated-final-status-1.5.10.json and accelerated-final-1.5.10.log"
+  "newLiveGpuTest": "none; 1.5.10 real HF evidence remains historical",
+  "releaseBackup": "exact APK, unchanged signing key and password/alias instructions; private GitHub credential destination authorization still pending"
 }

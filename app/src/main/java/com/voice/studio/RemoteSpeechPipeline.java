@@ -44,12 +44,12 @@ final class RemoteSpeechPipeline {
                 JSONObject state=session.segment(i);File cached=session.audio(i);
                 if(state.optBoolean("complete")) {
                     if(!cached.isFile()||!RemoteSpeechSession.hash(cached).equals(state.optString("sha256")))throw new IOException("已保存的第 "+(i+1)+" 段不完整，请重新创建任务");
-                    progress.update("复用第 "+(i+1)+" / "+parts.size()+" 段…");continue;
+                    progress.update("已保存 "+(i+1)+" / "+parts.size()+" 段 · 复用已完成音频…");continue;
                 }
                 if(part.trim().isEmpty()){state.put("blank",true);session.save();continue;}
                 File pending=new File(cached.getPath()+".pending");
                 try {
-                    AcceleratedSpeechClient.Progress stage=m->progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · "+m);
+                    AcceleratedSpeechClient.Progress stage=m->progress.update("已保存 "+index+" / "+parts.size()+" 段 · 第 "+(index+1)+" 段 · "+m);
                     long duration;
                     if(useGradio) {
                         final JSONObject current=state;
@@ -67,9 +67,10 @@ final class RemoteSpeechPipeline {
                     AcceleratedSpeechClient.check(cancelled);
                     if(!pending.renameTo(cached))throw new IOException("保存 GPU 分段失败");
                     state.put("complete",true).put("phase","complete").put("duration",duration).put("sha256",RemoteSpeechSession.hash(cached));session.save();
+                    progress.update("已保存 "+(i+1)+" / "+parts.size()+" 段 · 音频已校验…");
                 }finally{pending.delete();}
             }
-            progress.update("完整分段已保存，正在合并…");
+            progress.update("已保存 "+parts.size()+" / "+parts.size()+" 段 · 正在合并完整音频…");
             merge(session,parts.size(),output,cancelled);
             long duration=AcceleratedSpeechClient.validate(output,text,cancelled);complete=true;return duration;
         }finally{if(!complete)output.delete();}
