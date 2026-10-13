@@ -63,7 +63,8 @@ public class MainActivity extends Activity {
     LinearLayout generationPanel;
     DreamProgressView dreamProgress;
     SignalOrbView headerOrb;
-    TextView generationTitle, generationStage, generationTime, generationDetail, generationAction, generationCopy;
+    TextView generationTitle, generationStage, generationTime, generationDetail, generationAction, generationCopy, generationPreview;
+    AudioPreview fragmentPreview;
     String trackedJobId = "", localGenerationState = "idle";
     JSONObject trackedJob, localCompletedJob;
     boolean jobReloadPending, refreshTracked = true, cancelRequested;
@@ -241,6 +242,14 @@ public class MainActivity extends Activity {
             else if ("创作".equals(page)) generate();
         });
         add(generationPanel, generationAction);
+        generationPreview=button("试听已完成片段",false,()->{
+            File file=SynthesisPreview.file(StudioFiles.dir(this,"jobs"),trackedJob);
+            if(file==null){toast("片段尚未准备好，请稍后重试");return;}
+            stopPreview();releasePlayer();
+            final String auditionId=trackedJobId;
+            fragmentPreview=new AudioPreview(this,file,"首段试听 · 仅含已完成片段",isGenerating()?()->{if(auditionId.equals(trackedJobId))cancelJob();}:null);
+        });
+        add(generationPanel,generationPreview);
         generationCopy = button("复制错误详情", false, () -> {
             String detail = trackedJob != null ? trackedJob.optString("failureStage") + "\n" + trackedJob.optString("failureDetail", trackedJob.optString("progress")) : lastMessage;
             ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("生成错误", detail));
@@ -273,6 +282,8 @@ public class MainActivity extends Activity {
         generationDetail.setText(detail);
         generationDetail.setVisibility(detail.isEmpty() ? View.GONE : View.VISIBLE);
         generationCopy.setVisibility(failed ? View.VISIBLE : View.GONE);
+        generationPreview.setVisibility(SynthesisPreview.file(StudioFiles.dir(this,"jobs"),trackedJob)!=null?View.VISIBLE:View.GONE);
+        generationPreview.setEnabled(!cancelRequested);
         generationAction.setText(active ? cancelRequested ? "正在取消…" : "取消生成" : done ? "播放这段声音" : trackedJob != null ? "继续此任务" : "重新生成");
         generationAction.setEnabled(!cancelRequested);
         generationAction.setVisibility(active || done || trackedJob != null || "创作".equals(page) ? View.VISIBLE : View.GONE);
@@ -1110,6 +1121,7 @@ public class MainActivity extends Activity {
     }
 
     void stopPreview() {
+        if(fragmentPreview!=null){fragmentPreview.close();fragmentPreview=null;}
         previewId = "";
         if (ttsReady && !busy) tts.stop();
     }
@@ -2103,7 +2115,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.14 · 云端与离线合成",
+                "VoiceStudio 1.5.15 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");
@@ -2793,6 +2805,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         destroyed = true;
+        stopPreview();
         if (noisyRegistered) { unregisterReceiver(noisyReceiver); noisyRegistered = false; }
         cancelled.set(true);
         omni.cancel();

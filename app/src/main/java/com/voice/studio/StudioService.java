@@ -244,7 +244,7 @@ public class StudioService extends Service {
             job.put("state", state).put("progress", message);
             if (state.equals("running") && (!job.has("started") || previous.equals("queued"))) {
                 job.put("started", System.currentTimeMillis());
-                job.remove("finished"); job.remove("failureStage"); job.remove("failureDetail");
+                job.remove("finished"); job.remove("failureStage"); job.remove("failureDetail"); job.remove("previewReady");
             }
             if (state.equals("done") || state.equals("failed") || state.equals("paused")) job.put("finished", System.currentTimeMillis());
             StudioFiles.save(StudioFiles.job(this, job.getString("id")), job);
@@ -375,7 +375,10 @@ public class StudioService extends Service {
             } else if(!provider.equals("custom")&&!provider.equals("modal"))throw new IOException("GPU 平台配置无效");
             String scope=useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
             long millis=RemoteSpeechPipeline.generate(job,new SecretStore(this,scope).read(),ref,referenceText,remoteFolder(this,job.getString("id")),
-                pending,cancel,m->state(job,"running",m),gradio,accelerated);
+                pending,cancel,m->{
+                    if(m.contains("音频已校验")||m.contains("复用已完成音频"))try{if(SynthesisPreview.remote(new File(new File(StudioFiles.dir(this,"jobs"),job.getString("id")),"gpu"))!=null)job.put("previewReady",true);}catch(Exception ignored){}
+                    state(job,"running",m);
+                },gradio,accelerated);
             OmniEngine.check(cancel);
             job.put("duration",millis).put("generationMillis",(System.nanoTime()-start)/1000000);
             if(!pending.renameTo(out))throw new IOException("接口音频保存失败");
@@ -407,12 +410,13 @@ public class StudioService extends Service {
                     anchored ? 1 : (float) job.optDouble("speed", 1),
                     tmp,
                     cancel,
-                    m -> state(job, "running", m),
+                    m -> {if(m.equals(SynthesisPreview.READY))try{job.put("previewReady",true);}catch(Exception ignored){}state(job,"running",m);},
                     ref,
                     job.optString("style", "None"),
                     job.optInt("steps", 32),
                     job.optLong("seed", 42),
-                    new File(remoteFolder(this,job.getString("id")).getParentFile(),"local-"+out.getName()));
+                    new File(remoteFolder(this,job.getString("id")).getParentFile(),"local-"+out.getName()),
+                    "tts".equals(job.optString("type","tts"))?new File(remoteFolder(this,job.getString("id")).getParentFile(),"preview.wav"):null);
             OmniEngine.check(cancel);
             if("tts".equals(job.optString("type", "tts"))) {
                 job.put("generationMillis", engine.lastGenerationMillis);

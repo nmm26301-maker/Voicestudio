@@ -31,7 +31,8 @@ final class AudioPreview implements AutoCloseable {
         }
     };
 
-    AudioPreview(Activity activity, File file, String title) {
+    AudioPreview(Activity activity,File file,String title){this(activity,file,title,null);}
+    AudioPreview(Activity activity,File file,String title,Runnable cancelRemaining) {
         this.activity = activity;
         audio = (AudioManager)activity.getSystemService(Activity.AUDIO_SERVICE);
         LinearLayout body = new LinearLayout(activity); body.setOrientation(1);
@@ -44,8 +45,10 @@ final class AudioPreview implements AutoCloseable {
         Button next = button(controls, "+10秒");
         speed = new Button(activity); speed.setText("试听速度 · 1×"); body.addView(speed);
         toggle.setEnabled(false); back.setEnabled(false); next.setEnabled(false); speed.setEnabled(false);
-        dialog = new CosmicDialogBuilder(activity).setTitle(title).setView(body)
-                .setNegativeButton("关闭", null).create();
+        CosmicDialogBuilder builder=new CosmicDialogBuilder(activity);
+        builder.setTitle(title).setView(body).setNegativeButton("关闭",null);
+        if(cancelRemaining!=null)builder.setNeutralButton("取消剩余生成",(d,w)->cancelRemaining.run());
+        dialog=builder.create();
         dialog.setOnDismissListener(d -> close());
         toggle.setOnClickListener(v -> {
             if (!ready) return;

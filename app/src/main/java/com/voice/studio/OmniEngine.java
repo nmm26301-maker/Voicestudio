@@ -37,6 +37,12 @@ final class OmniEngine {
     void generate(File modelDir,String text,String language,float speed,File output,
             AtomicBoolean cancelled,Progress progress,VoicePrompt ref,String instruct,
             int steps,long seed,File checkpoint) throws Exception {
+        generate(modelDir,text,language,speed,output,cancelled,progress,ref,instruct,steps,seed,checkpoint,null);
+    }
+
+    void generate(File modelDir,String text,String language,float speed,File output,
+            AtomicBoolean cancelled,Progress progress,VoicePrompt ref,String instruct,
+            int steps,long seed,File checkpoint,File preview) throws Exception {
         if (text == null || text.trim().isEmpty() || text.length() > 12000)
             throw new IOException("文本需为 1—12000 字");
         if (!Float.isFinite(speed) || speed < .5 || speed > 2) throw new IOException("语速无效");
@@ -129,6 +135,12 @@ final class OmniEngine {
                                     long offset=writer.f.getFilePointer();
                                     result=decodeChunk(buffers,session,run,chunk,voice,writer,cancelled);
                                     if(decodedCache!=null)decodedCache.save(index,key,chunk.frames,result,writer,offset,cancelled);
+                                }
+                                if(index==0&&preview!=null) {
+                                    try {
+                                        SynthesisPreview.write(preview,writer,44,chunk.frames*960,cancelled);
+                                        progress.update(SynthesisPreview.READY);
+                                    }catch(IOException error){if(error instanceof SynthesisPreview.SourceFailure)throw error;check(cancelled);progress.update("片段试听暂不可用，继续生成完整音频…");}
                                 }
                                 if(index+1<parts.size())writer.silence(.12);
                                 check(cancelled);return result;

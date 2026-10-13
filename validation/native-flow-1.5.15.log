@@ -1,0 +1,18 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+IPv4/IPv6 sockets blocked for this process and all children.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Upstream native flow: 938926 checks passed; authored graph, corrected duration/output length/cancel/retry; no speech quality claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Encoding cache: 22 integrity/identity/pending-file/mask/bounds checks passed.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Decoded cache: 19 exact-PCM/anchor/hash/cancel/rollback/budget checks passed.
+IPv4/IPv6 sockets blocked for this process and all children.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Local resume fixture automatic: chunks=12, first resume reused=2, full cache backbone loads/runs=0/0, decoder loads/runs=0/0; authored graph, not phone speed.
+Local resume fixture reference: chunks=24, first resume reused=2, full cache backbone loads/runs=0/0, decoder loads/runs=0/0; authored graph, not phone speed.
+Native local resume: 33 interruption/cache/PCM/anchor/corruption/parameter checks passed.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Synthesis preview: 21 WAV/PCM/atomic/cancel/readiness/path/state checks passed.
+IPv4/IPv6 sockets blocked for this process and all children.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Native preview flow: 14 readiness/PCM/model-load/cancel checks passed; authored graph, no device playback claim.
