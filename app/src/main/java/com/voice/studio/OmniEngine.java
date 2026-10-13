@@ -14,7 +14,7 @@ final class OmniEngine {
     int backboneLoads, decoderLoads, chunkCount, backboneRuns, samplingWorkers, parallelSamplingRounds;
     int prePinnedChunks, outputShapeFallbacks;
     long outputCopyBytes, pcmWriteNanos;
-    int bufferedPcmChunks, reusedEncodingChunks;
+    int bufferedPcmChunks, reusedEncodingChunks, reusedDecodedChunks, decoderRuns;
     VoicePrompt automaticPrompt;
     volatile OrtSession.RunOptions running;
 
@@ -49,7 +49,7 @@ final class OmniEngine {
         samplingWorkers = parallelSamplingRounds = 0;
         prePinnedChunks = outputShapeFallbacks = 0;outputCopyBytes = 0;
         automaticPrompt = null;
-        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;pcmWriteNanos=0;bufferedPcmChunks=0;reusedEncodingChunks=0;
+        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;pcmWriteNanos=0;bufferedPcmChunks=0;reusedEncodingChunks=0;reusedDecodedChunks=decoderRuns=0;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
         boolean automatic = ref == null;
@@ -60,6 +60,7 @@ final class OmniEngine {
         tokenizerNanos += System.nanoTime() - tokenStart;
         check(cancelled);
         OmniEncodingCache cache=checkpoint==null?null:new OmniEncodingCache(checkpoint,modelDir);
+        OmniDecodedCache decodedCache=cache==null?null:new OmniDecodedCache(cache.folder);
         check(cancelled);
         OrtEnvironment env = OrtEnvironment.getEnvironment();
         env.setTelemetry(false);
@@ -85,7 +86,7 @@ final class OmniEngine {
                             String key=cache==null?null:cache.key(part,language,rate,voice,instruction,steps,seed);
                             OmniEncodingCache.Entry saved=cache==null?null:cache.read(index,key,frames);
                             check(cancelled);
-                            if(saved!=null){reusedEncodingChunks++;progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · 复用已完成的本机推理…");return new EncodedChunk(part,saved.codes,saved.frames);}
+                            if(saved!=null){reusedEncodingChunks++;progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · 复用已完成的本机推理…");return new EncodedChunk(part,saved.codes,saved.frames,key);}
                             if(session==null) {
                                 progress.update("加载本机合成模型…");long began=System.nanoTime();
                                 session=env.createSession(new File(modelDir,"omnivoice.qint8_per_channel.onnx").getAbsolutePath(),options);
@@ -98,33 +99,43 @@ final class OmniEngine {
                             }finally{inferenceNanos+=System.nanoTime()-start;}
                             check(cancelled);
                             if(cache!=null){cache.save(index,key,result.frames,result.codes);check(cancelled);}
-                            return result;
+                            return new EncodedChunk(result.text,result.codes,result.frames,key);
                         }
                         public void close() throws Exception {if(session!=null)session.close();}
                     };
                 }
                 public OmniChunkPipeline.Decoder<EncodedChunk, VoicePrompt> decoder() throws Exception {
                     check(cancelled);
-                    progress.update("加载本机音频解码器…");
-                    long start = System.nanoTime();
-                    OrtSession session = env.createSession(new File(modelDir,
-                            "higgs_decoder.onnx").getAbsolutePath(), options);
-                    loadNanos += System.nanoTime() - start;
-                    decoderLoads++;
-                    OmniDecoderRun buffers = new OmniDecoderRun(env);
                     return new OmniChunkPipeline.Decoder<EncodedChunk, VoicePrompt>() {
+                        OrtSession session;OmniDecoderRun buffers;
                         public VoicePrompt decode(int index, EncodedChunk chunk, VoicePrompt voice) throws Exception {
-                            check(cancelled);
-                            progress.update("第 " + (index + 1) + " / " + parts.size() + " 段 · 本机解码音频…");
-                            long start = System.nanoTime();
+                            check(cancelled);long start=System.nanoTime(),loadBefore=loadNanos;
                             try {
-                                VoicePrompt result = decodeChunk(buffers, session, run, chunk, voice, writer, cancelled);
-                                if (index + 1 < parts.size()) writer.silence(.12);
-                                return result;
-                            } finally { decodeNanos += System.nanoTime() - start; }
+                                String key=decodedCache==null?null:OmniDecodedCache.key(chunk.key,chunk.codes);
+                                boolean anchorEligible=voice==null&&chunk.frames>=75&&chunk.text.length()<=2000;
+                                OmniDecodedCache.Entry saved=decodedCache==null?null:decodedCache.read(index,key,chunk.frames,anchorEligible,cancelled);
+                                VoicePrompt result;
+                                if(saved!=null) {
+                                    progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · 复用已完成的本机音频…");
+                                    OmniDecodedCache.append(writer,saved,cancelled);reusedDecodedChunks++;
+                                    result=saved.anchor?new VoicePrompt(chunk.text,chunk.codes.clone(),chunk.frames,saved.rms):null;
+                                }else {
+                                    if(session==null) {
+                                        progress.update("加载本机音频解码器…");long began=System.nanoTime();
+                                        session=env.createSession(new File(modelDir,"higgs_decoder.onnx").getAbsolutePath(),options);
+                                        loadNanos+=System.nanoTime()-began;decoderLoads++;buffers=new OmniDecoderRun(env);
+                                    }
+                                    progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · 本机解码音频…");
+                                    long offset=writer.f.getFilePointer();
+                                    result=decodeChunk(buffers,session,run,chunk,voice,writer,cancelled);
+                                    if(decodedCache!=null)decodedCache.save(index,key,chunk.frames,result,writer,offset,cancelled);
+                                }
+                                if(index+1<parts.size())writer.silence(.12);
+                                check(cancelled);return result;
+                            }finally{decodeNanos+=System.nanoTime()-start-(loadNanos-loadBefore);}
                         }
                         public void close() throws Exception {
-                            try { buffers.close(); } finally { session.close(); }
+                            try{if(buffers!=null)buffers.close();}finally{if(session!=null)session.close();}
                         }
                     };
                 }
@@ -150,10 +161,9 @@ final class OmniEngine {
     private static final class EncodedChunk {
         final String text;
         final long[] codes;
-        final int frames;
-        EncodedChunk(String text, long[] codes, int frames) {
-            this.text = text; this.codes = codes; this.frames = frames;
-        }
+        final int frames;final String key;
+        EncodedChunk(String text,long[] codes,int frames){this(text,codes,frames,null);}
+        EncodedChunk(String text,long[] codes,int frames,String key){this.text=text;this.codes=codes;this.frames=frames;this.key=key;}
     }
 
     private EncodedChunk encodeChunk(OrtEnvironment env, OrtSession session, OrtSession.RunOptions run,
@@ -229,6 +239,7 @@ final class OmniEngine {
             EncodedChunk chunk, VoicePrompt ref, PcmAudio.Writer writer, AtomicBoolean cancelled) throws Exception {
         long copied = buffers.copiedOutputBytes;
         int pinned = buffers.pinnedRuns;
+        decoderRuns++;
         FloatBuffer samples = buffers.run(decoder, run, chunk.codes, chunk.frames, cancelled);
         decoderOutputCopyBytes += buffers.copiedOutputBytes - copied;
         decodedPinnedChunks += buffers.pinnedRuns - pinned;

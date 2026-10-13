@@ -434,6 +434,8 @@ public class StudioService extends Service {
                         .put("bufferedPcmChunks", engine.bufferedPcmChunks)
                         .put("pcmBufferBytes", OmniPcmWriter.BUFFER_BYTES)
                         .put("reusedEncodingChunks", engine.reusedEncodingChunks)
+                        .put("reusedDecodedChunks", engine.reusedDecodedChunks)
+                        .put("decoderRuns", engine.decoderRuns)
                         .put("decodeMillis", engine.decodeNanos / 1000000)
                         .put("chunks", engine.chunkCount)
                         .put("backboneLoads", engine.backboneLoads)
