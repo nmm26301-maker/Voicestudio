@@ -43,6 +43,9 @@ public class AcceleratedSpeechTest {
    for(byte[] bad:new byte[][]{new byte[0],new byte[128],Arrays.copyOf(data,100)}){Fake invalid=new Fake(bad);reject(()->send(invalid,out,new AtomicBoolean()));check(!out.exists(),"empty/corrupt/truncated WAV removed");}
    Fake text=new Fake(data);text.type="APPLICATION/JSON";reject(()->send(text,out,new AtomicBoolean()));
    try(PcmAudio.Writer w=new PcmAudio.Writer(wav,24000)){w.write(new float[100]);}
+   check(AcceleratedSpeechClient.minimumDuration("字字") == 0,"short genuine speech is not forced to long duration");
+   check(AcceleratedSpeechClient.minimumDuration("字"+String.join("",Collections.nCopies(10000," "))+"字")==0,"whitespace does not create false speech length");
+   check(AcceleratedSpeechClient.minimumDuration(String.join("",Collections.nCopies(180,"字")))>=3900,"long Chinese text needs more than a one-word clip");
    Fake shortAudio=new Fake(Files.readAllBytes(wav.toPath()));reject(()->send(shortAudio,out,new AtomicBoolean()));check(!out.exists(),"long text with a few milliseconds of audio not accepted");
    AtomicBoolean cancelled=new AtomicBoolean(true);int[] opens={0};reject(()->new AcceleratedSpeechClient(url->{opens[0]++;return success;}).generate("https://example.invalid","","m","auto","x","zh",1,16,42,out,cancelled,m->{}));check(opens[0]==0,"pre-cancelled request never connects");
    cancelled.set(false);Fake interrupted=new Fake(data);interrupted.cancel=cancelled;reject(()->send(interrupted,out,cancelled));check(!out.exists()&&interrupted.disconnected,"cancel during transfer cleans output");

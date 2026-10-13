@@ -16,6 +16,12 @@ final class AcceleratedSpeechClient {
     AcceleratedSpeechClient(Connections connections) { this.connections = connections; }
     void cancel() { HttpURLConnection value=active;if(value!=null)value.disconnect(); }
 
+    static final class RequestRejected extends IOException {
+        private static final long serialVersionUID=1L;
+        final int status;
+        RequestRejected(int status){super("加速接口 HTTP "+status+"："+(status==401||status==403?"请检查接口密钥":status==429?"额度不足或服务繁忙，请稍后重试":"请检查服务状态、模型与音色配置"));this.status=status;}
+        boolean definitelyRejected(){return status==400||status==401||status==403||status==404||status==413||status==422||status==429;}
+    }
     static String endpoint(String configured) throws IOException {
         try {
             URI uri=new URI(configured==null?"":configured.trim());
@@ -59,7 +65,7 @@ final class AcceleratedSpeechClient {
             progress.update("连接加速服务…");
             try(OutputStream stream=connection.getOutputStream()){check(cancelled);stream.write(body);}
             int status=connection.getResponseCode();check(cancelled);
-            if(status!=200)throw new IOException("加速接口 HTTP "+status+"："+(status==401||status==403?"请检查接口密钥":status==429?"服务繁忙，请稍后重试":"请检查服务状态、模型与音色配置"));
+            if(status!=200)throw new RequestRejected(status);
             String type=connection.getContentType();
             if(type!=null && (type.toLowerCase(Locale.ROOT).contains("json") || type.toLowerCase(Locale.ROOT).contains("text")))
                 throw new IOException("加速服务返回了文字或错误消息，没有返回 WAV 音频");
@@ -71,13 +77,24 @@ final class AcceleratedSpeechClient {
             long millis=validate(output,text,cancelled);complete=true;return millis;
         } finally {active=null;connection.disconnect();if(!complete)output.delete();}
     }
+    static final class IncompleteSpeech extends IOException {
+        private static final long serialVersionUID=1L;
+        IncompleteSpeech(){super("接口返回的音频过短，可能只合成了开头，请检查服务器的完整文本处理");}
+    }
+    static long minimumDuration(String text) {
+        double units=0;
+        for(int i=0;i<text.length();) {int c=text.codePointAt(i);if(Character.isLetterOrDigit(c))units+=OmniDuration.weight(c);i+=Character.charCount(c);}
+        // Deliberately loose guard, allowing up to 100 weighted speech units per second.
+        // Detects obvious truncation; it is not transcription or pronunciation acceptance.
+        return units<30?0:Math.max(500,Math.round(units*10));
+    }
     static long validate(File output,String text,AtomicBoolean cancelled) throws Exception {
         check(cancelled);AudioChecks.validate(output,"wav");
         long millis;
         try(PcmAudio.Reader reader=new PcmAudio.Reader(output)) {
             millis=Math.round(reader.seconds()*1000);
-            if(millis<=0 || (OmniDuration.total(text)>=30 && millis<500))
-                throw new IOException("接口返回的音频过短，可能只合成了开头，请检查服务器的完整文本处理");
+            if(millis<=0 || millis<minimumDuration(text))
+                throw new IncompleteSpeech();
             for(double at=0;at<reader.seconds();at+=30){check(cancelled);reader.read(at,Math.min(30,reader.seconds()-at));}
         }
         check(cancelled);PcmAudio.markSynthetic(output);return millis;

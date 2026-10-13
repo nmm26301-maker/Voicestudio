@@ -1,0 +1,10 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Accelerated API: 67 checks passed; mock transport only, no live GPU/server speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Remote pipeline: 10841 Unicode/checkpoint/transport/PCM/consent checks passed; mocked speech only.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.

@@ -64,10 +64,17 @@ public class StudioService extends Service {
         return id;
     }
 
-    static void resume(Context context, String id) throws Exception {
+    static File remoteFolder(Context context,String id) throws Exception {return new File(new File(StudioFiles.dir(context,"jobs"),StudioFiles.job(context,id).getName().replace(".json","")),"gpu");}
+    static void resume(Context context, String id) throws Exception {resume(context,id,false);}
+    static void resume(Context context, String id,boolean allowResubmit) throws Exception {
         if (StudioFiles.modelWork()) throw new IOException("请等待模型导入或检查完成");
         JSONObject job = StudioFiles.read(StudioFiles.job(context, id));
         requireMicrophonePermission(context, job);
+        if(job.optString("engine").equals("accelerated")&&RemoteSpeechSession.needsResubmit(remoteFolder(context,id))) {
+            if(!allowResubmit)throw new RemoteSpeechPipeline.ResubmitRequired();
+            if(!active.isEmpty())throw new IOException("请等待当前任务停止");
+            RemoteSpeechSession.allowResubmit(remoteFolder(context,id));
+        }
         job = StudioFiles.requeue(context, id);
         try {
             context.startForegroundService(new Intent(context, StudioService.class).putExtra("id", id));
@@ -87,7 +94,8 @@ public class StudioService extends Service {
             for (int n = 0; n < jobs.length(); n++) {
                 JSONObject job = jobs.getJSONObject(n);
                 // Reuse saved recordings, but never start a new microphone capture in a bulk retry.
-                if (job.optString("state").equals("paused") && !needsMicrophone(context, job)) {
+                if (job.optString("state").equals("paused") && !needsMicrophone(context, job)
+                        && !(job.optString("engine").equals("accelerated")&&RemoteSpeechSession.needsResubmit(remoteFolder(context,job.getString("id"))))) {
                     selected.add(StudioFiles.requeue(context, job.getString("id")));
                 }
             }
@@ -349,9 +357,9 @@ public class StudioService extends Service {
             boolean useGradio=job.optString("protocol","rest").equals("gradio");
             if(!job.optString("protocol","rest").equals(getSharedPreferences("studio",0).getString("accelerated-protocol","rest")))throw new IOException("GPU 调用方式已改变，请重新创建任务");
             if(useGradio&&!provider.equals("hf"))throw new IOException("Space 平台配置无效");
-            long millis;
+            String referenceText=null;File ref=null;
             if(useGradio) {
-                String profile=job.optString("profile"),referenceText=null;File ref=null;
+                String profile=job.optString("profile");
                 if(!profile.equals(getSharedPreferences("studio",0).getString("gpu-hf-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
                 if(!profile.isEmpty()) {
                     if(!profile.matches("[a-f0-9-]{36}"))throw new IOException("参考人物音色编号无效");
@@ -364,15 +372,10 @@ public class StudioService extends Service {
                     }
                     ref=reference;referenceText=meta.optString("referenceText","");
                 }
-                millis=gradio.generate(endpoint,new SecretStore(this,"gpu-hf").read(),job.getString("text"),job.optString("languageName","Auto"),
-                    (float)job.optDouble("speed",1),job.optInt("steps",32),ref,referenceText,pending,cancel,m->state(job,"running",m));
-            } else {
-                if(!provider.equals("custom")&&!provider.equals("modal"))throw new IOException("GPU 平台配置无效");
-                millis = accelerated.generate(endpoint, new SecretStore(this,provider.equals("modal")?"gpu-modal":"accelerated").read(),
-                    job.optString("model"),job.optString("apiVoice","auto"),job.getString("text"),
-                    job.optString("language","zh"),(float)job.optDouble("speed",1),job.optInt("steps",32),
-                    job.optLong("seed",42),pending,cancel,m->state(job,"running",m));
-            }
+            } else if(!provider.equals("custom")&&!provider.equals("modal"))throw new IOException("GPU 平台配置无效");
+            String scope=useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
+            long millis=RemoteSpeechPipeline.generate(job,new SecretStore(this,scope).read(),ref,referenceText,remoteFolder(this,job.getString("id")),
+                pending,cancel,m->state(job,"running",m),gradio,accelerated);
             OmniEngine.check(cancel);
             job.put("duration",millis).put("generationMillis",(System.nanoTime()-start)/1000000);
             if(!pending.renameTo(out))throw new IOException("接口音频保存失败");

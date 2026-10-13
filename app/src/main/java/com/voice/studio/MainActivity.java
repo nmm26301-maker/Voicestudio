@@ -320,13 +320,17 @@ public class MainActivity extends Activity {
         });
     }
 
-    void resumeTrackedJob() {
+    void resumeTrackedJob() {resumeTrackedJob(false);}
+    void resumeTrackedJob(boolean allowResubmit) {
         if (isGenerating() || trackedJobId.isEmpty()) return;
         try {
-            StudioService.resume(this, trackedJobId);
+            StudioService.resume(this, trackedJobId,allowResubmit);
             trackedJob.put("state", "queued").put("progress", "等待继续");
             refreshTracked = true; lastMessage = ""; cancelRequested = false;
             updateJobUI(); pollTrackedJob();
+        } catch (RemoteSpeechPipeline.ResubmitRequired e) {
+            new CosmicDialogBuilder(this).setTitle("重新提交未完成段？").setMessage(e.getMessage())
+                .setNegativeButton("保留进度",null).setPositiveButton("仅重做未完成段",(d,n)->resumeTrackedJob(true)).show();
         } catch (Exception e) { toast(e.getMessage()); }
     }
 
@@ -1711,12 +1715,19 @@ public class MainActivity extends Activity {
 
     String gpuProvider() { return prefs.getString("accelerated-provider","custom"); }
 
+    String gpuTab(){return prefs.getString("gpu-tab",prefs.getString("accelerated-url","").isEmpty()?"hf":gpuProvider());}
     void freeGpuSettings() {
+        final String tab=gpuTab();
         if(gpuProvider().equals("custom"))prefs.edit().putString("gpu-custom-url",prefs.getString("accelerated-url", ""))
             .putString("gpu-custom-model",prefs.getString("accelerated-model","k2-fsa/OmniVoice")).putString("gpu-custom-voice",prefs.getString("accelerated-voice","auto")).apply();
         LinearLayout intro=card();
-        info(intro,"免费 GPU","使用自己的账号额度。选择平台后在创作页生成；额度不足会提示，不会自动切换收费服务。文字和主动选择的参考录音会发往该平台。");
+        info(intro,"免费 GPU","选择平台后回到创作页生成。长文自动分段，已完成段会保存；额度不足时可保留进度稍后继续。文字和主动选择的参考录音会发往所选平台。");
         add(content,intro);gap(content,12);
+        LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);
+        String[] codes={"hf","modal","kaggle","custom"},labels={"ZeroGPU","Modal","Kaggle","自定义"};
+        for(int i=0;i<codes.length;i++){final String code=codes[i];tabs.addView(button(labels[i],tab.equals(code),()->{prefs.edit().putString("gpu-tab",code).apply();render();}),new LinearLayout.LayoutParams(0,-2,1));}
+        add(content,tabs);gap(content,12);
+        if(tab.equals("hf")) {
         LinearLayout hf=card();info(hf,"Hugging Face ZeroGPU","官方 OmniVoice 可直接尝试。匿名和免费账号有每日计算额度、可能排队；不是音频时长额度。自己部署需满足账号条件。浏览器登录和应用 Token 分别配置。");
         add(hf,button("注册 / 申请 Hugging Face",false,()->openUrl("https://huggingface.co/join")));
         add(hf,button("查看 ZeroGPU 额度与申请条件",false,()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
@@ -1724,6 +1735,7 @@ public class MainActivity extends Activity {
         add(hf,button("申请 / 管理 HF Token",false,()->openUrl("https://huggingface.co/settings/tokens")));
         add(hf,button("配置并使用 ZeroGPU",gpuProvider().equals("hf")&&engine.equals("accelerated"),()->gradioConfig()));
         add(content,hf);gap(content,12);
+        } else if(tab.equals("modal")) {
         LinearLayout modal=card();info(modal,"Modal 免费计算额度","Starter 当前每月提供 30 美元计算额度。需要把项目中的服务部署到自己的 Modal 账号并填写返回的 HTTPS 地址。超额可能收费，额度以账号为准。");
         add(modal,button("注册 / 申请 Modal",false,()->openUrl("https://modal.com/signup")));
         add(modal,button("查看免费额度 / 价格",false,()->openUrl("https://modal.com/pricing")));
@@ -1731,6 +1743,7 @@ public class MainActivity extends Activity {
         add(modal,button("部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/FREE_GPU.md#modal")));
         add(modal,button("配置并使用 Modal",gpuProvider().equals("modal")&&engine.equals("accelerated"),()->modalConfig()));
         add(content,modal);gap(content,12);
+        } else if(tab.equals("kaggle")) {
         LinearLayout kaggle=card();info(kaggle,"Kaggle 免费 GPU 任务","导出创作页全文为 Notebook，在 Kaggle 开启 GPU 和 Internet 后运行，再把 WAV 导回作品。Kaggle 没有常驻语音 API；GPU 额度和验证条件以账号页面为准。");
         add(kaggle,button("注册 / 申请 Kaggle",false,()->openUrl("https://www.kaggle.com/account/login?phase=startRegisterTab")));
         add(kaggle,button("账号验证 / 查看 GPU 额度",false,()->openUrl("https://www.kaggle.com/settings")));
@@ -1738,6 +1751,7 @@ public class MainActivity extends Activity {
         add(kaggle,button("导出当前全文 GPU 任务",true,()->exportKaggle()));
         add(kaggle,button("导入 Kaggle 生成的 WAV",false,()->importKaggle()));
         add(content,kaggle);gap(content,12);
+        }
     }
 
     void gradioConfig() {
@@ -1749,7 +1763,7 @@ public class MainActivity extends Activity {
         String[] profile={prefs.getString("gpu-hf-profile","")};
         CheckBox upload=new CheckBox(this);upload.setText("合成时上传所选参考录音（3—10 秒）");upload.setTextColor(INK);upload.setChecked(!profile[0].isEmpty());add(form,upload);
         add(form,button("选择已保存人物音色",false,()->pickGpuProfile(profile)));
-        add(form,text("未选择录音时使用自动音色。录音仅发送给上方 Space；官方 Space 不接受本机采样种子。自建 Space 需采用项目中的兼容模板。",12,MUTED,false));
+        add(form,text("长文分段可能排队多次；自动音色各段可能有变化，选择人物录音可保持更一致。参考片段同一任务仅上传一次。官方 Space 不接受本机采样种子。",12,MUTED,false));
         ScrollView scroll=new ScrollView(this);scroll.addView(form);
         AlertDialog dialog=new CosmicDialogBuilder(this).setTitle("ZeroGPU 合成设置").setView(scroll).setNegativeButton("取消",null).setPositiveButton("保存并使用",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
@@ -1780,7 +1794,7 @@ public class MainActivity extends Activity {
         EditText url=field("https://你的服务.modal.run",prefs.getString("gpu-modal-url",""),false);
         String token="";try{token=new SecretStore(this,"gpu-modal").read();}catch(Exception ignored){}
         EditText key=field("服务 VOICE_API_TOKEN（不是 Modal 账号密钥）",token,true);key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-        add(form,url);add(form,key);add(form,text("部署项目 server/modal_app.py 后粘贴地址与自己设置的服务密钥。默认每天 10 次、每次最多 2000 字，使用自动音色。",12,MUTED,false));
+        add(form,url);add(form,key);add(form,text("部署项目 server/modal_app.py 后粘贴地址与自己设置的服务密钥。默认每天 10 次、每段最多 2000 字；长文自动分段，每段计一次调用，使用自动音色。",12,MUTED,false));
         AlertDialog dialog=new CosmicDialogBuilder(this).setTitle("Modal GPU 合成设置").setView(form).setNegativeButton("取消",null).setPositiveButton("保存并使用",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{
             String address=AcceleratedSpeechClient.endpoint(url.getText().toString()),value=key.getText().toString().trim();AcceleratedSpeechClient.token(value);
@@ -1835,6 +1849,7 @@ public class MainActivity extends Activity {
 
     void acceleratedSettings() {
         freeGpuSettings();
+        if(!gpuTab().equals("custom"))return;
         LinearLayout c=card();
         info(c,"自定义 GPU 加速接口","连接你已部署的 OmniVoice 兼容服务。点击生成会把文字发给该服务；本机参考录音不会自动上传。速度取决于服务器和网络。");
         gap(c,12);
@@ -2088,7 +2103,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.9 · 云端与离线合成",
+                "VoiceStudio 1.5.10 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");
@@ -2192,7 +2207,6 @@ public class MainActivity extends Activity {
         }
         if ("accelerated".equals(engine)) {
             try {
-                if(gpuProvider().equals("modal")&&s.length()>2000)throw new IOException("Modal 免费服务模板每次最多 2000 字，请分段生成");
                 String address=prefs.getString("accelerated-url","");
                 boolean gradio=prefs.getString("accelerated-protocol","rest").equals("gradio");
                 if(gradio)GradioSpeechClient.base(address);else AcceleratedSpeechClient.endpoint(address);

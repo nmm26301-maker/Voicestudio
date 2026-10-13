@@ -62,6 +62,9 @@ final class GradioSpeechClient {
         while((n=in.read(x))!=-1){AcceleratedSpeechClient.check(cancelled);if(b.size()+n>1024*1024)throw new IOException("Space 响应过大");b.write(x,0,n);}
         return b.toString("UTF-8");
     }
+    JSONObject uploadReference(String address,String key,File ref,AtomicBoolean cancelled) throws Exception {
+        AcceleratedSpeechClient.token(key);return upload(base(address),key,ref,cancelled);
+    }
     private JSONObject upload(String origin,String key,File ref,AtomicBoolean cancelled) throws Exception {
         if(!ref.isFile() || ref.length()>2*1024*1024)throw new IOException("参考录音不存在或超过 2 MiB");
         String boundary="VoiceStudio"+UUID.randomUUID().toString().replace("-","");
@@ -101,31 +104,56 @@ final class GradioSpeechClient {
             File output,AtomicBoolean cancelled,AcceleratedSpeechClient.Progress progress) throws Exception {
         return generate(address,key,text,language,speed,steps,reference,null,output,cancelled,progress);
     }
+    interface Checkpoint { JSONObject data(); void save() throws Exception; }
     long generate(String address,String key,String text,String language,float speed,int steps,File reference,String referenceText,
             File output,AtomicBoolean cancelled,AcceleratedSpeechClient.Progress progress) throws Exception {
+        String origin=base(address);AcceleratedSpeechClient.token(key);
+        request(text,language,speed,steps,null,referenceText);
+        JSONObject uploaded=null;if(reference!=null){progress.update("上传所选参考录音…");uploaded=upload(origin,key,reference,cancelled);}
+        JSONObject state=new JSONObject();
+        return generatePrepared(origin,key,text,language,speed,steps,uploaded,referenceText,output,cancelled,progress,
+            new Checkpoint(){public JSONObject data(){return state;}public void save(){}});
+    }
+    long generatePrepared(String address,String key,String text,String language,float speed,int steps,JSONObject uploaded,String referenceText,
+            File output,AtomicBoolean cancelled,AcceleratedSpeechClient.Progress progress,Checkpoint checkpoint) throws Exception {
         String origin=base(address);AcceleratedSpeechClient.token(key);boolean complete=false;
-        request(text,language,speed,steps,null);
+        JSONObject state=checkpoint.data();request(text,language,speed,steps,uploaded,referenceText);
         try {
-            JSONObject uploaded=null;if(reference!=null){progress.update("上传所选参考录音…");uploaded=upload(origin,key,reference,cancelled);}
             String route=uploaded==null?"_design_fn":"_clone_fn";
-            byte[] body=request(text,language,speed,steps,uploaded,referenceText).toString().getBytes("UTF-8");
-            HttpURLConnection post=open(new URL(origin+"/gradio_api/call/"+route),key,"POST",cancelled);String id;
-            try {
-                post.setDoOutput(true);post.setFixedLengthStreamingMode(body.length);post.setRequestProperty("Content-Type","application/json");
-                progress.update("提交免费 GPU 合成任务…");try(OutputStream out=post.getOutputStream()){out.write(body);}status(post);
-                try(InputStream in=post.getInputStream()){id=new JSONObject(json(in,cancelled)).getString("event_id");}
-                if(!id.matches("[a-zA-Z0-9_-]{1,128}"))throw new IOException("Space 任务编号无效");
-            }finally{close(post);}
-            JSONArray result;HttpURLConnection queue=open(new URL(origin+"/gradio_api/call/"+route+"/"+id),key,"GET",cancelled);
-            try {status(queue);progress.update("免费 GPU 排队或合成中…");try(InputStream in=queue.getInputStream()){result=events(in,cancelled,progress);}}finally{close(queue);}
-            URL audio=fileUrl(origin,result.getJSONObject(0));HttpURLConnection download=open(audio,key,"GET",cancelled);
+            JSONObject audio=state.optJSONObject("audio");
+            if(audio==null) {
+                String phase=state.optString("phase");
+                if(phase.equals("submitted")||phase.equals("submitting"))throw new RemoteSpeechPipeline.ResubmitRequired();
+                state.put("phase","submitting");checkpoint.save();
+                byte[] body=request(text,language,speed,steps,uploaded,referenceText).toString().getBytes("UTF-8");
+                HttpURLConnection post=open(new URL(origin+"/gradio_api/call/"+route),key,"POST",cancelled);String id;
+                try {
+                    post.setDoOutput(true);post.setFixedLengthStreamingMode(body.length);post.setRequestProperty("Content-Type","application/json");
+                    progress.update("提交免费 GPU 合成任务…");try(OutputStream out=post.getOutputStream()){out.write(body);}
+                    int code=post.getResponseCode();
+                    if(code==400||code==401||code==403||code==404||code==422||code==429){state.remove("phase");checkpoint.save();}
+                    status(post);
+                    try(InputStream in=post.getInputStream()){id=new JSONObject(json(in,cancelled)).getString("event_id");}
+                    if(!id.matches("[a-zA-Z0-9_-]{1,128}"))throw new IOException("Space 任务编号无效");
+                    state.put("phase","submitted").put("event_id",id);checkpoint.save();
+                }finally{close(post);}
+                JSONArray result;HttpURLConnection queue=open(new URL(origin+"/gradio_api/call/"+route+"/"+id),key,"GET",cancelled);
+                try {status(queue);progress.update("免费 GPU 排队或合成中…");try(InputStream in=queue.getInputStream()){result=events(in,cancelled,progress);}}finally{close(queue);}
+                audio=result.getJSONObject(0);fileUrl(origin,audio);state.put("audio",audio).put("phase","download");checkpoint.save();
+            }
+            URL url=fileUrl(origin,audio);HttpURLConnection download=open(url,key,"GET",cancelled);
             try {
                 status(download);progress.update("接收完整 GPU 音频…");
                 try(InputStream in=download.getInputStream();OutputStream out=new FileOutputStream(output)) {
                     long total=0;byte[] x=new byte[32768];int n;while((n=in.read(x))!=-1){AcceleratedSpeechClient.check(cancelled);total+=n;if(total>64L*1024*1024)throw new IOException("音频超过 64 MiB，请拆分文本");out.write(x,0,n);}
                 }
             }finally{close(download);}
-            long millis=AcceleratedSpeechClient.validate(output,text,cancelled);complete=true;return millis;
+            long millis;
+            try {millis=AcceleratedSpeechClient.validate(output,text,cancelled);}
+            catch(AcceleratedSpeechClient.IncompleteSpeech error) {
+                state.remove("audio");state.put("phase","submitted");checkpoint.save();throw error;
+            }
+            complete=true;return millis;
         }finally{if(!complete)output.delete();}
     }
 }

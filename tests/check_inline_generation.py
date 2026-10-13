@@ -11,6 +11,8 @@ for signature in ['void generate()', 'void enqueueFishText(String text)']:
     method=body(signature)
     assert 'startActivity(' not in method and 'change(' not in method, signature+' navigates on generation'
     assert 'trackJob(StudioService.enqueue(this, job), job)' in method, signature+' does not track service job'
-assert 'StudioService.resume(this, trackedJobId)' in body('void resumeTrackedJob()')
+assert 'resumeTrackedJob(false)' in body('void resumeTrackedJob()')
+assert 'StudioService.resume(this, trackedJobId,allowResubmit)' in body('void resumeTrackedJob(boolean allowResubmit)')
+assert 'ResubmitRequired' in body('void resumeTrackedJob(boolean allowResubmit)')
 assert '.setAction("cancelTask").putExtra("id", trackedJobId)' in body('void cancelJob()')
 print('Inline generation routing: Omni/Fish stay on page; per-task resume/cancel wired. Source guard only.')

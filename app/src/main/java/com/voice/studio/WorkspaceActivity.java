@@ -1884,7 +1884,8 @@ public class WorkspaceActivity extends Activity {
                 + (getFilesDir().getUsableSpace() / 1024 / 1024) + " MiB");
     }
 
-    void resumeTask(String id) {
+    void resumeTask(String id) {resumeTask(id,false);}
+    void resumeTask(String id,boolean allowResubmit) {
         try {
             JSONObject job = StudioFiles.read(StudioFiles.job(this, id));
             if (StudioService.needsMicrophone(this, job)
@@ -1893,8 +1894,11 @@ public class WorkspaceActivity extends Activity {
                 requestPermissions(new String[]{"android.permission.RECORD_AUDIO"}, 88);
                 return;
             }
-            StudioService.resume(this, id); pendingResume = "";
+            StudioService.resume(this, id,allowResubmit); pendingResume = "";
             toast(StudioService.needsMicrophone(this, job) ? "正在开始录音" : "任务已加入队列");
+        } catch(RemoteSpeechPipeline.ResubmitRequired error) {
+            new CosmicDialogBuilder(this).setTitle("重新提交未完成段？").setMessage(error.getMessage())
+                .setNegativeButton("保留进度",null).setPositiveButton("仅重做未完成段",(d,n)->resumeTask(id,true)).show();
         } catch (Exception error) { toast(error.getMessage()); }
     }
 

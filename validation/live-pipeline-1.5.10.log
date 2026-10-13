@@ -1,0 +1,19 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Accelerated API: 67 checks passed; mock transport only, no live GPU/server speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Remote pipeline: 10822 Unicode/checkpoint/transport/PCM/consent checks passed; mocked speech only.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+复用第 1 / 2 段…
+复用第 2 / 2 段…
+完整分段已保存，正在合并…
+Prior HF live cache verified with current pipeline; duration=38000ms elapsed=64ms chunks=2 HTTP=0
+复用第 1 / 2 段…
+复用第 2 / 2 段…
+完整分段已保存，正在合并…
+Completed cache reuse elapsed=31ms additionalHTTP=0; no semantic or phone speed acceptance
