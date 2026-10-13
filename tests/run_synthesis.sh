@@ -23,10 +23,13 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$ou
  "$project_dir/app/src/main/java/com/voice/studio/WaveformEnvelope.java" \
  "$project_dir/app/src/main/java/com/voice/studio/PcmAudio.java" \
  "$project_dir/app/src/main/java/com/voice/studio/OmniChunkPipeline.java" \
+ "$project_dir/app/src/main/java/com/voice/studio/OmniPcmWriter.java" \
+ "$project_dir/tests/PcmWriterTest.java" \
  "$project_dir/tests/ChunkPipelineTest.java" \
  "$project_dir/tests/AccelerationTest.java" \
  "$project_dir/tests/TokenizerProgressTest.java" \
  "$project_dir/tests/SynthesisFlowTest.java" "$project_dir/tests/FishClientTest.java"
+java -cp "$out_dir:$JSON_JAR" com.voice.studio.PcmWriterTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.SynthesisFlowTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.FishClientTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.AccelerationTest

@@ -14,6 +14,10 @@ public class UpstreamEngineTest {
     OmniEngine engine=new OmniEngine();File output=new File(folder,"current.wav");
     List<String> progress=new ArrayList<>();
     engine.generate(models,text,"zh",1,output,new AtomicBoolean(),progress::add,ref,"None",steps,42);
+    File frozen=new File(folder,"frozen.wav");LegacyEngine1511 before=new LegacyEngine1511();
+    before.generate(models,text,"zh",1,frozen,new AtomicBoolean(),m->{},ref,"None",steps,42);
+    check(Arrays.equals(Files.readAllBytes(frozen.toPath()),Files.readAllBytes(output.toPath())),"same entire native WAV as frozen 1.5.11");
+    check(engine.bufferedPcmChunks==engine.chunkCount&&engine.pcmWriteNanos>0,"native decoder actually uses bounded PCM output");
     List<String> parts=OmniEngine.split(text,1,ref);long samples=0;
     for(String part:parts) {
      double raw=ref.frames*OmniDuration.total(part)/OmniDuration.total(ref.text);
@@ -28,6 +32,20 @@ public class UpstreamEngineTest {
     check(engine.chunkCount==parts.size()&&engine.backboneRuns==steps*parts.size(),"all chunks and model steps executed");
     check(engine.running==null,"native handles released");
     check(progress.stream().filter(p->p.contains("本机合成 · "+steps+" / "+steps)).count()==parts.size(),"each segment completes");
+   }
+   // Automatic multi-segment anchor parity includes RMS, code ownership and silence joins.
+   StringBuilder longer=new StringBuilder();for(int i=0;i<35;i++)longer.append("你好，这是完整的声音创作测试。欢迎来到声音工作室。 ");
+   for(VoicePrompt voice:new VoicePrompt[]{null,ref}) {
+    OmniEngine current=new OmniEngine();LegacyEngine1511 frozen=new LegacyEngine1511();File a=new File(folder,"new-long.wav"),b=new File(folder,"old-long.wav");
+    current.generate(models,longer.toString(),"zh",1,a,new AtomicBoolean(),m->{},voice,"None",8,42);
+    frozen.generate(models,longer.toString(),"zh",1,b,new AtomicBoolean(),m->{},voice,"None",8,42);
+    check(current.chunkCount>1,"multi-segment fixture exercised");
+    check(Arrays.equals(Files.readAllBytes(a.toPath()),Files.readAllBytes(b.toPath())),"automatic/reference multi-segment native PCM parity");
+    check(current.bufferedPcmChunks==current.chunkCount,"every native chunk streamed to bounded writer");
+    if(frozen.automaticPrompt!=null) {
+     check(current.automaticPrompt!=null,"automatic anchor still available");
+     check(current.automaticPrompt.rms==frozen.automaticPrompt.rms&&Arrays.equals(current.automaticPrompt.codes,frozen.automaticPrompt.codes),"automatic anchor RMS/codes unchanged");
+    }
    }
    OmniEngine engine=new OmniEngine();AtomicBoolean cancel=new AtomicBoolean();boolean failed=false;
    try {engine.generate(models,"你好。","zh",1,new File(folder,"cancel.wav"),cancel,m->{if(m.contains("本机合成 · 1 /")){cancel.set(true);engine.cancel();}},ref,"None",16,42);}

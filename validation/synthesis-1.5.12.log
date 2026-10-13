@@ -1,0 +1,15 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Host 10s decoder PCM write median: previous=1.366 ms; bounded=1.273 ms; reusable sample+byte buffers=98304 bytes (not model/phone speed).
+Bounded PCM writer: 838 exact-WAV/RMS/range/rollback/cancellation checks passed.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Host segmentation benchmark (not phone inference): old=388.743864 ms, new=15.797444 ms
+Synthesis flow: 8560 assertions passed (host only).
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Fish mock transport: 55 assertions passed; no live API calls.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Tokenizer / actual progress: 17555 checks passed (host JVM, not device inference)
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Staged chunk pipeline: 86502 checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.

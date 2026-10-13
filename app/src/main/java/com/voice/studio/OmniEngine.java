@@ -13,7 +13,8 @@ final class OmniEngine {
     long lastGenerationMillis, tokenizerNanos, loadNanos, inferenceNanos, decodeNanos, modelRunNanos, samplingNanos;
     int backboneLoads, decoderLoads, chunkCount, backboneRuns, samplingWorkers, parallelSamplingRounds;
     int prePinnedChunks, outputShapeFallbacks;
-    long outputCopyBytes;
+    long outputCopyBytes, pcmWriteNanos;
+    int bufferedPcmChunks;
     VoicePrompt automaticPrompt;
     volatile OrtSession.RunOptions running;
 
@@ -42,7 +43,7 @@ final class OmniEngine {
         samplingWorkers = parallelSamplingRounds = 0;
         prePinnedChunks = outputShapeFallbacks = 0;outputCopyBytes = 0;
         automaticPrompt = null;
-        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;
+        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;pcmWriteNanos=0;bufferedPcmChunks=0;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
         boolean automatic = ref == null;
@@ -218,16 +219,12 @@ final class OmniEngine {
         if (samples == null || !samples.hasRemaining()) throw new IOException("模型返回空音频");
         if (samples.remaining() != Math.multiplyExact(chunk.frames, 960))
             throw new IOException("解码音频长度与模型帧数不一致，已停止保存不完整作品");
-        float[] pcm = new float[samples.remaining()];
-        samples.get(pcm);
-        if (ref != null && ref.rms < .1)
-            for (int i = 0; i < pcm.length; i++) pcm[i] *= ref.rms / .1;
-        VoicePrompt anchor = ref == null && chunk.frames >= 75 && chunk.text.length() <= 2000
-                ? new VoicePrompt(chunk.text, chunk.codes.clone(), chunk.frames,
-                        Math.max(.1, PcmAudio.rms(pcm))) : null;
-        PcmAudio.fade(pcm);
-        check(cancelled);
-        writer.write(pcm);
+        boolean anchorEligible=ref==null&&chunk.frames>=75&&chunk.text.length()<=2000;
+        double gain=ref!=null&&ref.rms<.1?ref.rms/.1:1;
+        long writeStart=System.nanoTime();
+        double rms=OmniPcmWriter.write(writer,samples,gain,anchorEligible,cancelled);
+        pcmWriteNanos+=System.nanoTime()-writeStart;bufferedPcmChunks++;
+        VoicePrompt anchor=anchorEligible?new VoicePrompt(chunk.text,chunk.codes.clone(),chunk.frames,Math.max(.1,rms)):null;
         check(cancelled);
         return anchor;
     }
