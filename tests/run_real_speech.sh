@@ -9,7 +9,7 @@ project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 out_dir="$(mktemp -d)"
 trap 'rm -rf "$out_dir"' EXIT
 sources=()
-for name in OmniEngine OmniPcmWriter OmniPrompt OmniDecoderRun OmniChunkPipeline OmniTensorRun OmniOutputShape OmniStepSampler OmniSamplerWorkers OmniTokenizer OmniTokenizerCache OmniWordPattern OmniDuration OmniSegments PcmAudio VoicePrompt;do
+for name in OmniEngine OmniPcmWriter OmniEncodingCache OmniPrompt OmniDecoderRun OmniChunkPipeline OmniTensorRun OmniOutputShape OmniStepSampler OmniSamplerWorkers OmniTokenizer OmniTokenizerCache OmniWordPattern OmniDuration OmniSegments PcmAudio VoicePrompt;do
  sources+=("$project_dir/app/src/main/java/com/voice/studio/$name.java")
 done
 mkdir -p "$2"

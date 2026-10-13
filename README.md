@@ -1,8 +1,8 @@
-# VoiceStudio 1.5.12
+# VoiceStudio 1.5.13
 
-Android ARM64 声音工作室：文字合成、音色克隆、录音转写、字幕配音、翻译、人声分离与有声书。最低 Android 8.0（API 26），当前源码版本 `1.5.12-hybrid`，`versionCode 28`。
+Android ARM64 声音工作室：文字合成、音色克隆、录音转写、字幕配音、翻译、人声分离与有声书。最低 Android 8.0（API 26），当前源码版本 `1.5.13-hybrid`，`versionCode 29`。
 
-本次优化本地解码到 WAV 的输出处理：使用固定 96 KiB 浮点/字节缓冲区，避免复制整段 PCM，再逐段处理响度与淡入淡出。与冻结的 1.5.11 输出逐字节一致，自动音色锚点 RMS 与 codes 一致；中途取消/无效采样会回滚当前段，保留先前数据。任务记录新增实际 PCM 写入耗时与缓冲区大小，便于定位手机瓶颈。沿用原签名与包名，版本代码 28。免费 GPU [使用与申请说明](docs/FREE_GPU.md)。这些检查不代表真实模型读音验收，也没有测量手机推理速度。
+本次优化本地长文恢复：完成的分段推理结果保存在当前任务私有目录，暂停/失败后继续只计算缺失分段；缓存全部可用时主合成模型无需加载和运行，仍需解码为完整音频。分段缓存绑定模型信息、分词器、文本、语速、语言、步数、种子与参考音色，带完整性校验；损坏缓存只重算对应段。恢复的 WAV 与不中断生成逐字节一致，自动音色锚点也一致。版本 1.5.13 / 29，原包名与签名。首次生成仍需完整推理，本版没有手机速度或真实读音质量实测。免费 GPU [使用与申请说明](docs/FREE_GPU.md)。
 
 ## 功能在哪里
 
@@ -38,7 +38,7 @@ Android ARM64 声音工作室：文字合成、音色克隆、录音转写、字
 - 主播放器在耳机断开时暂停；页面重建不再重复用旧分享文本覆盖已修改草稿。
 - 缺少原签名时停止发行构建，不再自动生成无法覆盖旧安装的新密钥。
 
-本次变化见 [1.5.12 更新记录](CHANGELOG-1.5.12.md)，功能修复见 [1.5.1 更新记录](CHANGELOG-1.5.1.md)，设备步骤见 [正式版安装与验收](docs/INSTALL_1.5.12.md) 和 [功能核对](docs/FUNCTION_AUDIT_1.5.1.md)。
+本次变化见 [1.5.13 更新记录](CHANGELOG-1.5.13.md)，功能修复见 [1.5.1 更新记录](CHANGELOG-1.5.1.md)，设备步骤见 [正式版安装与验收](docs/INSTALL_1.5.13.md) 和 [功能核对](docs/FUNCTION_AUDIT_1.5.1.md)。
 
 ## 构建与检查
 
@@ -57,16 +57,16 @@ VOICE_UNSIGNED=1 bash tools/build.sh
 
 要构建原安装的更新包，必须恢复原 `signing/voicestudio-development.p12` 后运行 `bash tools/build.sh`。**不要用新密钥替代，也不要卸载旧应用来绕过签名不一致**；卸载可能删除内部作品、音色和模型。原私有签名不在公开仓库中。
 
-### 正式版：覆盖已交付的 1.5.1—1.5.11
+### 正式版：覆盖已交付的 1.5.1—1.5.12
 
 恢复已备份的 `signing/voicestudio-preview.p12` 后执行：
 
 ```bash
 VOICE_STANDALONE=1 bash tools/build.sh
-python3 tools/verify_upgrade.py build-manual/VoiceStudio-1.5.12-Hybrid-Standalone.apk /path/to/VoiceStudio-1.5.1-Hybrid-Preview.apk
+python3 tools/verify_upgrade.py build-manual/VoiceStudio-1.5.13-Hybrid-Standalone.apk /path/to/VoiceStudio-1.5.1-Hybrid-Preview.apk
 ```
 
-正式版名称为“VoiceStudio”、版本为 `1.5.12-hybrid`，包名继续使用 `com.voice.studio.preview` 以保留测试版的安装身份和数据。签名文件名及别名为兼容旧备份而保留，不要重新生成。`VOICE_STANDALONE=1` 会核对已交付测试版的证书指纹；密钥缺失或不匹配时拒绝构建。
+正式版名称为“VoiceStudio”、版本为 `1.5.13-hybrid`，包名继续使用 `com.voice.studio.preview` 以保留测试版的安装身份和数据。签名文件名及别名为兼容旧备份而保留，不要重新生成。`VOICE_STANDALONE=1` 会核对已交付测试版的证书指纹；密钥缺失或不匹配时拒绝构建。
 
 安装时直接更新已交付的 1.5.1 测试版或 1.5.2—1.5.7 正式版，无需卸载。已在测试版中导入的模型、音色、作品和配置使用同一数据目录；实际保留情况需要手机验收。本分支与原 `com.voice.studio` 的 1.5.0 并存，不自动迁移该旧应用的数据。
 
@@ -75,7 +75,7 @@ python3 tools/verify_upgrade.py build-manual/VoiceStudio-1.5.12-Hybrid-Standalon
 每次生成并交付版本都要单独保留实际 APK 与现有签名备份，不覆盖旧版本、不重新生成密钥、不把私钥上传到公开仓库。构建后运行：
 
 ```bash
-python3 tools/backup_release.py build-manual/VoiceStudio-1.5.12-Hybrid-Standalone.apk /private/release-backups
+python3 tools/backup_release.py build-manual/VoiceStudio-1.5.13-Hybrid-Standalone.apk /private/release-backups
 ```
 
 脚本核对 APK 与原有密钥的签名证书，并校验归档的 APK 和密钥字节。完整备份 ZIP 私下保存；安装时使用单独 APK。
@@ -93,7 +93,7 @@ keytool -genkeypair -keystore signing/voicestudio-preview.p12 -storetype PKCS12 
   -keyalg RSA -keysize 2048 -validity 3650 \
   -dname 'CN=VoiceStudio Preview, O=VoiceStudio, C=CN'
 VOICE_PREVIEW=1 bash tools/build.sh
-python3 tools/verify_preview.py build-manual/VoiceStudio-1.5.12-Hybrid-Preview.apk /path/to/original-1.5.0.apk
+python3 tools/verify_preview.py build-manual/VoiceStudio-1.5.13-Hybrid-Preview.apk /path/to/original-1.5.0.apk
 ```
 
 此前测试版的签名现在继续用于独立正式版，不能覆盖原 1.5.0。备份 `.p12` 到私人存储；签名文件被 Git 忽略，不应提交到公开仓库。默认原包名发行构建仍核对原版证书指纹，拒绝不匹配的密钥。

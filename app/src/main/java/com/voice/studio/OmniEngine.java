@@ -14,7 +14,7 @@ final class OmniEngine {
     int backboneLoads, decoderLoads, chunkCount, backboneRuns, samplingWorkers, parallelSamplingRounds;
     int prePinnedChunks, outputShapeFallbacks;
     long outputCopyBytes, pcmWriteNanos;
-    int bufferedPcmChunks;
+    int bufferedPcmChunks, reusedEncodingChunks;
     VoicePrompt automaticPrompt;
     volatile OrtSession.RunOptions running;
 
@@ -31,6 +31,12 @@ final class OmniEngine {
     void generate(File modelDir, String text, String language, float speed, File output,
             AtomicBoolean cancelled, Progress progress, VoicePrompt ref, String instruct,
             int steps, long seed) throws Exception {
+        generate(modelDir,text,language,speed,output,cancelled,progress,ref,instruct,steps,seed,null);
+    }
+
+    void generate(File modelDir,String text,String language,float speed,File output,
+            AtomicBoolean cancelled,Progress progress,VoicePrompt ref,String instruct,
+            int steps,long seed,File checkpoint) throws Exception {
         if (text == null || text.trim().isEmpty() || text.length() > 12000)
             throw new IOException("文本需为 1—12000 字");
         if (!Float.isFinite(speed) || speed < .5 || speed > 2) throw new IOException("语速无效");
@@ -43,7 +49,7 @@ final class OmniEngine {
         samplingWorkers = parallelSamplingRounds = 0;
         prePinnedChunks = outputShapeFallbacks = 0;outputCopyBytes = 0;
         automaticPrompt = null;
-        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;pcmWriteNanos=0;bufferedPcmChunks=0;
+        decodedPinnedChunks = 0;decoderOutputCopyBytes = 0;pcmWriteNanos=0;bufferedPcmChunks=0;reusedEncodingChunks=0;
         List<String> parts = split(text, speed, ref);
         chunkCount = parts.size();
         boolean automatic = ref == null;
@@ -52,6 +58,8 @@ final class OmniEngine {
         long tokenStart = System.nanoTime();
         OmniTokenizer tokenizer = tokenizerCache.get(new File(modelDir, "tokenizer.json"));
         tokenizerNanos += System.nanoTime() - tokenStart;
+        check(cancelled);
+        OmniEncodingCache cache=checkpoint==null?null:new OmniEncodingCache(checkpoint,modelDir);
         check(cancelled);
         OrtEnvironment env = OrtEnvironment.getEnvironment();
         env.setTelemetry(false);
@@ -67,23 +75,32 @@ final class OmniEngine {
                     new OmniChunkPipeline.Factory<EncodedChunk, VoicePrompt>() {
                 public OmniChunkPipeline.Encoder<EncodedChunk, VoicePrompt> encoder() throws Exception {
                     check(cancelled);
-                    progress.update("加载本机合成模型…");
-                    long start = System.nanoTime();
-                    OrtSession session = env.createSession(new File(modelDir,
-                            "omnivoice.qint8_per_channel.onnx").getAbsolutePath(), options);
-                    loadNanos += System.nanoTime() - start;
-                    backboneLoads++;
                     return new OmniChunkPipeline.Encoder<EncodedChunk, VoicePrompt>() {
+                        OrtSession session;
                         public EncodedChunk encode(int index, VoicePrompt voice) throws Exception {
-                            long start = System.nanoTime();
+                            check(cancelled);
+                            String part=parts.get(index),instruction=voice==null?instruct:"None";
+                            float rate=automatic&&voice!=null?1:speed;
+                            int frames=Math.max(1,(int)duration(part,rate,voice));
+                            String key=cache==null?null:cache.key(part,language,rate,voice,instruction,steps,seed);
+                            OmniEncodingCache.Entry saved=cache==null?null:cache.read(index,key,frames);
+                            check(cancelled);
+                            if(saved!=null){reusedEncodingChunks++;progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · 复用已完成的本机推理…");return new EncodedChunk(part,saved.codes,saved.frames);}
+                            if(session==null) {
+                                progress.update("加载本机合成模型…");long began=System.nanoTime();
+                                session=env.createSession(new File(modelDir,"omnivoice.qint8_per_channel.onnx").getAbsolutePath(),options);
+                                loadNanos+=System.nanoTime()-began;backboneLoads++;
+                            }
+                            long start=System.nanoTime();EncodedChunk result;
                             try {
-                                return encodeChunk(env, session, run, tokenizer, parts.get(index), language,
-                                        automatic && voice != null ? 1 : speed, cancelled,
-                                        m -> progress.update("第 " + (index + 1) + " / " + parts.size() + " 段 · " + m),
-                                        voice, voice == null ? instruct : "None", steps, seed, workers);
-                            } finally { inferenceNanos += System.nanoTime() - start; }
+                                result=encodeChunk(env,session,run,tokenizer,part,language,rate,cancelled,
+                                    m->progress.update("第 "+(index+1)+" / "+parts.size()+" 段 · "+m),voice,instruction,steps,seed,workers);
+                            }finally{inferenceNanos+=System.nanoTime()-start;}
+                            check(cancelled);
+                            if(cache!=null){cache.save(index,key,result.frames,result.codes);check(cancelled);}
+                            return result;
                         }
-                        public void close() throws Exception { session.close(); }
+                        public void close() throws Exception {if(session!=null)session.close();}
                     };
                 }
                 public OmniChunkPipeline.Decoder<EncodedChunk, VoicePrompt> decoder() throws Exception {

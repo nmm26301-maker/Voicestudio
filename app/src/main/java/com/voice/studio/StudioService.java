@@ -411,7 +411,8 @@ public class StudioService extends Service {
                     ref,
                     job.optString("style", "None"),
                     job.optInt("steps", 32),
-                    job.optLong("seed", 42));
+                    job.optLong("seed", 42),
+                    new File(remoteFolder(this,job.getString("id")).getParentFile(),"local-"+out.getName()));
             OmniEngine.check(cancel);
             if("tts".equals(job.optString("type", "tts"))) {
                 job.put("generationMillis", engine.lastGenerationMillis);
@@ -432,6 +433,7 @@ public class StudioService extends Service {
                         .put("pcmWriteMillis", engine.pcmWriteNanos / 1000000)
                         .put("bufferedPcmChunks", engine.bufferedPcmChunks)
                         .put("pcmBufferBytes", OmniPcmWriter.BUFFER_BYTES)
+                        .put("reusedEncodingChunks", engine.reusedEncodingChunks)
                         .put("decodeMillis", engine.decodeNanos / 1000000)
                         .put("chunks", engine.chunkCount)
                         .put("backboneLoads", engine.backboneLoads)
