@@ -30,12 +30,17 @@ final class RemoteSpeechPipeline {
     static long generate(JSONObject job,String key,File reference,String referenceText,File folder,File output,
             AtomicBoolean cancelled,AcceleratedSpeechClient.Progress progress,GradioSpeechClient gradio,AcceleratedSpeechClient rest) throws Exception {
         boolean useGradio=job.optString("protocol","rest").equals("gradio");String text=job.getString("text");
-        List<String> parts=split(text,useGradio?180:2000);
+        List<String> parts=split(text,useGradio?180:job.optString("model").equals("k2-fsa/OmniVoice")?2000:180);
         RemoteSpeechSession session=new RemoteSpeechSession(folder,RemoteSpeechSession.identity(job,reference,referenceText));
         JSONObject uploaded=session.data.optJSONObject("reference");
         if(reference!=null&&uploaded==null&&useGradio) {
             progress.update("上传所选参考片段（本任务仅一次）…");
             uploaded=gradio.uploadReference(job.getString("endpoint"),key,reference,cancelled);session.data.put("reference",uploaded);session.save();
+        }
+        if(reference!=null&&!useGradio&&uploaded==null){
+            progress.update("上传参考录音到你配置的 HTTPS 云端网关…");
+            uploaded=new CloudReferenceClient().upload(job.getString("endpoint"),key,reference,referenceText,cancelled);
+            session.data.put("reference",uploaded);session.save();
         }
         boolean complete=false;
         try {
@@ -60,7 +65,7 @@ final class RemoteSpeechPipeline {
                         String phase=state.optString("phase");if(phase.equals("submitted")||phase.equals("submitting"))throw new ResubmitRequired();
                         state.put("phase","submitting");session.save();
                         try {
-                            duration=rest.generate(job.getString("endpoint"),key,job.optString("model"),job.optString("apiVoice","auto"),part,
+                            duration=rest.generate(job.getString("endpoint"),key,job.optString("model"),uploaded==null?job.optString("apiVoice","auto"):uploaded.getString("voice"),part,
                                 job.optString("language","zh"),(float)job.optDouble("speed",1),job.optInt("steps",32),job.optLong("seed",42),pending,cancelled,stage);
                         }catch(AcceleratedSpeechClient.RequestRejected error){if(error.definitelyRejected()){state.remove("phase");session.save();}throw error;}
                     }
