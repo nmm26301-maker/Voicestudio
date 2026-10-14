@@ -45,10 +45,10 @@ artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
 out_dir="$(mktemp -d "$artifact_dir/compile.XXXXXX")"
 aapt_flags=()
-apk_name="VoiceStudio-1.5.19-Hybrid.apk"
+apk_name="VoiceStudio-1.5.20-Cloud.apk"
 if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
-    apk_name="VoiceStudio-1.5.19-Hybrid-debug.apk"
+    apk_name="VoiceStudio-1.5.20-Cloud-debug.apk"
 fi
 manifest_flags=()
 if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
@@ -95,7 +95,8 @@ with zipfile.ZipFile(sys.argv[1]) as src,zipfile.ZipFile(sys.argv[2],'w') as dst
     for entry in src.infolist():
         dst.writestr(entry.filename,src.read(entry.filename),compress_type=zipfile.ZIP_STORED if entry.filename=='resources.arsc' else zipfile.ZIP_DEFLATED)
     for f in pathlib.Path(sys.argv[3]).glob('*.dex'): dst.write(f,f.name)
-    for f in pathlib.Path(sys.argv[4]).rglob('*.so'): dst.write(f,'lib/'+str(f.relative_to(sys.argv[4])),compress_type=zipfile.ZIP_STORED)
+    # Cloud build deliberately ships no ONNX native runtime; old local inference is disabled.
+    # Keep compile-time Java stubs for preserving historical metadata and imports.
 PY
 "$android_tools/zipalign" -f -P 16 4 "$out_dir/unsigned.apk" "$out_dir/aligned.apk"
 if [ "${VOICE_UNSIGNED:-0}" = "1" ]; then
