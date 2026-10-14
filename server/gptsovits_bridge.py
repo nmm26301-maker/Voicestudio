@@ -97,7 +97,7 @@ async def speech(task: GPTRequest, authorization: str | None = Header(None)):
         wav.write_bytes(reference)
         os.chmod(wav,0o600)
         body={"text":task.input, "text_lang":lang, "ref_audio_path":str(wav),
-              "prompt_text":task.reference_text, "prompt_lang":lang,
+              "prompt_text":task.reference_text, "prompt_lang":translated_language(None, task.reference_text),
               "speed_factor":task.speed, "text_split_method":"cut5",
               "media_type":"wav", "streaming_mode":False, "batch_size":1}
         async with httpx.AsyncClient(timeout=httpx.Timeout(180,connect=10),follow_redirects=False) as client:
