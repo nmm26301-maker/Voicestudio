@@ -15,7 +15,10 @@ import threading
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import Response
 from pydantic import Field
-from server.cloud_gateway import SpeechRequest, OPEN_MODELS, check_wav, normalized_wav
+from server.cloud_gateway import SpeechRequest, check_wav, normalized_wav
+
+# GPT-SoVITS uses server.gptsovits_bridge (native /tts), never Chatterbox.
+WORKER_MODELS = ("qwen3tts", "cosyvoice3", "indextts25", "chatterboxv3")
 
 app = FastAPI(title="VoiceStudio Open Model Worker", version="1.5.21")
 lock = threading.Lock()
@@ -38,7 +41,7 @@ def auth(authorization):
 
 def engine_name():
     name = os.getenv("VOICE_WORKER_ENGINE", "qwen3tts")
-    if name not in OPEN_MODELS:
+    if name not in WORKER_MODELS:
         raise HTTPException(503, "Unsupported worker engine")
     return name
 
