@@ -1953,6 +1953,8 @@ public class MainActivity extends Activity {
                 if(token.isEmpty())throw new IOException("请配置网关访问密钥");
                 if(voiceId.isEmpty())voiceId="auto";
                 if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择已保存的参考录音");
+                if(clone.isChecked()&&Arrays.asList("fish","minimax","elevenlabs").contains(id))
+                    throw new IOException("此平台需要先创建 Voice ID；原始录音克隆请选择 IndexTTS、CosyVoice、Qwen3-TTS、Chatterbox 或自动");
                 AcceleratedSpeechClient.request("网关配置检查",id,voiceId,omniLang,1,16,42);
                 new SecretStore(this,"accelerated").save(token);
                 prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint)
