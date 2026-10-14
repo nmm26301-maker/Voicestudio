@@ -277,6 +277,9 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
     # Basic truncation guard: duration alone cannot prove every word was pronounced.
     duration = check_wav(wav)
     significant = sum(1 for char in task.input if char.isalnum())
-    if significant >= 30 and duration < max(.5, significant * .012):
+    # Conservative duration floor; still cannot verify actual spoken words.
+    syllables = sum(1 for char in task.input if "\u3400" <= char <= "\u9fff")
+    lower_bound = max(.25, syllables * .03 + (significant - syllables) * .011) if significant else 0
+    if duration < lower_bound:
         raise HTTPException(502, "Audio unexpectedly short; partial output rejected")
     return Response(wav, media_type="audio/wav", headers={"X-VoiceStudio-Engine": model})
