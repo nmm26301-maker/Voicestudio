@@ -518,6 +518,7 @@ public class StudioService extends Service {
     void execute(JSONObject job) throws Exception {
         String id = job.getString("id");
         String type = job.optString("type", "tts");
+        if (!type.equals("tts")) throw new IOException("旧版离线模型任务已停用。历史结果仍可查看；录音克隆请在新版音色页创建。");
         if (type.equals("tts")) {
             if(!"fish".equals(job.optString("engine"))&&!"accelerated".equals(job.optString("engine")))
                 throw new IOException("本地合成已移除。请改用 Fish Audio 或七引擎云端服务。");
@@ -549,7 +550,7 @@ public class StudioService extends Service {
             }
             OmniEngine.check(cancel);
             job.put("output", audio.getName()).put("file", audio.getName())
-                    .put("engine", cloud ? "fish" : api ? "accelerated" : "omni")
+                    .put("engine", cloud ? "fish" : "accelerated")
                     .put("model", cloud ? job.optString("model", "s2.1-pro-free") : api ? job.optString("model", "OmniVoice 加速接口") : "OmniVoice INT8")
                     .put("voice", job.optString("voice", "OmniVoice"))
                     .put("title", AudioChecks.shortTitle(job.getString("text")));
