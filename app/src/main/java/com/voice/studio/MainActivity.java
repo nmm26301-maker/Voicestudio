@@ -612,7 +612,7 @@ public class MainActivity extends Activity {
         hideKeyboard();
         stopPreview();
         lastMessage = "";
-        if ("工具".equals(name)) { openWorkspace("转写"); return; }
+        if ("工具".equals(name)) { openWorkspace("音色"); return; }
         page = name;
         render();
     }
@@ -730,7 +730,8 @@ public class MainActivity extends Activity {
         flexible(shortcuts,button("录制我的声音",false,()->openWorkspace("音色")));
         sideGap(shortcuts,10);
         flexible(shortcuts,button("批量与任务",false,()->openWorkspace("批量")));
-        add(content,shortcuts);gap(content,16);
+        add(content,shortcuts);gap(content,10);
+        add(content,button("✦ 免电脑免费试用 · Qwen3-TTS / IndexTTS",false,this::freeCloudStarter));gap(content,16);
         LinearLayout draftCard = card();
         LinearLayout label = row();
         flexible(label, text("配音文本", 15, INK, true));
@@ -939,7 +940,8 @@ public class MainActivity extends Activity {
         flexible(options,button("七引擎 / 自动","accelerated".equals(engine),()->{
             engine="accelerated";saveSettings();render();
         }));
-        add(content,options);gap(content,16);
+        add(content,options);gap(content,12);
+        add(content,button("✦ 无需电脑 · 免费云端语音克隆体验",false,this::freeCloudStarter));gap(content,12);
         if("fish".equals(engine))fishVoicePage();
         else cloudSettings();
     }
@@ -1552,42 +1554,80 @@ public class MainActivity extends Activity {
     String gpuProvider() { return prefs.getString("accelerated-provider","custom"); }
 
     String gpuTab(){return prefs.getString("gpu-tab",prefs.getString("accelerated-url","").isEmpty()?"hf":gpuProvider());}
+    /** Browser-hosted demos are the only zero-computer-cost path offered without API/GPU setup. */
+    void freeCloudStarter() {
+        LinearLayout inside=col();
+        inside.setPadding(dp(14),dp(10),dp(14),dp(16));
+        inside.addView(CosmicUi.hero(this,"星际免费试听舱",
+            "不需要自己电脑或 GPU。打开官方 ZeroGPU 网页即可上传参考录音、输入新文字并试读；额度和排队由 Hugging Face 决定。",
+            "✦  CLOUD PLAYGROUND",CosmicUi.CYAN));
+        gap(inside,14);
+        add(inside,text("✦ 两个真实可访问的在线演示",16,INK,true));
+        gap(inside,10);
+        add(inside,button("① Qwen3-TTS 官方演示 · 零 GPU 本机占用",true,
+            ()->openUrl("https://huggingface.co/spaces/Qwen/Qwen3-TTS")));
+        gap(inside,8);
+        add(inside,button("② IndexTTS 2.5 演示 · 中文克隆",false,
+            ()->openUrl("https://huggingface.co/spaces/IndexTeam/IndexTTS-2.5-Demo")));
+        gap(inside,12);
+        add(inside,text("使用步骤：在网页选择声音克隆 → 上传你有权使用的 3—10 秒录音 → 输入要朗读的文字 → 生成 → 保存 WAV 到手机。",12,MUTED,false));
+        gap(inside,12);
+        add(inside,button("③ 从手机下载的 WAV 导入 VoiceStudio 作品",true,this::importCloudDemo));
+        gap(inside,12);
+        add(inside,text("免费不等于无限：ZeroGPU 每日额度有限，排队、登录和模型是否在线由平台决定。当前使用浏览器完成合成，作品再导入 App；还不是后台自动 API。请勿上传未经授权的他人声音。",12,MUTED,false));
+        gap(inside,12);
+        add(inside,button("了解 ZeroGPU 官方额度规则",false,
+            ()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
+        ScrollView scroll=new ScrollView(this);scroll.addView(inside);
+        new CosmicDialogBuilder(this).setTitle("✦ 免费云端，不用电脑")
+            .setView(scroll).setPositiveButton("关闭",null).show();
+    }
+
+    void importCloudDemo() {
+        try {
+            Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("audio/*");
+            startActivityForResult(pick,93);
+        } catch(Exception error) {toast("手机没有可用文件选择器");}
+    }
+
+    void cloudApiPermission() {
+        boolean enabled=prefs.getBoolean("cloud-api-consent",false);
+        new CosmicDialogBuilder(this).setTitle("云端 API 费用保护")
+            .setMessage(enabled?
+              "当前已允许通过 API 提交合成。平台可能按调用收费，VoiceStudio 无法读取所有服务的实时免费剩余额度。是否关闭 API 调用，切回免费网页试听？":
+              "官方 Fish / MiniMax / ElevenLabs API 和自建云 GPU 都可能收费或使用你的额度。VoiceStudio 无法保证它们永久免费。允许后才会从应用内提交合成请求；免费网页试听不需要授权。")
+            .setNegativeButton("取消",null)
+            .setNeutralButton("打开免费试听", (d,n)->freeCloudStarter())
+            .setPositiveButton(enabled?"禁止可能计费的 API":"我了解可能收费，允许 API 调用",
+               (d,n)->{
+                  prefs.edit().putBoolean("cloud-api-consent",!enabled).apply();
+                  toast(enabled?"已开启费用保护 · 应用内 API 合成被锁定":"API 调用已解锁 · 请先确认对应平台额度");
+                  render();
+               }).show();
+    }
+
+    void cloudApiProtection(LinearLayout parent) {
+        boolean allowed=prefs.getBoolean("cloud-api-consent",false);
+        LinearLayout safety=card();
+        info(safety,allowed?"费用保护已解除 · API 可能计费":"费用保护已开启 · 不自动付费",
+             allowed?"已允许调用云端接口。请留意所选服务的官方免费额度或付费余额。":
+               "默认不提交可能收费的 API 请求；仍可通过 ZeroGPU 网页免费试听并导入 WAV。");
+        gap(safety,10);
+        add(safety,button("✦ 免电脑免费试用",false,this::freeCloudStarter));
+        gap(safety,8);
+        add(safety,button(allowed?"重新开启费用保护":"解锁可能计费的云端 API",false,this::cloudApiPermission));
+        add(parent,safety);
+        gap(parent,12);
+    }
+
     void freeGpuSettings() {
-        final String tab=gpuTab();
-        if(gpuProvider().equals("custom"))prefs.edit().putString("gpu-custom-url",prefs.getString("accelerated-url", ""))
-            .putString("gpu-custom-model",prefs.getString("accelerated-model","auto")).putString("gpu-custom-voice",prefs.getString("accelerated-voice","auto")).apply();
-        LinearLayout intro=card();
-        info(intro,"免费 GPU","选择平台后回到创作页生成。长文自动分段，已完成段会保存；额度不足时可保留进度稍后继续。文字和主动选择的参考录音会发往所选平台。");
-        add(content,intro);gap(content,12);
-        LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);
-        String[] codes={"hf","modal","kaggle","custom"},labels={"ZeroGPU","Modal","Kaggle","自定义"};
-        for(int i=0;i<codes.length;i++){final String code=codes[i];tabs.addView(button(labels[i],tab.equals(code),()->{prefs.edit().putString("gpu-tab",code).apply();render();}),new LinearLayout.LayoutParams(0,-2,1));}
-        add(content,tabs);gap(content,12);
-        if(tab.equals("hf")) {
-        LinearLayout hf=card();info(hf,"Hugging Face ZeroGPU","官方 OmniVoice 可直接尝试。匿名和免费账号有每日计算额度、可能排队；不是音频时长额度。自己部署需满足账号条件。浏览器登录和应用 Token 分别配置。");
-        add(hf,button("注册 / 申请 Hugging Face",false,()->openUrl("https://huggingface.co/join")));
-        add(hf,button("查看 ZeroGPU 额度与申请条件",false,()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
-        add(hf,button("打开官方 OmniVoice / 登录",false,()->openUrl("https://huggingface.co/spaces/k2-fsa/OmniVoice")));
-        add(hf,button("申请 / 管理 HF Token",false,()->openUrl("https://huggingface.co/settings/tokens")));
-        add(hf,button("配置并使用 ZeroGPU",gpuProvider().equals("hf")&&engine.equals("accelerated"),()->gradioConfig()));
-        add(content,hf);gap(content,12);
-        } else if(tab.equals("modal")) {
-        LinearLayout modal=card();info(modal,"Modal 免费计算额度","Starter 当前每月提供 30 美元计算额度。需要把项目中的服务部署到自己的 Modal 账号并填写返回的 HTTPS 地址。超额可能收费，额度以账号为准。");
-        add(modal,button("注册 / 申请 Modal",false,()->openUrl("https://modal.com/signup")));
-        add(modal,button("查看免费额度 / 价格",false,()->openUrl("https://modal.com/pricing")));
-        add(modal,button("打开 Modal 控制台",false,()->openUrl("https://modal.com/apps")));
-        add(modal,button("部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/FREE_GPU.md#modal")));
-        add(modal,button("配置并使用 Modal",gpuProvider().equals("modal")&&engine.equals("accelerated"),()->modalConfig()));
-        add(content,modal);gap(content,12);
-        } else if(tab.equals("kaggle")) {
-        LinearLayout kaggle=card();info(kaggle,"Kaggle 免费 GPU 任务","导出创作页全文为 Notebook，在 Kaggle 开启 GPU 和 Internet 后运行，再把 WAV 导回作品。Kaggle 没有常驻语音 API；GPU 额度和验证条件以账号页面为准。");
-        add(kaggle,button("注册 / 申请 Kaggle",false,()->openUrl("https://www.kaggle.com/account/login?phase=startRegisterTab")));
-        add(kaggle,button("账号验证 / 查看 GPU 额度",false,()->openUrl("https://www.kaggle.com/settings")));
-        add(kaggle,button("创建 / 导入 GPU Notebook",false,()->openUrl("https://www.kaggle.com/code")));
-        add(kaggle,button("导出当前全文 GPU 任务",true,()->exportKaggle()));
-        add(kaggle,button("导入 Kaggle 生成的 WAV",false,()->importKaggle()));
-        add(content,kaggle);gap(content,12);
-        }
+        cloudApiProtection(content);
+        LinearLayout card=card();
+        info(card,"✦ 无电脑免费试用","Qwen3-TTS 和 IndexTTS 2.5 官方网页 ZeroGPU 可在手机浏览器中访问；完成后下载 WAV 并导入作品。");
+        gap(card,10);
+        add(card,button("打开官方免费云端试听",true,this::freeCloudStarter));
+        add(content,card);
     }
 
     void gradioConfig() {
@@ -1673,11 +1713,11 @@ public class MainActivity extends Activity {
                     }
                     long duration=AcceleratedSpeechClient.validate(pending,"",new AtomicBoolean());
                     if(!pending.renameTo(target))throw new IOException("保存作品失败");
-                    StudioFiles.history(this,new JSONObject().put("id",id).put("file",target.getName()).put("engine","kaggle").put("type","tts")
-                        .put("title","Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
+                    StudioFiles.history(this,new JSONObject().put("id",id).put("file",target.getName()).put("engine",request==93?"cloud-demo":"kaggle").put("type","tts")
+                        .put("title",request==93?"免费云端试听作品":"Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
                     complete=true;
                 }
-                handler.post(()->{if(!destroyed){toast(request==91?"任务已导出，请在 Kaggle 导入并运行":"GPU 作品已导入");if(request==92)change("作品");}});
+                handler.post(()->{if(!destroyed){toast(request==91?"任务已导出，请在 Kaggle 导入并运行":request==93?"免费云端作品已导入":"GPU 作品已导入");if(request==92||request==93)change("作品");}});
             }catch(Exception e){String message=e.getMessage();handler.post(()->{if(!destroyed)toast(message==null?"文件操作失败":message);});}
             finally{if(pending!=null)pending.delete();if(target!=null&&!complete)target.delete();}
         });
@@ -1858,6 +1898,7 @@ public class MainActivity extends Activity {
     static final String[] CLOUD_IDS=CloudEngineCatalog.IDS;
     static final String[] CLOUD_LABELS=CloudEngineCatalog.LABELS;
     void cloudSettings() {
+        cloudApiProtection(content);
         LinearLayout c=card();
         info(c,"七颗声音星球","选择平台，申请密钥，保存后开始创作。三家官方 API 可直连；开源模型使用你部署的云端网关。");
         Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
@@ -1951,6 +1992,7 @@ public class MainActivity extends Activity {
     void offlineSettings() {
         heading("你的声音偏好","云端连接、界面动效和作品管理，都在这里。");
         motionSettings();gap(content,16);
+        cloudApiProtection(content);
         cloudSettings();gap(content,16);
         fishSettings();gap(content,16);
         add(content,button("清理旧离线模型（不删除录音、音色和作品）",false,()->openWorkspace("任务")));
@@ -2052,6 +2094,14 @@ public class MainActivity extends Activity {
             return;
         }
         hideKeyboard();
+        if(!prefs.getBoolean("cloud-api-consent",false)){
+            new CosmicDialogBuilder(this).setTitle("当前为免费保护模式")
+                .setMessage("为避免产生意外费用，应用内 API 合成暂未授权。你可以免费通过官方 ZeroGPU 网页试听；若要使用 Fish / MiniMax / ElevenLabs 等 API，请主动了解费用并解锁。")
+                .setNegativeButton("取消",null)
+                .setNeutralButton("免电脑免费试听",(d,n)->freeCloudStarter())
+                .setPositiveButton("查看 API 费用保护",(d,n)->cloudApiPermission()).show();
+            return;
+        }
         if ("fish".equals(engine)) {
             try {
                 enqueueFishText(s);
@@ -2421,7 +2471,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if(request==91 || request==92){kaggleResult(request,result,data);return;}
+        if(request==91 || request==92 || request==93){kaggleResult(request,result,data);return;}
         if (request == 83) {
             if (result == RESULT_OK && data != null) {
                 List<Uri> files = new ArrayList<>();
