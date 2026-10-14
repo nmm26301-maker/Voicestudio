@@ -25,10 +25,10 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="VoiceStudio Cloud Gateway", version="0.1")
-OPEN_MODELS = ("indextts25", "cosyvoice3", "qwen3tts", "chatterboxv3")
+OPEN_MODELS = ("indextts25", "cosyvoice3", "qwen3tts", "chatterboxv3", "gptsovits")
 REFERENCE_MODELS = OPEN_MODELS + ("fish",)
-PROVIDERS = OPEN_MODELS + ("elevenlabs", "minimax", "fish")
-PREFER = ("qwen3tts", "cosyvoice3", "indextts25", "chatterboxv3", "fish", "minimax", "elevenlabs")
+PROVIDERS = OPEN_MODELS + ("elevenlabs", "minimax", "cartesia", "fish")
+PREFER = ("qwen3tts", "cosyvoice3", "indextts25", "chatterboxv3", "gptsovits", "fish", "minimax", "elevenlabs", "cartesia")
 STORE = pathlib.Path(os.getenv("VOICE_REFERENCE_DIR", "/tmp/voicestudio-references"))
 TTL_SECONDS = 3 * 86400
 MAX_AUDIO = 48 * 1024 * 1024
@@ -50,6 +50,8 @@ def configured(provider: str) -> bool:
         return bool(os.getenv("MINIMAX_API_KEY"))
     if provider == "fish":
         return bool(os.getenv("FISH_API_KEY"))
+    if provider == "cartesia":
+        return bool(os.getenv("CARTESIA_API_KEY"))
     return False
 
 
@@ -149,6 +151,8 @@ def choose(model: str, has_reference: bool, voice: str = "auto") -> str:
             raise HTTPException(422, "Unsupported provider")
         if not configured(model):
             raise HTTPException(503, f"{model} is not configured")
+        if model == "gptsovits" and not has_reference:
+            raise HTTPException(422, "GPT-SoVITS needs a WAV reference and exact transcript")
         if has_reference and model not in REFERENCE_MODELS:
             raise HTTPException(422, "Selected provider needs a registered voice ID; choose an OSS reference-enabled engine")
         return model
@@ -202,7 +206,8 @@ async def automatic_model(has_reference: bool, voice: str, reference_text: str =
     import asyncio
     candidates = [p for p in PREFER if configured(p) and
                   (not has_reference or p in OPEN_MODELS or p == "fish" and bool(reference_text.strip())) and
-                  (p in OPEN_MODELS or voice not in ("", "auto"))]
+                  (p in OPEN_MODELS or voice not in ("", "auto")) and
+                  (p != "gptsovits" or has_reference and bool(reference_text.strip()))]
     # Concurrent read-only probes bound overall selection latency to one timeout.
     open_candidates = [p for p in candidates if p in OPEN_MODELS]
     readiness = dict(zip(open_candidates, await asyncio.gather(*(worker_ready(p) for p in open_candidates))))
@@ -294,6 +299,25 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
             json={"text": task.input, "model_id": os.getenv("ELEVENLABS_MODEL", "eleven_multilingual_v2")},
         )
         wav = normalized_wav(resp.content, "mp3")
+    elif model == "cartesia":
+        if task.voice in ("auto", "") or reference_audio is not None:
+            raise HTTPException(422, "Cartesia requires a registered voice ID; upload/clone it at Cartesia first")
+        import re
+        if not re.fullmatch(r"[a-zA-Z0-9-]{10,120}", task.voice):
+            raise HTTPException(422, "Invalid Cartesia voice ID")
+        locale = (task.language or "auto").lower()
+        if locale in ("auto", "none"):
+            locale = "zh" if any("\u3400" <= c <= "\u9fff" for c in task.input) else "en"
+        resp = await do_http(
+            "POST", "https://api.cartesia.ai/tts/bytes",
+            headers={"Authorization": "Bearer " + os.environ["CARTESIA_API_KEY"],
+                     "Cartesia-Version": "2026-08-14", "Accept": "audio/wav"},
+            json={"model_id": os.getenv("CARTESIA_MODEL", "sonic-3"),
+                  "transcript": task.input, "voice": task.voice,
+                  "language": locale,
+                  "output_format": {"container": "wav", "encoding": "pcm_s16le", "sample_rate": 24000}},
+        )
+        wav = normalized_wav(resp.content, "wav")
     elif model == "minimax":
         if task.voice in ("auto", ""):
             raise HTTPException(422, "Enter MiniMax preset or cloned voice ID")
@@ -333,7 +357,7 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
             resp = await do_http("POST", "https://api.fish.audio/v1/tts", headers=headers, json=body)
         wav = normalized_wav(resp.content, "mp3")
 
-    if model == "elevenlabs" and task.speed != 1:
+    if model in ("elevenlabs", "cartesia") and task.speed != 1:
         proc = subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-i", "pipe:0",
                 "-af", f"atempo={task.speed}", "-f", "wav", "pipe:1"],
                 input=wav, capture_output=True, timeout=90, check=False)

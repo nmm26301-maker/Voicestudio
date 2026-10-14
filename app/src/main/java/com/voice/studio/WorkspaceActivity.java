@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class WorkspaceActivity extends Activity {
-    LinearLayout root, tasks, shell;
+    LinearLayout root, tasks, shell, bottomNav;
     final Map<String, View> sections = new LinkedHashMap<>();
     final Map<String, TextView> sectionButtons = new LinkedHashMap<>();
     final Map<TextView, String[]> requirements = new LinkedHashMap<>();
@@ -71,10 +71,14 @@ public class WorkspaceActivity extends Activity {
             pendingResume = saved.getString("pendingResume", "");
             taskLimit = saved.getInt("taskLimit", 50);
             taskFilter = Math.max(0, Math.min(4, saved.getInt("taskFilter", 0)));
-            String name = saved.getString("exportFile", "");
-            if (name.matches("[a-f0-9-]+\\.(mp3|wav|mp4|zip|txt|srt|json)")) {
-                File file = new File(StudioFiles.dir(this, "audio"), name);
-                if (file.isFile()) export = file;
+            // Persist the exact chosen source while Android's document picker is open.
+            // Resolve only two trusted internal directories; never restore an arbitrary path.
+            String name=saved.getString("exportFile","");
+            String directory=saved.getString("exportDirectory","audio");
+            if (name.matches("[a-f0-9-]+\\.(mp3|wav|mp4|zip|txt|srt|json)")
+                    && (directory.equals("audio") || directory.equals("profiles"))) {
+                File file=new File(StudioFiles.dir(this,directory),name);
+                if(file.isFile())export=file;
             }
         }
         CosmicUi.install(this);
@@ -93,12 +97,19 @@ public class WorkspaceActivity extends Activity {
         TextView heading = CosmicUi.label(this, "声音实验室", 22, CosmicUi.INK, true);
         heading.setGravity(Gravity.CENTER_VERTICAL); toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(48), 1));
         shell.addView(toolbar); quickSections();
-        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1)); setContentView(shell);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        bottomNav=CosmicUi.navigation(this,"任务",this::navigate);shell.addView(bottomNav);setContentView(shell);
         LinearLayout voice=sectionCard("音色","把你的声音，装进星星里","清晰录制 3—10 秒，保存后可用云端引擎朗读新的文字。");
         voice.addView(CosmicUi.hero(this,"声音小宇宙","录音保存在手机，生成时才上传。","VOICE LAB",CosmicUi.PINK));
         voiceCapture=new VoiceCapturePanel(this,voice);
         button(voice,"选择 / 删除已保存音色",this::profiles);
+        button(voice,"✦ 免电脑免费克隆 · 官方 Qwen / IndexTTS",this::openFreeDemo);
         button(voice,"配置云端合成引擎",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
+        button(voice,"♫ 进入文字合成工作台",()->jumpSection("合成"));
+        LinearLayout compose=sectionCard("合成","文字合成工作台","录音 / 音色 → 选择引擎 → 输入文字 → 合成 → 保存作品。");
+        compose.addView(CosmicUi.workflow(this,2));
+        button(compose,"♫ 打开合成工作台",()->openMainPage("合成"));
+        label(compose,"草稿、引擎和任务共用同一个工作台，切换页面会保存文字。",12,false);
         LinearLayout bulk=sectionCard("批量","云端批量朗读","每行一个任务；自动分段保存完整声音。批量可能消耗第三方 API 额度，请先确认配置和费用。");
         button(bulk,"输入批量文字并提交",this::batch);
         tasks=sectionCard("任务","生成任务与结果","查看任务状态、失败详情与旧版作品。后台不会加载已停用的本地语音模型。");
@@ -117,6 +128,10 @@ public class WorkspaceActivity extends Activity {
         if (inspectModule != null || importModule != null) section = "任务";
 
         jumpSection(sections.containsKey(section) ? section : "音色");
+        if (saved == null && getIntent().getBooleanExtra("chooseReferenceForFree",false)) {
+            getIntent().removeExtra("chooseReferenceForFree");
+            ui.post(this::profiles);
+        }
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
                         != android.content.pm.PackageManager.PERMISSION_GRANTED)
@@ -464,6 +479,18 @@ public class WorkspaceActivity extends Activity {
         return u.toString();
     }
 
+    void openFreeDemo() {
+        new CosmicDialogBuilder(this).setTitle("✦ 免费云端声音星球")
+            .setMessage("不需要电脑！先在本页录音并点“导出 WAV”，然后在官方 ZeroGPU 网页上传声音、输入新文字；完成后下载音频。免费额度有限，浏览器演示不等于已连接后台 API。")
+            .setNegativeButton("取消",null)
+            .setNeutralButton("Qwen3-TTS",(d,n)->{
+                startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://huggingface.co/spaces/Qwen/Qwen3-TTS")));
+            })
+            .setPositiveButton("IndexTTS 2.5",(d,n)->{
+                startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://huggingface.co/spaces/IndexTeam/IndexTTS-2.5-Demo")));
+            }).show();
+    }
+
     void profiles() {
         File[] fs = StudioFiles.dir(this, "profiles").listFiles((f, n) -> n.endsWith(".json"));
         List<JSONObject> all = new ArrayList<>();
@@ -496,6 +523,21 @@ public class WorkspaceActivity extends Activity {
                             String excerpt = characters > 90 ? referenceText.substring(0, referenceText.offsetByCodePoints(0, 90)) + "…" : referenceText;
                             label(details, "参考文字（" + characters + " 字）：" + excerpt, 12, false);
                             label(details,"要修正参考文字，可以重新录音并保存新音色。",12,false);
+                            button(details,"① 导出参考 WAV 到下载文件夹",()->{
+                                File original=new File(StudioFiles.dir(this,"profiles"),id+".reference.wav");
+                                if(original.isFile())saveOutput(original);
+                                else toast("参考录音不存在，请重新录制");
+                            });
+                            button(details,"② 复制参考录音原文 · 网页克隆使用",()->{
+                                String transcript=j.optString("referenceText","").trim();
+                                if(transcript.isEmpty()){
+                                    toast("没有填写参考录音原文，请先听原声并自行核对，不能用生成文本冒充录音原文");
+                                    return;
+                                }
+                                ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(
+                                     ClipData.newPlainText("VoiceStudio 参考音频原文",transcript));
+                                toast("录音原文已复制；在网页克隆的参考文本栏粘贴");
+                            });
                             new CosmicDialogBuilder(this)
                                     .setTitle(j.optString("name"))
                                     .setView(details)
@@ -1801,16 +1843,25 @@ public class WorkspaceActivity extends Activity {
           }).show();
     }
 
+    void openMainPage(String page) {
+        if(voiceCapture!=null)voiceCapture.persist();
+        startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.OPEN_PAGE").putExtra("page",page));
+    }
+    void navigate(String page) {
+        if(page.equals("任务"))jumpSection("任务");
+        else if(page.equals("音色"))jumpSection("音色");
+        else openMainPage(page);
+    }
     void quickSections() {
         HorizontalScrollView strip = new HorizontalScrollView(this); strip.setHorizontalScrollBarEnabled(false);
         LinearLayout row = new LinearLayout(this); row.setOrientation(0);
-        for (String name : new String[]{"音色", "批量", "任务"}) {
+        for (String name : new String[]{"音色", "合成", "批量", "任务"}) {
             TextView chip = CosmicUi.label(this, name, 14, CosmicUi.CYAN, true);
             chip.setGravity(Gravity.CENTER); chip.setPadding(dp(16), dp(10), dp(16), dp(10));
             CosmicUi.press(chip); chip.setContentDescription(name);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(48)); lp.rightMargin = dp(8);
             row.addView(chip, lp); sectionButtons.put(name, chip);
-            chip.setOnClickListener(v -> jumpSection(name));
+            chip.setOnClickListener(v -> {if(name.equals("合成"))openMainPage("合成");else jumpSection(name);});
         }
         strip.addView(row); shell.addView(strip);
     }
@@ -1819,6 +1870,7 @@ public class WorkspaceActivity extends Activity {
         if (!sections.containsKey(name)) return;
         if (!name.equals("音色") && voiceCapture != null) voiceCapture.pause();
         section = name;
+        if(bottomNav!=null){shell.removeView(bottomNav);bottomNav=CosmicUi.navigation(this,name.equals("音色")?"音色":name.equals("合成")?"合成":"任务",this::navigate);shell.addView(bottomNav);}
         for (Map.Entry<String, View> entry : sections.entrySet())
             entry.getValue().setVisibility(name.equals(entry.getKey()) ? View.VISIBLE : View.GONE);
         for (Map.Entry<String, TextView> entry : sectionButtons.entrySet()) {
@@ -1884,7 +1936,12 @@ public class WorkspaceActivity extends Activity {
 
     protected void onSaveInstanceState(Bundle state) {
         if (voiceCapture != null) voiceCapture.persist();
-        if (export != null) state.putString("exportFile", export.getName());
+        if (export != null) {
+            state.putString("exportFile",export.getName());
+            File parent=export.getParentFile();
+            state.putString("exportDirectory",
+                parent != null && parent.equals(StudioFiles.dir(this,"profiles")) ? "profiles" : "audio");
+        }
         state.putString("section", section); state.putString("pendingResume", pendingResume);
         state.putInt("taskLimit", taskLimit);
         state.putInt("taskFilter", taskFilter);

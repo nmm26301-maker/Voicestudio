@@ -65,6 +65,8 @@ public class MainActivity extends Activity {
     SignalOrbView headerOrb;
     TextView generationTitle, generationStage, generationTime, generationDetail, generationAction, generationCopy, generationPreview;
     AudioPreview fragmentPreview;
+    AlertDialog freeDemoDialog, mergeDialog;
+    AtomicBoolean mergeCancelled;
     String trackedJobId = "", localGenerationState = "idle";
     JSONObject trackedJob, localCompletedJob;
     boolean jobReloadPending, refreshTracked = true, cancelRequested;
@@ -185,7 +187,7 @@ public class MainActivity extends Activity {
         boolean running = isGenerating();
         if(headerOrb!=null) headerOrb.busy(running || !StudioService.active.isEmpty());
         if (generate != null) {
-            generate.setText(cancelRequested ? "正在取消…" : running ? "取消生成" : "生成声音");
+            generate.setText(cancelRequested ? "正在取消…" : running ? "取消生成" : "♫ 开始合成");
             generate.setEnabled(!cancelRequested);
         }
         if (status != null)
@@ -357,6 +359,8 @@ public class MainActivity extends Activity {
     }
 
     String readyMessage() {
+        if(!prefs.getBoolean("cloud-api-consent",false))
+            return "免费保护模式 · 立即免费试听，不提交可能收费的 API";
         if ("accelerated".equals(engine)) return prefs.getString("accelerated-url", "").isEmpty()
                 ? "先到音色页配置云端连接" : "云端连接已填写 · 可检查连接后生成";
         if ("fish".equals(engine)) {
@@ -435,7 +439,7 @@ public class MainActivity extends Activity {
             if (exported.matches("[a-f0-9-]+\\.(mp3|wav)"))
                 exportFile = new File(new File(getFilesDir(), "audio"), exported);
         }
-        if (saved == null) acceptText(getIntent());
+        if (saved == null) {acceptText(getIntent());page=requestedPage(getIntent());}
         // Cloud edition never creates a phone TTS engine.
         CosmicUi.install(this);
         render();
@@ -473,9 +477,17 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
         setIntent(i);
+        saveDraft();
         acceptText(i);
-        page = "创作";
+        page = requestedPage(i);
         render();
+    }
+
+    String requestedPage(Intent intent) {
+        if("com.voice.studio.SELECT_ENGINE".equals(intent.getAction()))return "音色";
+        String target=intent.getStringExtra("page");
+        if("合成".equals(target))return "创作";
+        return Arrays.asList("音色","作品","设置").contains(target)?target:"创作";
     }
 
     int dp(float x) {
@@ -612,8 +624,9 @@ public class MainActivity extends Activity {
         hideKeyboard();
         stopPreview();
         lastMessage = "";
-        if ("工具".equals(name)) { openWorkspace("转写"); return; }
-        page = name;
+        if ("工具".equals(name)) { openWorkspace("音色"); return; }
+        if ("任务".equals(name)) {openWorkspace("任务");return;}
+        page = "合成".equals(name)?"创作":name;
         render();
     }
 
@@ -666,7 +679,10 @@ public class MainActivity extends Activity {
         TextView badge=text("设置".equals(page)?"偏好与连接":"音色".equals(page)?"云端音色":"作品".equals(page)?"声音收藏":"云端创作",10,CYAN,true); badge.setLetterSpacing(.12f); gap(word,7); add(word,badge);
         flexible(header, word);
         headerOrb=new SignalOrbView(this,"设置".equals(page)?CosmicUi.SUCCESS:"音色".equals(page)?PURPLE:CYAN,true);
-        header.addView(headerOrb,new LinearLayout.LayoutParams(dp(72),dp(72)));
+        header.addView(headerOrb,new LinearLayout.LayoutParams(dp(60),dp(60)));
+        TextView preferences=button("⚙",false,()->change("设置"));preferences.setTextSize(21);
+        preferences.setContentDescription("设置与云端连接");preferences.setPadding(0,0,0,0);
+        header.addView(preferences,new LinearLayout.LayoutParams(dp(44),dp(44)));
         add(root, header);
         ScrollView scroll = new ScrollView(this);
         pageScroll = scroll;
@@ -687,29 +703,8 @@ public class MainActivity extends Activity {
             dock.addView(dreamProgress,new LinearLayout.LayoutParams(-1,dp(48))); add(dock,generate); gap(dock,7);
             status.setMaxLines(2); status.setEllipsize(android.text.TextUtils.TruncateAt.END);add(dock,status);add(root,dock);
         }
-        nav = row();
-        nav.setBackgroundColor(cosmic ? SPACE_BG : Color.WHITE);
-        nav.setPadding(dp(8), dp(8), dp(8), dp(10));
-        String[] names = {"创作", "音色", "工具", "作品", "设置"}, icons = {"edit", "wave", "tools", "folder", "settings"};
-        for (int i = 0; i < names.length; i++) {
-            String n = names[i];
-            boolean chosen = n.equals(page);
-            LinearLayout item = col();
-            item.setGravity(Gravity.CENTER);
-            item.setPadding(0, dp(5), 0, dp(4));
-            if(chosen)item.setBackground(border(0xff283358,PURPLE,20));
-            CosmicUi.press(item);
-            IconView iv = new IconView(this, icons[i], chosen ? cosmic ? CYAN : PURPLE : cosmic ? SPACE_MUTED : MUTED);
-            item.addView(iv, new LinearLayout.LayoutParams(dp(23), dp(23)));
-            gap(item, 5);
-            TextView t = text(n, 11, chosen ? cosmic ? CYAN : PURPLE : cosmic ? SPACE_MUTED : MUTED, chosen);
-            t.setGravity(Gravity.CENTER);
-            item.addView(t);
-            item.setContentDescription(n);
-            item.setOnClickListener(v -> change(n));
-            nav.addView(item, new LinearLayout.LayoutParams(0, dp(61), 1));
-        }
-        add(root, nav);
+        nav=CosmicUi.navigation(this,"创作".equals(page)?"合成":page,this::change);
+        add(root,nav);
         if (cursor >= 0 && editor != null) editor.setSelection(Math.min(cursor, editor.length()));
         scroll.post(() -> scroll.scrollTo(0, y));
         updatePlayback();
@@ -725,12 +720,13 @@ public class MainActivity extends Activity {
     }
 
     void creation() {
-        heading("让文字，变成星光", "选一段文字，用喜欢的声音轻轻说出来。");
+        add(content,CosmicUi.hero(this,"让文字，拥有声音","录音、选引擎、输入文字，开启你的云端声音创作。","✦ CLOUD VOICE STUDIO",CYAN));
+        add(content,CosmicUi.workflow(this,2));
         LinearLayout shortcuts=row();
-        flexible(shortcuts,button("录制我的声音",false,()->openWorkspace("音色")));
-        sideGap(shortcuts,10);
-        flexible(shortcuts,button("批量与任务",false,()->openWorkspace("批量")));
-        add(content,shortcuts);gap(content,16);
+        flexible(shortcuts,button("① 录音 / 音色",false,()->openWorkspace("音色")));
+        sideGap(shortcuts,8);
+        flexible(shortcuts,button("② 选择引擎",false,()->change("音色")));
+        add(content,shortcuts);gap(content,12);
         LinearLayout draftCard = card();
         LinearLayout label = row();
         flexible(label, text("配音文本", 15, INK, true));
@@ -842,6 +838,8 @@ public class MainActivity extends Activity {
                         false,
                         () -> { if("accelerated".equals(engine))change("音色");else openWorkspace("音色"); }));
         add(content, voice);
+        gap(content, 12);
+        add(content,button("✦ 免费网页试听 · Qwen / IndexTTS",false,this::freeCloudStarter));
         gap(content, 14);
         LinearLayout speedRow = row();
         flexible(speedRow, text("语速", 14, INK, true));
@@ -869,10 +867,11 @@ public class MainActivity extends Activity {
         gap(content, 12);
         generate =
                 button(
-                        isGenerating() ? "取消生成" : "生成声音",
+                        isGenerating() ? "取消生成" : "♫ 开始合成",
                         true,
                         () -> {
                             if (isGenerating()) cancelJob();
+                            
                             else generate();
                         });
 
@@ -929,17 +928,20 @@ public class MainActivity extends Activity {
     }
 
     void voicePage() {
-        heading("找到你的声音", "录一小段声音，或者选择喜欢的云端音色。");
+        add(content,CosmicUi.hero(this,"把声音，装进云朵里","录制你的声音，或选择平台音色。","✦ VOICE & ENGINES",CosmicUi.PINK));
+        add(content,CosmicUi.workflow(this,0));
         add(content,button("进入录音音色实验室",true,()->openWorkspace("音色")));gap(content,14);
         LinearLayout options=row();
         flexible(options,button("Fish Audio","fish".equals(engine),()->{
             engine="fish";saveSettings();render();
         }));
         sideGap(options,8);
-        flexible(options,button("七引擎 / 自动","accelerated".equals(engine),()->{
+        flexible(options,button("九引擎 / 自动","accelerated".equals(engine),()->{
             engine="accelerated";saveSettings();render();
         }));
-        add(content,options);gap(content,16);
+        add(content,options);gap(content,12);
+        add(content,button("♫ 打开文字合成工作台",true,()->change("创作")));gap(content,12);
+        add(content,button("✦ 无需电脑 · 免费云端语音克隆体验",false,this::freeCloudStarter));gap(content,12);
         if("fish".equals(engine))fishVoicePage();
         else cloudSettings();
     }
@@ -1181,7 +1183,7 @@ public class MainActivity extends Activity {
     LinearLayout archiveCard(JSONObject item) {
         LinearLayout card=card(); card.setBackground(border(SPACE_CARD,0xff2E3A59,21));
         String file=item.optString("file"), format=file.endsWith("wav") ? "WAV" : "MP3";
-        String source="kaggle".equals(item.optString("engine")) ? "KAGGLE GPU" : "accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
+        String source="cloud-demo".equals(item.optString("engine")) ? "网页云端作品" : "cloud-demo-merged".equals(item.optString("engine")) ? "云端片段合并" : "kaggle".equals(item.optString("engine")) ? "KAGGLE GPU" : "accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
         LinearLayout top=row(); TextView badge=text(source+" / "+format,10,CYAN,true); badge.setLetterSpacing(.07f); flexible(top,badge);
         TextView star=archiveButton(item.optBoolean("favorite") ? "★" : "☆",false,()->{
             if(updateWork(item,"favorite",!item.optBoolean("favorite")))render();
@@ -1552,42 +1554,209 @@ public class MainActivity extends Activity {
     String gpuProvider() { return prefs.getString("accelerated-provider","custom"); }
 
     String gpuTab(){return prefs.getString("gpu-tab",prefs.getString("accelerated-url","").isEmpty()?"hf":gpuProvider());}
-    void freeGpuSettings() {
-        final String tab=gpuTab();
-        if(gpuProvider().equals("custom"))prefs.edit().putString("gpu-custom-url",prefs.getString("accelerated-url", ""))
-            .putString("gpu-custom-model",prefs.getString("accelerated-model","auto")).putString("gpu-custom-voice",prefs.getString("accelerated-voice","auto")).apply();
-        LinearLayout intro=card();
-        info(intro,"免费 GPU","选择平台后回到创作页生成。长文自动分段，已完成段会保存；额度不足时可保留进度稍后继续。文字和主动选择的参考录音会发往所选平台。");
-        add(content,intro);gap(content,12);
-        LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);
-        String[] codes={"hf","modal","kaggle","custom"},labels={"ZeroGPU","Modal","Kaggle","自定义"};
-        for(int i=0;i<codes.length;i++){final String code=codes[i];tabs.addView(button(labels[i],tab.equals(code),()->{prefs.edit().putString("gpu-tab",code).apply();render();}),new LinearLayout.LayoutParams(0,-2,1));}
-        add(content,tabs);gap(content,12);
-        if(tab.equals("hf")) {
-        LinearLayout hf=card();info(hf,"Hugging Face ZeroGPU","官方 OmniVoice 可直接尝试。匿名和免费账号有每日计算额度、可能排队；不是音频时长额度。自己部署需满足账号条件。浏览器登录和应用 Token 分别配置。");
-        add(hf,button("注册 / 申请 Hugging Face",false,()->openUrl("https://huggingface.co/join")));
-        add(hf,button("查看 ZeroGPU 额度与申请条件",false,()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
-        add(hf,button("打开官方 OmniVoice / 登录",false,()->openUrl("https://huggingface.co/spaces/k2-fsa/OmniVoice")));
-        add(hf,button("申请 / 管理 HF Token",false,()->openUrl("https://huggingface.co/settings/tokens")));
-        add(hf,button("配置并使用 ZeroGPU",gpuProvider().equals("hf")&&engine.equals("accelerated"),()->gradioConfig()));
-        add(content,hf);gap(content,12);
-        } else if(tab.equals("modal")) {
-        LinearLayout modal=card();info(modal,"Modal 免费计算额度","Starter 当前每月提供 30 美元计算额度。需要把项目中的服务部署到自己的 Modal 账号并填写返回的 HTTPS 地址。超额可能收费，额度以账号为准。");
-        add(modal,button("注册 / 申请 Modal",false,()->openUrl("https://modal.com/signup")));
-        add(modal,button("查看免费额度 / 价格",false,()->openUrl("https://modal.com/pricing")));
-        add(modal,button("打开 Modal 控制台",false,()->openUrl("https://modal.com/apps")));
-        add(modal,button("部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/FREE_GPU.md#modal")));
-        add(modal,button("配置并使用 Modal",gpuProvider().equals("modal")&&engine.equals("accelerated"),()->modalConfig()));
-        add(content,modal);gap(content,12);
-        } else if(tab.equals("kaggle")) {
-        LinearLayout kaggle=card();info(kaggle,"Kaggle 免费 GPU 任务","导出创作页全文为 Notebook，在 Kaggle 开启 GPU 和 Internet 后运行，再把 WAV 导回作品。Kaggle 没有常驻语音 API；GPU 额度和验证条件以账号页面为准。");
-        add(kaggle,button("注册 / 申请 Kaggle",false,()->openUrl("https://www.kaggle.com/account/login?phase=startRegisterTab")));
-        add(kaggle,button("账号验证 / 查看 GPU 额度",false,()->openUrl("https://www.kaggle.com/settings")));
-        add(kaggle,button("创建 / 导入 GPU Notebook",false,()->openUrl("https://www.kaggle.com/code")));
-        add(kaggle,button("导出当前全文 GPU 任务",true,()->exportKaggle()));
-        add(kaggle,button("导入 Kaggle 生成的 WAV",false,()->importKaggle()));
-        add(content,kaggle);gap(content,12);
+    /** Browser-hosted demos are the only zero-computer-cost path offered without API/GPU setup. */
+    void freeCloudStarter() {
+        LinearLayout inside=col();
+        inside.setPadding(dp(14),dp(10),dp(14),dp(16));
+        inside.addView(CosmicUi.hero(this,"星际免费试听舱",
+            "不需要自己电脑或 GPU。打开官方 ZeroGPU 网页即可上传参考录音、输入新文字并试读；额度和排队由 Hugging Face 决定。",
+            "✦  CLOUD PLAYGROUND",CosmicUi.CYAN));
+        gap(inside,14);
+        add(inside,text("第 1 步 · 准备参考录音",16,INK,true));
+        gap(inside,10);
+        add(inside,button("① 选择录好的音色 → 导出 WAV / 复制原文",true,()->{
+            if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
+            startActivity(new Intent(this,WorkspaceActivity.class).putExtra("section","音色")
+                .putExtra("chooseReferenceForFree",true));
+        }));
+        gap(inside,8);
+        add(inside,text("还没录音？先在声音实验室录制 3—10 秒自己的声音，保存后即可导出。浏览器不能直接访问 App 的私有录音文件。",12,MUTED,false));
+        gap(inside,14);
+        add(inside,text("第 2 步 · 免费云端生成",16,INK,true));
+        gap(inside,10);
+        add(inside,button("① Qwen3-TTS 官方演示 · 零 GPU 本机占用",true,
+            ()->openUrl("https://huggingface.co/spaces/Qwen/Qwen3-TTS")));
+        gap(inside,8);
+        add(inside,button("② IndexTTS 2.5 演示 · 中文克隆",false,
+            ()->openUrl("https://huggingface.co/spaces/IndexTeam/IndexTTS-2.5-Demo")));
+        gap(inside,12);
+        add(inside,text("手机浏览器中选择 Voice Clone / 音色克隆，上传导出的参考 WAV，粘贴录音原文，再输入要朗读的新文字。生成后下载 WAV。",12,MUTED,false));
+        gap(inside,8);
+        add(inside,button("复制创作页文字 · 网页直接粘贴",false,()->{
+            saveDraft();
+            if(draft.trim().isEmpty()){toast("请先在创作页输入文字");return;}
+            android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText("VoiceStudio 朗读文字",draft));
+            toast("已复制文字，可在网页中粘贴并生成");
+        }));
+        gap(inside,12);
+        add(inside,text("第 3 步 · 保存云端作品",16,INK,true));
+        gap(inside,10);
+        add(inside,button("③ 从手机下载的 WAV 导入 VoiceStudio 作品",true,this::importCloudDemo));
+        gap(inside,8);
+        add(inside,button("④ 将多段免费 WAV 拼成一份长作品",false,this::openFreeWavMerge));
+        gap(inside,8);
+        add(inside,text("免费网页有单段时长限制：请按 01、02、03 给片段命名，下载后一次选择多个 WAV。手机只处理音频拼接，不运行任何语音模型；不会自动把整篇文章发送到公共 Space。",12,MUTED,false));
+        gap(inside,12);
+        add(inside,text("免费不等于无限：ZeroGPU 每日额度有限，排队、登录和模型是否在线由平台决定。当前使用浏览器完成合成，作品再导入 App；还不是后台自动 API。请勿上传未经授权的他人声音。",12,MUTED,false));
+        gap(inside,12);
+        add(inside,button("了解 ZeroGPU 官方额度规则",false,
+            ()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
+        ScrollView scroll=new ScrollView(this);scroll.addView(inside);
+        if(freeDemoDialog!=null && freeDemoDialog.isShowing())freeDemoDialog.dismiss();
+        freeDemoDialog=new CosmicDialogBuilder(this).setTitle("✦ 免费云端，不用电脑")
+            .setView(scroll).setPositiveButton("关闭",null).create();
+        freeDemoDialog.show();
+    }
+
+    void openFreeWavMerge() {
+        if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
+        try{
+            Intent files=new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                 .addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*")
+                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+            startActivityForResult(files,94);
+        }catch(Exception e){toast("没有找到支持多选音频的文件管理器");}
+    }
+
+    /** SAF selection order varies; show the actual sequence before processing. */
+    void mergeFreeWavResult(int result, Intent data) {
+        if(result!=RESULT_OK || data==null)return;
+        if(mergeCancelled!=null){toast("正在合并，请先等待或取消当前合并");return;}
+        Set<Uri> unique=new LinkedHashSet<>();
+        if(data.getClipData()!=null){
+            ClipData clips=data.getClipData();
+            for(int i=0;i<clips.getItemCount();i++)if(clips.getItemAt(i).getUri()!=null)
+                unique.add(clips.getItemAt(i).getUri());
+        }else if(data.getData()!=null)unique.add(data.getData());
+        if(unique.size()<2 || unique.size()>CloudWavMerge.MAX_CLIPS){
+            toast("需要一次选择 2—24 个不同的 WAV 片段");return;
         }
+        List<Uri> selected=new ArrayList<>(unique);
+        Map<Uri,String> names=new HashMap<>();
+        for(Uri uri:selected){
+            try{names.put(uri,selectedFileName(uri));}
+            catch(Exception ignored){names.put(uri,"未命名片段");}
+        }
+        Collections.sort(selected,(a,b)->CloudWavMerge.compareNames(names.get(a),names.get(b)));
+        StringBuilder order=new StringBuilder("请核对顺序，合并后会新增作品。原文件保留。\n\n");
+        for(int i=0;i<selected.size();i++)order.append(i+1).append(". ")
+            .append(names.get(selected.get(i))).append('\n');
+        order.append("\n最多 24 段、总计 30 分钟。不同采样率会统一为 24 kHz。");
+        new CosmicDialogBuilder(this).setTitle("核对片段顺序")
+            .setMessage(order.toString()).setNegativeButton("重新选择",(d,n)->openFreeWavMerge())
+            .setPositiveButton("开始合并",(d,n)->startFreeWavMerge(selected,names)).show();
+    }
+
+    void startFreeWavMerge(List<Uri> selected,Map<Uri,String> names) {
+        if(mergeCancelled!=null)return;
+        final AtomicBoolean cancellation=new AtomicBoolean();mergeCancelled=cancellation;
+        TextView progress=text("正在读取片段…",14,INK,false);
+        progress.setPadding(dp(20),dp(16),dp(20),dp(16));
+        mergeDialog=new CosmicDialogBuilder(this).setTitle("拼成一段声音")
+            .setView(progress).setNegativeButton("取消合并",(d,n)->cancellation.set(true)).create();
+        mergeDialog.setCanceledOnTouchOutside(false);
+        mergeDialog.setOnCancelListener(d->cancellation.set(true));mergeDialog.show();
+        CloudWavMerge.Progress update=message->handler.post(()->{
+            if(!destroyed && mergeCancelled==cancellation)progress.setText(message);
+        });
+        fileExecutor.execute(()->{
+            List<File> temporary=new ArrayList<>();
+            File target=null,pending=null;boolean done=false;
+            try{
+                long copied=0;
+                for(int i=0;i<selected.size();i++){
+                    CloudWavMerge.check(cancellation);
+                    update.update("正在读取第 "+(i+1)+" / "+selected.size()+" 段…");
+                    File part=new File(getCacheDir(),"cloud-clip-"+UUID.randomUUID()+".wav");
+                    temporary.add(part);
+                    try(InputStream in=getContentResolver().openInputStream(selected.get(i));
+                        OutputStream out=new FileOutputStream(part)){
+                        if(in==null)throw new IOException("无法读取第 "+(i+1)+" 段");
+                        byte[] buffer=new byte[32768];int n;long partBytes=0;
+                        while((n=in.read(buffer))!=-1){
+                            CloudWavMerge.check(cancellation);copied+=n;partBytes+=n;
+                            if(partBytes>64L*1024*1024)throw new IOException("第 "+(i+1)+" 段超过 64 MiB");
+                            if(copied>96L*1024*1024)throw new IOException("选中片段合计超过 96 MiB，请减少片段");
+                            out.write(buffer,0,n);
+                        }
+                    }
+                }
+                String id=UUID.randomUUID().toString();target=StudioFiles.output(this,id,"wav");
+                pending=new File(target.getPath()+".pending");
+                long millis=CloudWavMerge.merge(temporary,pending,cancellation,update);
+                CloudWavMerge.check(cancellation);
+                if(!pending.renameTo(target))throw new IOException("保存合并音频失败，请检查可用空间");
+                JSONArray segments=new JSONArray();
+                for(Uri uri:selected)segments.put(names.get(uri));
+                StudioFiles.history(this,new JSONObject()
+                    .put("id",id).put("file",target.getName()).put("engine","cloud-demo-merged")
+                    .put("type","tts").put("title","免费云端 · "+selected.size()+" 段合并作品")
+                    .put("segments",segments).put("text","").put("duration",millis)
+                    .put("created",System.currentTimeMillis()));
+                done=true;
+                handler.post(()->{if(!destroyed){toast("已按顺序合并 "+selected.size()+" 段 WAV，作品已保存");change("作品");}});
+            }catch(Exception error){
+                String message=error instanceof InterruptedIOException?"已取消合并，原片段保留":
+                    "合并失败："+(error.getMessage()==null?"音频格式不受支持":error.getMessage());
+                handler.post(()->{if(!destroyed)toast(message);});
+            }finally{
+                for(File part:temporary)part.delete();
+                if(pending!=null)pending.delete();if(!done && target!=null)target.delete();
+                handler.post(()->{
+                    if(mergeCancelled==cancellation){mergeCancelled=null;
+                        if(mergeDialog!=null){mergeDialog.dismiss();mergeDialog=null;}}
+                });
+            }
+        });
+    }
+
+    void importCloudDemo() {
+        if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
+        try {
+            Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("audio/*");
+            startActivityForResult(pick,93);
+        } catch(Exception error) {toast("手机没有可用文件选择器");}
+    }
+
+    void cloudApiPermission() {
+        boolean enabled=prefs.getBoolean("cloud-api-consent",false);
+        new CosmicDialogBuilder(this).setTitle("云端 API 费用保护")
+            .setMessage(enabled?
+              "当前已允许通过 API 提交合成。平台可能按调用收费，VoiceStudio 无法读取所有服务的实时免费剩余额度。是否关闭 API 调用，切回免费网页试听？":
+              "官方 Fish / MiniMax / ElevenLabs API 和自建云 GPU 都可能收费或使用你的额度。VoiceStudio 无法保证它们永久免费。允许后才会从应用内提交合成请求；免费网页试听不需要授权。")
+            .setNegativeButton("取消",null)
+            .setNeutralButton("打开免费试听", (d,n)->freeCloudStarter())
+            .setPositiveButton(enabled?"禁止可能计费的 API":"我了解可能收费，允许 API 调用",
+               (d,n)->{
+                  prefs.edit().putBoolean("cloud-api-consent",!enabled).apply();
+                  toast(enabled?"已开启费用保护 · 应用内 API 合成被锁定":"API 调用已解锁 · 请先确认对应平台额度");
+                  render();
+               }).show();
+    }
+
+    void cloudApiProtection(LinearLayout parent) {
+        boolean allowed=prefs.getBoolean("cloud-api-consent",false);
+        LinearLayout safety=card();
+        info(safety,allowed?"费用保护已解除 · API 可能计费":"费用保护已开启 · 不自动付费",
+             allowed?"已允许调用云端接口。请留意所选服务的官方免费额度或付费余额。":
+               "默认不提交可能收费的 API 请求；仍可通过 ZeroGPU 网页免费试听并导入 WAV。");
+        gap(safety,10);
+        add(safety,button("✦ 免电脑免费试用",false,this::freeCloudStarter));
+        gap(safety,8);
+        add(safety,button(allowed?"重新开启费用保护":"解锁可能计费的云端 API",false,this::cloudApiPermission));
+        add(parent,safety);
+        gap(parent,12);
+    }
+
+    void freeGpuSettings() {
+        cloudApiProtection(content);
+        LinearLayout card=card();
+        info(card,"✦ 无电脑免费试用","Qwen3-TTS 和 IndexTTS 2.5 官方网页 ZeroGPU 可在手机浏览器中访问；完成后下载 WAV 并导入作品。");
+        gap(card,10);
+        add(card,button("打开官方免费云端试听",true,this::freeCloudStarter));
+        add(content,card);
     }
 
     void gradioConfig() {
@@ -1673,11 +1842,14 @@ public class MainActivity extends Activity {
                     }
                     long duration=AcceleratedSpeechClient.validate(pending,"",new AtomicBoolean());
                     if(!pending.renameTo(target))throw new IOException("保存作品失败");
-                    StudioFiles.history(this,new JSONObject().put("id",id).put("file",target.getName()).put("engine","kaggle").put("type","tts")
-                        .put("title","Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
+                    String importedName=selectedFileName(uri);
+                    String label=importedName==null?"":importedName.replaceAll("[\\r\\n\\t]"," ").trim();
+                    if(label.length()>50)label=label.substring(0,50);
+                    StudioFiles.history(this,new JSONObject().put("id",id).put("file",target.getName()).put("engine",request==93?"cloud-demo":"kaggle").put("type","tts")
+                        .put("title",request==93?"免费云端 · "+(label.isEmpty()?"试听作品":label):"Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
                     complete=true;
                 }
-                handler.post(()->{if(!destroyed){toast(request==91?"任务已导出，请在 Kaggle 导入并运行":"GPU 作品已导入");if(request==92)change("作品");}});
+                handler.post(()->{if(!destroyed){toast(request==91?"任务已导出，请在 Kaggle 导入并运行":request==93?"免费云端作品已导入":"GPU 作品已导入");if(request==92||request==93)change("作品");}});
             }catch(Exception e){String message=e.getMessage();handler.post(()->{if(!destroyed)toast(message==null?"文件操作失败":message);});}
             finally{if(pending!=null)pending.delete();if(target!=null&&!complete)target.delete();}
         });
@@ -1858,26 +2030,46 @@ public class MainActivity extends Activity {
     static final String[] CLOUD_IDS=CloudEngineCatalog.IDS;
     static final String[] CLOUD_LABELS=CloudEngineCatalog.LABELS;
     void cloudSettings() {
+        cloudApiProtection(content);
         LinearLayout c=card();
-        info(c,"七颗声音星球","选择平台，申请密钥，保存后开始创作。三家官方 API 可直连；开源模型使用你部署的云端网关。");
+        info(c,"九颗声音星球","选择一颗声音星球，保存连接后开始合成。四款官方 API、五款云端模型，手机不安装权重。");
         Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
         String chosen=prefs.getString("cloud-engine","auto");for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
         add(c,provider);gap(c,8);
-        Spinner mode=new Spinner(this);mode.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"我的云端网关 · 七引擎 / 自动","官方 API 直连 · Fish / ElevenLabs / MiniMax"}));
+        Spinner mode=new Spinner(this);mode.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"我的云端网关 · 开源 / 自动","官方 API 直连 · Fish / ElevenLabs / MiniMax / Cartesia"}));
         boolean wasOfficial=prefs.getString("accelerated-protocol","rest").equals("official");
         mode.setSelection(wasOfficial||prefs.getString("cloud-url","").isEmpty()&&CloudConnectionPolicy.official(chosen)?1:0);add(c,mode);gap(c,12);
         TextView routeInfo=text("",12,MUTED,false);add(c,routeInfo);gap(c,10);
-        LinearLayout states=col();states.setVisibility(View.GONE);
+        LinearLayout states=col();
         TextView[] stateLabels=new TextView[CLOUD_IDS.length];
-        for(int i=1;i<CLOUD_IDS.length;i++){
-            final int pos=i;LinearLayout row=row();row.setPadding(dp(10),dp(9),dp(10),dp(9));
-            flexible(row,text(CLOUD_LABELS[i],14,INK,true));TextView state=text("待检测",11,MUTED,false);stateLabels[i]=state;row.addView(state);
-            row.setOnClickListener(v->{provider.setSelection(pos);if(CloudConnectionPolicy.official(CLOUD_IDS[pos]))mode.setSelection(1);});row.setContentDescription(CLOUD_LABELS[i]+"，点击选择");add(states,row);
+        add(states,button("✦ 自动选择可用引擎",false,()->{mode.setSelection(0);provider.setSelection(0);}));gap(states,12);
+        for(boolean official:new boolean[]{true,false}) {
+            add(states,text(official?"官方 API 直连":"云端网关 / GPU Worker",15,official?CYAN:PURPLE,true));gap(states,9);
+            LinearLayout engineRow=null;int count=0;
+            for(int i=1;i<CLOUD_IDS.length;i++)if(CloudConnectionPolicy.official(CLOUD_IDS[i])==official){
+                if(count%2==0){engineRow=row();add(states,engineRow);gap(states,8);}else sideGap(engineRow,8);
+                final int pos=i;LinearLayout tile=col();tile.setPadding(dp(12),dp(12),dp(12),dp(12));
+                tile.setBackground(CosmicUi.panel(this,official?CYAN:PURPLE));
+                add(tile,text(CLOUD_LABELS[i],13,INK,true));gap(tile,7);
+                TextView state=text(official?"官方 API":"云端模型",11,MUTED,false);stateLabels[i]=state;add(tile,state);
+                tile.setOnClickListener(v->{mode.setSelection(official?1:0);provider.setSelection(pos);});
+                tile.setContentDescription(CLOUD_LABELS[i]+"，点击选择");CosmicUi.press(tile);flexible(engineRow,tile);count++;
+            }
+            if(count%2==1)flexible(engineRow,new View(this));gap(states,7);
         }
-        gap(c,12);
+        add(c,states);gap(c,14);
         EditText url=field("你的 HTTPS 网关地址", "",false),voice=field("平台音色 ID / 自建网关音色", "auto",false),key=field("密钥", "",true);
         key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-        add(c,url);gap(c,10);add(c,voice);gap(c,10);add(c,key);gap(c,8);
+        add(c,url);gap(c,10);add(c,voice);gap(c,8);
+        TextView miniPicker=button("♫ 选择 MiniMax 预置音色 ID",false,()->{
+            final String[] ids={"male-qn-qingse","male-qn-jingying","female-shaonv","female-yujie","female-tianmei"};
+            final String[] labels={"青涩青年男声","精英青年男声","少女女声","御姐女声","甜美女声"};
+            new CosmicDialogBuilder(this).setTitle("MiniMax 音色库 · 预置 ID")
+                .setItems(labels,(dialog,index)->{voice.setText(ids[index]);toast("已填入 "+ids[index]);})
+                .setNegativeButton("取消",null).show();
+        });
+        miniPicker.setVisibility("minimax".equals(chosen)?View.VISIBLE:View.GONE);
+        add(c,miniPicker);gap(c,10);add(c,key);gap(c,8);
         add(c,button("粘贴已领取的密钥",false,()->{
             android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
             if(clipboard.hasPrimaryClip()){CharSequence value=clipboard.getPrimaryClip().getItemAt(0).coerceToText(this);key.setText(value==null?"":value.toString().trim());toast("已粘贴；保存后密钥会加密存储");}else toast("请先在平台官网复制 API Key");
@@ -1888,6 +2080,7 @@ public class MainActivity extends Activity {
         Map<String,String[]> drafts=new HashMap<>();String[] activeRoute={""};boolean[] applying={false};
         Runnable updateRoute=()->{
             String id=CLOUD_IDS[provider.getSelectedItemPosition()];
+            miniPicker.setVisibility("minimax".equals(id)?View.VISIBLE:View.GONE);
             if(mode.getSelectedItemPosition()==1&&!CloudConnectionPolicy.official(id)){mode.setSelection(0);toast("此开源模型使用自建网关，已切换连接方式");}
             boolean direct=mode.getSelectedItemPosition()==1&&CloudConnectionPolicy.official(id);String route=direct?"official-"+id:"gateway";
             if(!route.equals(activeRoute[0])){
@@ -1903,12 +2096,12 @@ public class MainActivity extends Activity {
             }
             url.setFocusable(!direct);url.setFocusableInTouchMode(!direct);url.setCursorVisible(!direct);url.setHint(direct?"官方 API 地址（自动填写）":"你部署的 HTTPS 网关地址（会记住并复用）");
             key.setHint(direct?CloudEngineCatalog.label(id)+" API Key（加密保存）":"自建网关访问密钥（不是平台 API Key）");
-            routeInfo.setText(direct?"官方地址已自动填写。登录平台领取密钥后粘贴即可；生成可能消耗平台额度。":"自动复用你保存的自建网关。四款开源模型没有统一公共网关，申请 GPU / Token 后仍需部署服务。");
+            routeInfo.setText(direct?"官方地址已自动填写。需要本平台 API Key、音色 ID；可能消耗免费额度或产生费用。":"自动复用你保存的自建网关。五款开源模型（含 GPT-SoVITS）需要远端 GPU 及实际运行的网关。");
             apply.setText((CloudConnectionPolicy.official(id)?CloudEngineCatalog.label(id):"Hugging Face")+" · 注册 / 申请账号");
             getKey.setText(CloudConnectionPolicy.official(id)?"打开 "+CloudEngineCatalog.label(id)+" API Key 页面":"领取 Hugging Face 部署 Token");
             docs.setText(CloudConnectionCatalogTitle(id));
             apply.setOnClickListener(v->openUrl(CloudConnectionPolicy.account(id)));getKey.setOnClickListener(v->openUrl(CloudConnectionPolicy.keys(id)));docs.setOnClickListener(v->openUrl(CloudConnectionPolicy.documentation(id)));
-            health.setText(direct?"官方地址已填写 · 密钥和额度尚未验证":"自建网关 · 尚未检测");for(int i=1;i<stateLabels.length;i++){stateLabels[i].setText(direct&&CLOUD_IDS[i].equals(id)?"官方直连":"待检测");stateLabels[i].setTextColor(MUTED);}
+            health.setText(direct?"官方地址已填写 · 密钥和额度尚未验证":"自建网关 · 尚未检测");for(int i=1;i<stateLabels.length;i++){boolean current=CLOUD_IDS[i].equals(id);stateLabels[i].setText(current?"✓ 已选择":CloudConnectionPolicy.official(CLOUD_IDS[i])?"官方 API":"云端模型");stateLabels[i].setTextColor(current?CYAN:MUTED);}
         };
         android.widget.AdapterView.OnItemSelectedListener selection=new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long item){updateRoute.run();}public void onNothingSelected(android.widget.AdapterView<?> parent){}};
         provider.setOnItemSelectedListener(selection);mode.setOnItemSelectedListener(selection);updateRoute.run();
@@ -1923,24 +2116,32 @@ public class MainActivity extends Activity {
             if(direct){try{CloudConnectionPolicy.validate(id,address);AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException("请先领取并粘贴平台 API Key");health.setText("官方地址与密钥格式正确 · 尚未验证权限 / 额度（未提交生成）");}catch(Exception e){health.setText(e.getMessage());}return;}
             probe.setEnabled(false);health.setText("正在检测网关连接…");new Thread(()->{try{CloudConnectionPolicy.gateway(address);Set<String> configured=new CloudHealthClient().check(address,token);runOnUiThread(()->{if(isFinishing()||isDestroyed())return;if(!activeRoute[0].equals("gateway")||!address.equals(url.getText().toString().trim())||!token.equals(key.getText().toString().trim()))health.setText("配置已变更 · 请重新检测");else{health.setText("网关连接成功 · "+configured.size()+" 款已配置");for(int i=1;i<stateLabels.length;i++){boolean ok=configured.contains(CLOUD_IDS[i]);stateLabels[i].setText(ok?"已配置":"未配置");stateLabels[i].setTextColor(ok?CosmicUi.SUCCESS:MUTED);}}probe.setEnabled(true);});}catch(Exception e){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;health.setText(e.getMessage()==null?"网关连接失败":e.getMessage());probe.setEnabled(true);});}},"cloud-health").start();
         });add(c,probe);gap(c,8);
-        add(c,button("查看 / 收起七引擎配置状态",false,()->states.setVisibility(states.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE)));add(c,states);gap(c,12);
+        gap(c,12);
         TextView languageChoice=button("文字语言 · "+omniLanguageName(),false,()->{});languageChoice.setOnClickListener(v->pickCloudLanguage(languageChoice));add(c,languageChoice);gap(c,10);
         String[] selected={prefs.getString("cloud-profile","")};CheckBox clone=new CheckBox(this);clone.setText("使用已录制的参考声音克隆");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());add(c,clone);add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));gap(c,8);
-        add(c,text("Fish 录音克隆须准确填写录音原文；ElevenLabs、MiniMax 请在平台先创建音色 ID。自建网关密钥要与服务器设置一致，部署 Token 不能当网关密钥。",12,MUTED,false));gap(c,12);
+        add(c,text("GPT-SoVITS 与 Fish 参考录音需准确原文；ElevenLabs、MiniMax、Cartesia 需使用平台注册的 Voice ID。免费试用入口与付费 API 分开。",12,MUTED,false));gap(c,12);
         add(c,button("保存并使用",true,()->{
             try{
                 String id=CLOUD_IDS[provider.getSelectedItemPosition()];boolean direct=mode.getSelectedItemPosition()==1;
                 String endpoint=direct?CloudConnectionPolicy.validate(id,url.getText().toString().trim()):CloudConnectionPolicy.gateway(url.getText().toString().trim());
                 String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException(direct?"请领取并填写平台 API Key":"请填写自建网关访问密钥");if(voiceId.isEmpty())voiceId="auto";
-                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
+                if(id.equals("gptsovits")){
+                    if(!clone.isChecked()||selected[0].isEmpty())
+                        throw new IOException("GPT-SoVITS 必须先录制并选择人物声音，勾选参考录音克隆");
+                    JSONObject meta=StudioFiles.read(new File(StudioFiles.dir(this,"profiles"),selected[0]+".json"));
+                    if(meta.optString("referenceText","").trim().isEmpty())
+                        throw new IOException("GPT-SoVITS 需要准确参考原文；请重新保存包含原文的录音");
+                }
+                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")||id.equals("cartesia")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
                 if(direct&&!clone.isChecked())OfficialSpeechClient.body(id,voiceId,"配置检查",1);
                 new SecretStore(this,direct?"official-"+id:"accelerated").save(token);
                 SharedPreferences.Editor save=prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint).putString("cloud-voice",voiceId).putString("cloud-profile",clone.isChecked()?selected[0]:"")
                     .putString("accelerated-url",endpoint).putString("accelerated-model",id).putString("accelerated-voice",voiceId).putString("accelerated-provider","custom").putString("accelerated-protocol",direct?"official":"rest");
                 if(direct)save.putString("official-"+id+"-voice",voiceId);else save.putString("gateway-url",endpoint).putString("gateway-voice",voiceId);save.apply();
-                engine="accelerated";saveSettings();hideKeyboard();toast(direct?"官方 API 已保存，地址自动填写":"网关已保存，切换引擎会自动复用");change("创作");
+                engine="accelerated";saveSettings();hideKeyboard();toast("已保存 "+CloudEngineCatalog.label(id)+"，进入创作页点击“开始合成”");change("创作");
             }catch(Exception e){toast(e.getMessage());}
         }));gap(c,12);
+        add(c,button("♫ 前往合成入口 · 文字 / 试听 / 保存",false,()->change("创作")));gap(c,12);
         add(c,button("网关部署与密钥配置说明",false,()->openUrl(CloudConnectionPolicy.documentation("auto"))));gap(c,8);
         add(c,button("Modal · GPU 申请 / 部署",false,()->openUrl("https://modal.com/signup")));gap(c,8);
         add(c,button("Kaggle · GPU Notebook 申请",false,()->openUrl("https://www.kaggle.com/account/login")));
@@ -1961,7 +2162,7 @@ public class MainActivity extends Activity {
         info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
         add(content,privacy);gap(content,12);
         LinearLayout about=card();
-        info(about,"VoiceStudio 1.5.22 · 云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
+        info(about,"VoiceStudio 1.5.25 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
         add(content,about);
     }
 
@@ -2052,6 +2253,14 @@ public class MainActivity extends Activity {
             return;
         }
         hideKeyboard();
+        if(!prefs.getBoolean("cloud-api-consent",false)){
+            new CosmicDialogBuilder(this).setTitle("当前为免费保护模式")
+                .setMessage("为避免产生意外费用，应用内 API 合成暂未授权。你可以免费通过官方 ZeroGPU 网页试听；若要使用 Fish / MiniMax / ElevenLabs 等 API，请主动了解费用并解锁。")
+                .setNegativeButton("取消",null)
+                .setNeutralButton("免电脑免费试听",(d,n)->freeCloudStarter())
+                .setPositiveButton("查看 API 费用保护",(d,n)->cloudApiPermission()).show();
+            return;
+        }
         if ("fish".equals(engine)) {
             try {
                 enqueueFishText(s);
@@ -2421,7 +2630,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
-        if(request==91 || request==92){kaggleResult(request,result,data);return;}
+        if(request==91 || request==92 || request==93){kaggleResult(request,result,data);return;}
+        if(request==94){mergeFreeWavResult(result,data);return;}
         if (request == 83) {
             if (result == RESULT_OK && data != null) {
                 List<Uri> files = new ArrayList<>();
@@ -2494,6 +2704,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if(mergeCancelled!=null)mergeCancelled.set(true);
+        if(mergeDialog!=null){mergeDialog.dismiss();mergeDialog=null;}
+        if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
         stopPreview();
         if (noisyRegistered) { unregisterReceiver(noisyReceiver); noisyRegistered = false; }
         cancelled.set(true);
@@ -2562,7 +2775,11 @@ public class MainActivity extends Activity {
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStyle(Paint.Style.STROKE);
-            if (icon.equals("wave")) {
+            if (icon.equals("mic")) {
+                canvas.drawRoundRect(11,3,21,20,5,5,paint);
+                canvas.drawArc(7,10,25,25,0,180,false,paint);
+                canvas.drawLine(16,25,16,29,paint);canvas.drawLine(11,29,21,29,paint);
+            } else if (icon.equals("wave")) {
                 for (int i = 0; i < 5; i++) {
                     float h = new float[] {6, 15, 23, 15, 6}[i];
                     canvas.drawLine(6 + i * 5, 16 - h / 2, 6 + i * 5, 16 + h / 2, paint);

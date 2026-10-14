@@ -1,0 +1,33 @@
+name: Deploy VoiceStudio Qwen3-TTS to Modal
+# Manual only: each deploy may create or update billable cloud GPU resources.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  deploy-qwen:
+    name: Publish authenticated Qwen3-TTS cloud API
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate required deployment credentials
+        shell: bash
+        run: |
+          if [[ -z "$MODAL_TOKEN_ID" || -z "$MODAL_TOKEN_SECRET" ]]; then
+            echo "::error::First add MODAL_TOKEN_ID and MODAL_TOKEN_SECRET to GitHub Actions repository secrets."
+            exit 1
+          fi
+      - name: Install Modal deploy client
+        run: python -m pip install "modal>=1.1,<2"
+      - name: Static syntax verification
+        run: python -m compileall -q server/modal_qwen_deploy.py server/cloud_gateway.py server/open_model_worker.py
+      - name: Deploy to GPU web endpoint
+        run: modal deploy -m server.modal_qwen_deploy

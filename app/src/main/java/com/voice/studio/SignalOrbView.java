@@ -21,20 +21,29 @@ final class SignalOrbView extends View {
         p.setStyle(Paint.Style.FILL);p.setShader(glow);c.drawRect(0,0,w,h,p);p.setShader(null);
         oval(c,x-u*.29f,h*.83f,x+u*.31f,h*.9f,0x444A71A6);
         int saved=c.save();c.translate(0,moving?(float)Math.sin(phase*Math.PI*2)*u*.018f:0);
-        round(c,x-u*.15f,y+u*.12f,x+u*.15f,y+u*.33f,u*.08f,0xffDDE8FF);
-        oval(c,x-u*.25f,y+u*.14f,x-u*.13f,y+u*.29f,0xffB4CDF0);
-        oval(c,x+u*.13f,y+u*.14f,x+u*.25f,y+u*.29f,0xffB4CDF0);
-        round(c,x-u*.22f,y-u*.2f,x+u*.22f,y+u*.16f,u*.13f,0xffEDF3FF);
-        round(c,x-u*.17f,y-u*.13f,x+u*.17f,y+u*.07f,u*.07f,0xff183656);
-        oval(c,x-u*.115f,y-u*.068f,x-u*.055f,y-u*.005f,accent);
-        oval(c,x+u*.055f,y-u*.068f,x+u*.115f,y-u*.005f,accent);
-        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(u*.016f);p.setStrokeCap(Paint.Cap.ROUND);p.setColor(accent);
-        rect.set(x-u*.045f,y-u*.012f,x+u*.045f,y+u*.032f);c.drawArc(rect,15,150,false,p);
-        c.drawLine(x,y-u*.2f,x,y-u*.27f,p);p.setStyle(Paint.Style.FILL);p.setColor(CosmicUi.PINK);c.drawCircle(x,y-u*.28f,u*.025f,p);
-        round(c,x-u*.065f,y+u*.195f,x+u*.065f,y+u*.23f,u*.015f,CosmicUi.PURPLE);
-        float sx=x+u*.3f,sy=y+u*.025f;
-        star.reset();for(int i=0;i<10;i++){double a=-Math.PI/2+i*Math.PI/5;float r=u*(i%2==0?.13f:.065f),px=sx+(float)Math.cos(a)*r,py=sy+(float)Math.sin(a)*r;if(i==0)star.moveTo(px,py);else star.lineTo(px,py);}star.close();p.setColor(0xffFFE3A0);c.drawPath(star,p);
-        oval(c,sx-u*.035f,sy-u*.017f,sx-u*.02f,sy,0xff72547E);oval(c,sx+u*.02f,sy-u*.017f,sx+u*.035f,sy,0xff72547E);
+        // A cloud wearing headphones; decorative only, never a microphone meter.
+        c.translate(w*.5f,h*.5f);c.scale(u/100f,u/100f);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(6);p.setColor(0xff8CA7FF);
+        rect.set(-32,-36,32,34);c.drawArc(rect,185,170,false,p);
+        Path cloud=new Path();cloud.moveTo(-31,25);
+        cloud.cubicTo(-46,25,-47,3,-34,0);cloud.cubicTo(-41,-17,-19,-27,-8,-17);
+        cloud.cubicTo(-3,-43,33,-35,29,-12);cloud.cubicTo(48,-12,50,12,39,16);
+        cloud.cubicTo(40,27,29,30,17,27);cloud.lineTo(-31,25);cloud.close();
+        p.setStyle(Paint.Style.FILL);p.setShader(new LinearGradient(-25,-25,29,29,
+            new int[]{0xffA4F1FF,0xffB6C8FF,0xffEBC2FF},null,Shader.TileMode.CLAMP));
+        c.drawPath(cloud,p);p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(1.2f);p.setColor(0xffE1F4FF);c.drawPath(cloud,p);
+        p.setStyle(Paint.Style.FILL);
+        round(c,-38,-6,-28,18,5,0xff799EFF);round(c,31,-7,42,18,5,0xffD0A0F8);
+        round(c,-35,-3,-31,15,2,0xffB3D9FF);round(c,35,-4,39,15,2,0xffEDD8FF);
+        oval(c,-22,8,-13,12,0x66FF8CD0);oval(c,12,8,21,12,0x66FF8CD0);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2);p.setStrokeCap(Paint.Cap.ROUND);p.setColor(0xff344C83);
+        rect.set(-20,1,-11,9);c.drawArc(rect,5,170,false,p);
+        rect.set(10,1,19,9);c.drawArc(rect,5,170,false,p);
+        rect.set(-4,8,5,15);c.drawArc(rect,5,170,false,p);
+        p.setColor(accent);p.setStrokeWidth(1.5f);
+        c.drawLine(-43,-24,-37,-24,p);c.drawLine(-40,-27,-40,-21,p);
+        c.drawLine(34,-27,42,-27,p);c.drawLine(38,-31,38,-23,p);
         c.restoreToCount(saved);
         removeCallbacks(tick);if(moving)postDelayed(tick,80);
     }

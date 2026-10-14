@@ -1,25 +1,23 @@
-# VoiceStudio 1.5.22-cloud 当前验证范围
+# VoiceStudio 1.5.25-cloud 当前验证范围
 
-本文件只报告本次云端版。旧验证日志属于其原版本，不能当作当前云端合成验收。
+本文件报告这次交付 APK，不以历史版本日志代替当前检查。
 
-- 原签名非 debug 覆盖兼容检查 31 项通过：包名 `com.voice.studio.preview`、versionCode 38 > 旧 37、分享 authority 不变、v2/v3 签名、zipalign、组件完整性。
-- 允许删除已停用的模型安装/下载 Activity 与离线悬浮服务；无本地推理 `.so`、模型安装清单、mel 滤波或 ONNX 图。只保留 646 语言目录文本元数据，不意味着每个云引擎支持全部语言。
-- 本次 APK SHA256：`799f01c1ba44d638995de7473b812f7dca6b37d3e5005e1ea5774f43ce7116e2`。
-- 服务端 22 项测试通过（FastAPI mock 模型/传输 + 真实 FFmpeg PCM 转换）：参考录音身份/时长/截断、过期、鉴权、四开源与三商业路由、Fish MessagePack 参考录音、新文本末句、CosyVoice 全输出段、Chatterbox 无损内部分段、自动跳过未就绪服务、拒绝静音/假音频、并发忙时无模型提交。
-- 新增官方直连 70 项 host/mock 检查通过：固定官方地址、认证头、完整文本、十六进制音频、下载边界、参考录音、续传不重复 POST 与取消；Fish MessagePack 另经独立 Python 解析，核对 UTF-8 新文本、准确原文与完整 WAV。Android MediaCodec 使用注入式模拟解码器验证交接，没有实际手机 codec/平台音质测试。
-- Java 云端健康 16 项 mock 检查：只读 GET、同 HTTPS origin、Bearer token、拒绝跳转、响应边界及未知引擎过滤。
-- Java 远程管线 10841 项、下载恢复 123 项、音频检查 42 项、请求 67 项、进度持久化 1023 项、旧 GPU 协议 52 项检查通过。均为 host/mock 验证，没有真实 GPU 的速度或音质结论。
-- 界面共享文本对比/源码集成 137 项通过，最低共享文本对比 7.14:1；动效曲线 host 检查 8003 项通过。
-- Figma Starter 调用额度耗尽，未完成 Figma 画布。实际改动为原生 Android UI；`docs/design/voicestudio-cloud.svg` 是可编辑设计示意。
-- 前一版 1.5.21 在 Android API29 软件模拟器安装并渲染创作页，但持续出现模拟器 System UI ANR，导航验证未完成。1.5.22 本次未重跑该故障模拟器；不称真机或页面导航验收通过。
-- GitHub CI 对源码提交 `8eccf502ac3bc696eeba863d9f669c4ef272a33f` 的云端网关、Java 回归和 Android unsigned 编译均通过：[工作流结果](https://github.com/nmm26301-maker/Voicestudio/actions/runs/38553669069)。
+## 已通过
 
-## 未验收项目
+- Android 编译、DEX 打包、zipalign、v2/v3 原签名验证通过。包名 `com.voice.studio.preview`，versionCode 41，非 debug。
+- 与上次实际交付的 1.5.24 对比，覆盖兼容检查 31 项通过，包括相同证书、分享 authority、组件集合、版本递增和关于页版本。
+- 安装包没有推理原生库、权重、模型安装清单或 ONNX 图；仅保留语言目录元数据。
+- Java 官方 API 84 项、健康检查 16 项、持久化 1023 项、音频验证 42 项、下载恢复 123 项、WAV 合并 10 项、API 请求 67 项、远程管线 10841 项、旧 GPU 协议 52 项 host/mock 检查通过。
+- 网关 / 开源 worker / 九引擎及 GPT 桥接的 29 项服务端测试通过，使用 mock 模型/HTTP 与实际 FFmpeg 转换；没有提交真实付费请求。
+- Cartesia 请求使用官方当前文档的 `2026-08-14` 版本、Bearer 认证、字符串 Voice ID、标准 WAV 输出。来源：https://docs.cartesia.ai/api-reference/tts/bytes 。GPT 原生请求依据 https://github.com/RVC-Boss/GPT-SoVITS/blob/main/api_v2.py ，桥接只访问本机服务且关闭环境代理。
+- 原签名恢复归档已校验 APK 字节与密钥证书一致。公开仓库不含私钥或密码归档。
 
-没有提供实际云网关/GPU 或商业账户密钥，本次没有调用真实七引擎。录音克隆相似度、朗读逐字正确性、手机响应速度与故障场景下真实计费均未验收。时长/静音/PCM 检查只能检测明显失败，不能证明逐字完整。
+交付 APK SHA256：`87d67a1b1bcadf671b214f505fc41be5a34fcd45dccf13b0ced05fce02ff1f6f`。
 
-旧作品/参考录音目录和包名沿用、不会自动删除；用户手机上的真实数据保留仍须安装后确认。旧模型可在“工具 > 任务”手动清理。旧视频人物分解/转写/翻译任务保留历史结果，本次没有新的云端视频分人服务。
+## 验收边界
 
-## 发布备份
+没有连接用户手机，也没有提供平台真实密钥或已运行的远程 GPU 网关。当前不宣称九引擎音质、克隆相似度、逐字朗读完整性或真实计费已验收。时长/格式/静音检测只识别明显失败。
 
-已保存精确 APK 与沿用签名/密码说明的私有恢复 ZIP；该 ZIP 不提交公开仓库。历史上向 `nmm26301-maker/Zizai` 写入 VoiceStudio 签名备份的最终 GitHub tree 操作被自动审批拒绝：用户未明确指定该私有目的地承接 VoiceStudio 签名数据。本次未重试该受阻操作。公开源码同步不含私钥、密码归档、API Key 或用户录音。
+手机录音、浏览器跳转、文件导出/多选、导航与音频播放仍需实际设备确认。模拟器检查单独记录，不等同真机。
+
+免费浏览器模式需要从网页生成、下载、导回 App；自动长文合成和自动选择需可用的 API 或网关。官方账号、私有密钥及远程网关不能由固定网页链接代替。默认费用保护保留，未知提交状态不自动重复 POST。

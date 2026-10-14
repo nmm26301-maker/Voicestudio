@@ -93,6 +93,39 @@ final class CosmicUi {
         TextView sub=label(c,subtitle,12,MUTED,false);sub.setLineSpacing(dp(c,3),1);words.addView(sub);
         row.addView(words,new LinearLayout.LayoutParams(0,-2,1));row.addView(new SignalOrbView(c,accent,false),new LinearLayout.LayoutParams(dp(c,74),dp(c,74)));return row;
     }
+    static LinearLayout navigation(Activity a,String selected,java.util.function.Consumer<String> action) {
+        LinearLayout bar=new LinearLayout(a);bar.setOrientation(0);
+        bar.setBackgroundColor(BG);bar.setPadding(dp(a,8),dp(a,8),dp(a,8),dp(a,10));
+        String[] labels={"音色","合成","任务","作品"},icons={"mic","wave","tools","folder"};
+        for(int i=0;i<labels.length;i++) {
+            String label=labels[i];boolean chosen=label.equals(selected);
+            LinearLayout item=new LinearLayout(a);item.setOrientation(1);item.setGravity(Gravity.CENTER);
+            if(chosen)item.setBackground(panel(a,PURPLE));
+            item.addView(new MainActivity.IconView(a,icons[i],chosen?CYAN:MUTED),
+                new LinearLayout.LayoutParams(dp(a,24),dp(a,24)));
+            TextView caption=label(a,label,12,chosen?CYAN:MUTED,chosen);
+            caption.setPadding(0,dp(a,5),0,0);item.addView(caption);
+            item.setContentDescription(label);item.setSelected(chosen);press(item);
+            item.setOnClickListener(v->action.accept(label));
+            bar.addView(item,new LinearLayout.LayoutParams(0,dp(a,60),1));
+        }
+        return bar;
+    }
+    static LinearLayout workflow(Context c,int active) {
+        LinearLayout strip=new LinearLayout(c);strip.setOrientation(0);strip.setPadding(0,dp(c,10),0,dp(c,12));
+        String[] steps={"录音","引擎","文字","合成","作品"};
+        for(int i=0;i<steps.length;i++) {
+            LinearLayout step=new LinearLayout(c);step.setOrientation(1);step.setGravity(Gravity.CENTER);
+            boolean chosen=i==active;int color=chosen?CYAN:MUTED;
+            TextView number=label(c,Integer.toString(i+1),13,color,true);
+            number.setGravity(Gravity.CENTER);number.setBackground(rounded(c,chosen?SECONDARY:SURFACE,20));
+            step.addView(number,new LinearLayout.LayoutParams(dp(c,30),dp(c,30)));
+            TextView name=label(c,steps[i],11,color,chosen);name.setPadding(0,dp(c,5),0,0);step.addView(name);
+            strip.addView(step,new LinearLayout.LayoutParams(0,-2,1));
+        }
+        strip.setContentDescription("录音或选音色、选引擎、输入文字、开始合成、检查并保存作品");
+        return strip;
+    }
     static void field(EditText t) {
         Context c=t.getContext();t.setTextColor(INK);t.setHintTextColor(MUTED);t.setPadding(dp(c,14),dp(c,12),dp(c,14),dp(c,12));
         GradientDrawable bg=rounded(c,0xff111A33,18);bg.setStroke(dp(c,1),LINE);t.setBackground(bg);
