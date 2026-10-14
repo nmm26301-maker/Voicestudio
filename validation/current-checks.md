@@ -4,13 +4,14 @@
 
 - 原签名非 debug 覆盖兼容检查 31 项通过：包名 `com.voice.studio.preview`、versionCode 37 > 旧 35、分享 authority 不变、v2/v3 签名、zipalign、组件完整性。
 - 允许删除已停用的模型安装/下载 Activity 与离线悬浮服务；无本地推理 `.so`、模型安装清单、mel 滤波或 ONNX 图。只保留 646 语言目录文本元数据，不意味着每个云引擎支持全部语言。
-- 本次 APK SHA256：`57bcac92f08bf71f80db4173dd5899c53eecfc3dd5c081a7fd50a75eb27ccd90`。
+- 本次 APK SHA256：`79c1130b423703044253d9972e2f0dfeff2febb089b4943bd2d70ce79708bc08`。
 - 服务端 22 项测试通过（FastAPI mock 模型/传输 + 真实 FFmpeg PCM 转换）：参考录音身份/时长/截断、过期、鉴权、四开源与三商业路由、Fish MessagePack 参考录音、新文本末句、CosyVoice 全输出段、Chatterbox 无损内部分段、自动跳过未就绪服务、拒绝静音/假音频、并发忙时无模型提交。
 - Java 云端健康 16 项 mock 检查：只读 GET、同 HTTPS origin、Bearer token、拒绝跳转、响应边界及未知引擎过滤。
 - Java 远程管线 10841 项、下载恢复 123 项、音频检查 42 项、请求 67 项、进度持久化 1023 项、旧 GPU 协议 52 项检查通过。均为 host/mock 验证，没有真实 GPU 的速度或音质结论。
 - 界面共享文本对比/源码集成 137 项通过，最低共享文本对比 7.14:1；动效曲线 host 检查 8003 项通过。
 - Figma Starter 调用额度耗尽，未完成 Figma 画布。实际改动为原生 Android UI；`docs/design/voicestudio-cloud.svg` 是可编辑设计示意。
-- Android API29 软件模拟器已安装并启动 APK；启动存在模拟器 System UI ANR，页面导航检查目前仍在排查，不能据此称真机或全部页面验收通过。
+- Android API29 软件模拟器已安装 APK 并渲染创作页；持续出现模拟器 System UI ANR，未能完成页面导航检查，不能据此称真机或全部页面验收通过。
+- GitHub CI 对源码提交 `8eccf502ac3bc696eeba863d9f669c4ef272a33f` 的云端网关、Java 回归和 Android unsigned 编译均通过：[工作流结果](https://github.com/nmm26301-maker/Voicestudio/actions/runs/38553669069)。
 
 ## 未验收项目
 

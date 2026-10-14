@@ -408,7 +408,7 @@ public class MainActivity extends Activity {
         omniLang = prefs.getString("omniLang", "zh");
         try {
             omniLanguages = new JSONArray(readAsset("omni-languages.json"));
-            boolean valid = false;
+            boolean valid = "auto".equals(omniLang);
             for (int i = 0; i < omniLanguages.length(); i++)
                 if (omniLanguages.getJSONObject(i).getString("id").equals(omniLang)) valid = true;
             if (!valid) omniLang = "zh";
