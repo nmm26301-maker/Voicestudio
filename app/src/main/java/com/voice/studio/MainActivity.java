@@ -2000,7 +2000,6 @@ public class MainActivity extends Activity {
     void offlineSettings() {
         heading("你的声音偏好","云端连接、界面动效和作品管理，都在这里。");
         motionSettings();gap(content,16);
-        cloudApiProtection(content);
         cloudSettings();gap(content,16);
         fishSettings();gap(content,16);
         add(content,button("清理旧离线模型（不删除录音、音色和作品）",false,()->openWorkspace("任务")));
