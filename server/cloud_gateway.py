@@ -151,6 +151,8 @@ def choose(model: str, has_reference: bool, voice: str = "auto") -> str:
             raise HTTPException(422, "Unsupported provider")
         if not configured(model):
             raise HTTPException(503, f"{model} is not configured")
+        if model == "gptsovits" and not has_reference:
+            raise HTTPException(422, "GPT-SoVITS needs a WAV reference and exact transcript")
         if has_reference and model not in REFERENCE_MODELS:
             raise HTTPException(422, "Selected provider needs a registered voice ID; choose an OSS reference-enabled engine")
         return model
@@ -204,7 +206,8 @@ async def automatic_model(has_reference: bool, voice: str, reference_text: str =
     import asyncio
     candidates = [p for p in PREFER if configured(p) and
                   (not has_reference or p in OPEN_MODELS or p == "fish" and bool(reference_text.strip())) and
-                  (p in OPEN_MODELS or voice not in ("", "auto"))]
+                  (p in OPEN_MODELS or voice not in ("", "auto")) and
+                  (p != "gptsovits" or has_reference and bool(reference_text.strip()))]
     # Concurrent read-only probes bound overall selection latency to one timeout.
     open_candidates = [p for p in candidates if p in OPEN_MODELS]
     readiness = dict(zip(open_candidates, await asyncio.gather(*(worker_ready(p) for p in open_candidates))))
