@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
     SignalOrbView headerOrb;
     TextView generationTitle, generationStage, generationTime, generationDetail, generationAction, generationCopy, generationPreview;
     AudioPreview fragmentPreview;
+    AlertDialog freeDemoDialog;
     String trackedJobId = "", localGenerationState = "idle";
     JSONObject trackedJob, localCompletedJob;
     boolean jobReloadPending, refreshTracked = true, cancelRequested;
@@ -357,6 +358,8 @@ public class MainActivity extends Activity {
     }
 
     String readyMessage() {
+        if(!prefs.getBoolean("cloud-api-consent",false))
+            return "免费保护模式 · 立即免费试听，不提交可能收费的 API";
         if ("accelerated".equals(engine)) return prefs.getString("accelerated-url", "").isEmpty()
                 ? "先到音色页配置云端连接" : "云端连接已填写 · 可检查连接后生成";
         if ("fish".equals(engine)) {
@@ -870,10 +873,11 @@ public class MainActivity extends Activity {
         gap(content, 12);
         generate =
                 button(
-                        isGenerating() ? "取消生成" : "生成声音",
+                        isGenerating() ? "取消生成" : prefs.getBoolean("cloud-api-consent",false) ? "生成声音" : "✦ 免费云端试听",
                         true,
                         () -> {
                             if (isGenerating()) cancelJob();
+                            else if(!prefs.getBoolean("cloud-api-consent",false))freeCloudStarter();
                             else generate();
                         });
 
@@ -1587,11 +1591,14 @@ public class MainActivity extends Activity {
         add(inside,button("了解 ZeroGPU 官方额度规则",false,
             ()->openUrl("https://huggingface.co/docs/hub/spaces-zerogpu")));
         ScrollView scroll=new ScrollView(this);scroll.addView(inside);
-        new CosmicDialogBuilder(this).setTitle("✦ 免费云端，不用电脑")
-            .setView(scroll).setPositiveButton("关闭",null).show();
+        if(freeDemoDialog!=null && freeDemoDialog.isShowing())freeDemoDialog.dismiss();
+        freeDemoDialog=new CosmicDialogBuilder(this).setTitle("✦ 免费云端，不用电脑")
+            .setView(scroll).setPositiveButton("关闭",null).create();
+        freeDemoDialog.show();
     }
 
     void importCloudDemo() {
+        if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
         try {
             Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("audio/*");
