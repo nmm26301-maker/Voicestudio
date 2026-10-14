@@ -186,7 +186,7 @@ public class MainActivity extends Activity {
         boolean running = isGenerating();
         if(headerOrb!=null) headerOrb.busy(running || !StudioService.active.isEmpty());
         if (generate != null) {
-            generate.setText(cancelRequested ? "正在取消…" : running ? "取消生成" : "生成声音");
+            generate.setText(cancelRequested ? "正在取消…" : running ? "取消生成" : prefs.getBoolean("cloud-api-consent",false) ? "生成声音" : "✦ 免费云端试听");
             generate.setEnabled(!cancelRequested);
         }
         if (status != null)
