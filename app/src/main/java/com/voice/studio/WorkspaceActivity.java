@@ -22,7 +22,7 @@ public class WorkspaceActivity extends Activity {
     final Map<String, View> sections = new LinkedHashMap<>();
     final Map<String, TextView> sectionButtons = new LinkedHashMap<>();
     final Map<TextView, String[]> requirements = new LinkedHashMap<>();
-    String section = "转写", pendingResume = "";
+    String section = "音色", pendingResume = "";
     TextView recordingStatus;
     VoiceCapturePanel voiceCapture;
     final Runnable recordingPoll = new Runnable() {
@@ -65,8 +65,8 @@ public class WorkspaceActivity extends Activity {
 
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
-        section = saved == null ? getIntent().getStringExtra("section") : saved.getString("section", "转写");
-        if (section == null) section = "转写";
+        section = saved == null ? getIntent().getStringExtra("section") : saved.getString("section", "音色");
+        if (section == null) section = "音色";
         if (saved != null) {
             pendingResume = saved.getString("pendingResume", "");
             taskLimit = saved.getInt("taskLimit", 50);
@@ -94,94 +94,26 @@ public class WorkspaceActivity extends Activity {
         heading.setGravity(Gravity.CENTER_VERTICAL); toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(48), 1));
         shell.addView(toolbar); quickSections();
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1)); setContentView(shell);
-        LinearLayout setup = sectionCard("模型", "模型与设备", "下载、安装、校验与设备自检集中在这里。");
-        status = label(setup, "正在读取模型状态…", 13, false);
-        button(setup, "模型安装与设备检查", this::modelModules);
-        button(setup, "下载与安装离线模型", () -> startActivity(new Intent(this, ModelDownloadsActivity.class)));
-        button(setup, "导出设备与模型诊断", this::diagnostics);
-        button(setup, "一键基础自检", this::deviceChecks);
-        LinearLayout voice = sectionCard("音色", "人物音色实验室", "直接录音创建人物声音，或从视频中提取、试听并保存每位说话人的音色。");
-        voiceCapture = new VoiceCapturePanel(this, voice);
-        requireModels(voice, "clone", "omni", "whisper", "speaker");
-        button(voice, "从视频提取人物声音", () -> pick(90, "video/*", false));
-        button(voice, "打开人物提取结果", this::voiceExtractions);
-        button(voice, "导入已有音频 / 视频创建音色", () -> pick(71, "*/*", false));
-        button(voice, "选择 / 删除已保存音色", this::profiles);
-        button(voice, "设置自动音色与采样参数", this::settings);
-        button(
-                voice,
-                "切回自动音色",
-                () -> {
-                    getSharedPreferences("studio", 0).edit().remove("selected-profile").apply();
-                    toast("已使用自动音色");
-                });
-        LinearLayout recognition = sectionCard("转写", "语音转写与录音", "导入音视频或现场录音 → 校对字幕 → 分组说话人 → 翻译与配音。识别使用 Whisper tiny。");
-        requireModels(recognition, "whisper");
-        button(recognition, "导入音频 / 视频转写", () -> pick(77, "*/*", false));
-        recordingStatus = label(recognition, "未在录音", 13, true);
-        button(recognition, "麦克风录音并转写", this::startDictation);
-        button(recognition, "选择麦克风 / 蓝牙耳机", this::recordInput);
-        button(
-                recognition,
-                "结束录音并转写",
-                () -> {
-                    if (!StudioService.recording.isEmpty())
-                        startService(new Intent(this, StudioService.class).setAction("stopMic"));
-                    else toast("当前没有正在录音的任务");
-                });
-        button(recognition, "开启悬浮听写", this::floatingDictation);
-        button(recognition, "关闭悬浮听写", () -> stopService(new Intent(this, DictationOverlay.class)));
-        button(recognition, "打开转写结果与字幕编辑", () -> jumpSection("任务"));
-        LinearLayout translation = sectionCard("翻译", "离线翻译", "NLLB 200，包含 202 个语言 / 文字体系选项；翻译结果可复制、导出或用于配音。");
-        requireModels(translation, "translation");
-        button(translation, "输入文字并翻译", this::translationDialog);
-        LinearLayout extras = sectionCard("音频", "人声分离与配音", "分离人声与伴奏；视频配音从已完成的转写任务进入，可校对字幕并为说话人分配音色。");
-        requireModels(extras, "separation");
-        button(extras, "导入音频 / 视频分离人声", () -> pick(79, "*/*", false));
-        button(extras, "字幕、说话人分组与视频配音", () -> jumpSection("任务"));
-        LinearLayout book = sectionCard("有声书", "有声书", "导入 UTF-8 TXT 或未加密 EPUB。按章节保存 WAV，完成后导出 ZIP；已完成章节可续做。");
-        requireModels(book, "omni");
-        button(book, "导入书籍", () -> pick(75, "*/*", false));
-        LinearLayout batch = sectionCard("批量", "批量生成", "使用 OmniVoice 离线合成，每行一个任务；沿用本机语言、语速和参考音色，不使用 Fish 或手机语音引擎。");
-        requireModels(batch, "omni");
-        button(batch, "输入批量文字", this::batch);
-        tasks = sectionCard("任务", "任务与结果", "锁屏或离开页面后继续计算。系统回收进程后可手动继续；每行“···”可暂停单个任务；长按可删除任务。");
-        button(
-                tasks,
-                "暂停整个队列",
-                () -> startService(new Intent(this, StudioService.class).setAction("cancel")));
-        label(tasks, "继续队列会复用已保存录音；需要重新录音的任务请单独打开并继续。", 12, false);
-        button(tasks, "继续可恢复的暂停任务", () -> {
-            try {
-                int count = StudioService.resumePaused(this);
-                toast(count == 0 ? "没有已暂停任务" : "已继续 " + count + " 个任务");
-            } catch (Exception e) { toast(e.getMessage()); }
-        });
-        Spinner filter = new Spinner(this);
-        filter.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item,
-                new String[]{"全部任务", "等待与运行", "已暂停", "已完成", "失败待处理"}));
-        filter.setSelection(taskFilter); tasks.addView(filter);
-        filter.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
-            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
-                taskFilter = position; showTasks();
-            }
-            public void onNothingSelected(android.widget.AdapterView<?> parent) { }
-        });
+        LinearLayout voice=sectionCard("音色","录音与克隆音色","录制 3—10 秒参考音频，使用云端模型克隆，无须在手机安装模型。");
+        voiceCapture=new VoiceCapturePanel(this,voice);
+        button(voice,"选择 / 删除已保存音色",this::profiles);
+        button(voice,"配置云端合成引擎",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
+        tasks=sectionCard("任务","生成任务与结果","查看任务状态、失败详情与旧版作品。后台不会加载已停用的本地语音模型。");
+        button(tasks,"暂停整个队列",()->startService(new Intent(this,StudioService.class).setAction("cancel")));
+        button(tasks,"清理旧离线模型（保留所有录音和作品）",this::clearLegacyModels);
+        label(tasks,"清理只涉及模型目录。升级不会自动删除历史作品、参考音色或录音。",12,false);
+
         taskSummary = label(tasks, "正在读取任务…", 13, false);
         taskHeaderCount = tasks.getChildCount();
         if (getIntent().getBooleanExtra("openModels", false)) {
-            section = "模型"; getIntent().removeExtra("openModels"); ui.post(this::modelModules);
+            section = "任务"; getIntent().removeExtra("openModels");
         }
         String inspectModule = getIntent().getStringExtra("inspectModule");
         String importModule = getIntent().getStringExtra("importModule");
         getIntent().removeExtra("inspectModule"); getIntent().removeExtra("importModule");
-        if (inspectModule != null || importModule != null) section = "模型";
-        for (int n = 0; n < MODULE_CODES.length; n++) {
-            final int index = n;
-            if (MODULE_CODES[n].equals(inspectModule)) ui.post(() -> modelDetails(index));
-            if (MODULE_CODES[n].equals(importModule)) ui.post(() -> pick(MODULE_REQUESTS[index], "*/*", true));
-        }
-        jumpSection(sections.containsKey(section) ? section : "转写");
+        if (inspectModule != null || importModule != null) section = "任务";
+
+        jumpSection(sections.containsKey(section) ? section : "音色");
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
                         != android.content.pm.PackageManager.PERMISSION_GRANTED)
@@ -370,29 +302,22 @@ public class WorkspaceActivity extends Activity {
                 .show();
     }
 
-    void queueRecordedVoice(File audio, String title, String text) throws Exception {
-        String nm = title.trim(), transcript = text.trim();
-        if (nm.isEmpty() || nm.length() > 80) throw new IOException("请填写 1—80 字的人物名称");
-        if (!StudioFiles.ready(this, "clone")) throw new IOException("请先安装声音克隆模型；录音已经保留");
-        if (transcript.length() > 2000) throw new IOException("对应文字最多 2000 字");
-        if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper")) throw new IOException("请填写录音文字，或安装识别模型自动转写");
-        double seconds;
-        try (PcmAudio.Reader reader = new PcmAudio.Reader(audio)) { seconds = reader.seconds(); }
-        if (seconds < 3 || seconds > 10.01) throw new IOException("请录制 3—10 秒的清晰单人声音");
-        // Queue an immutable copy: re-recording the draft cannot change a pending task.
-        File copy = new File(StudioFiles.dir(this, "audio"), UUID.randomUUID() + ".wav");
-        try (InputStream in = new FileInputStream(audio); OutputStream out = new FileOutputStream(copy)) {
-            copy(in, out, 5000000L);
-        }
-        JSONObject job = new JSONObject().put("type", "clone").put("referenceAudio", copy.getName())
-                .put("referenceOwned", true).put("start", 0).put("seconds", Math.min(10, seconds))
-                .put("text", transcript).put("name", nm).put("title", "创建人物音色 · " + nm);
-        try { StudioService.enqueue(this, job); }
-        catch (Exception e) {
-            if (!job.has("id") || !StudioFiles.job(this, job.optString("id")).isFile()) copy.delete();
-            throw e;
-        }
-        toast("人物音色已加入任务；完成后在音色列表选择使用");
+    void queueRecordedVoice(File audio,String title,String text) throws Exception {
+        String name=title.trim(),transcript=text.trim();
+        if(name.isEmpty()||name.length()>80)throw new IOException("请填写 1—80 字的人物名称");
+        if(transcript.length()>2000)throw new IOException("参考录音文字最多 2000 字");
+        double seconds;try(PcmAudio.Reader reader=new PcmAudio.Reader(audio)){seconds=reader.seconds();}
+        if(seconds<3||seconds>10.01)throw new IOException("请录制 3—10 秒的清晰单人声音");
+        String id=UUID.randomUUID().toString();File folder=StudioFiles.dir(this,"profiles");
+        File target=new File(folder,id+".reference.wav"),pending=new File(folder,id+".pending.wav");
+        try{
+            try(InputStream in=new FileInputStream(audio);OutputStream out=new FileOutputStream(pending)){copy(in,out,5000000L);}
+            if(!pending.renameTo(target))throw new IOException("保存参考录音失败");
+            StudioFiles.save(new File(folder,id+".json"),new JSONObject().put("id",id).put("name",name)
+                .put("referenceStart",0).put("referenceSeconds",seconds).put("referenceText",transcript).put("cloudReference",true));
+            getSharedPreferences("studio",0).edit().putString("cloud-profile",id).putString("selected-profile",id).apply();
+            toast("人物录音已保存。选择支持参考音频的云端引擎即可克隆音色，朗读新文字");
+        }finally{pending.delete();}
     }
 
     void extractVideoDialog(Uri video) {
@@ -526,7 +451,7 @@ public class WorkspaceActivity extends Activity {
             for (File f : fs)
                 try {
                     JSONObject j = StudioFiles.read(f);
-                    if (new File(f.getParentFile(), j.getString("id") + ".vpc").isFile())
+                    if (new File(f.getParentFile(), j.getString("id") + ".reference.wav").isFile())
                         all.add(j);
                 } catch (Exception ignored) {
                 }
@@ -550,11 +475,7 @@ public class WorkspaceActivity extends Activity {
                             int characters = referenceText.codePointCount(0, referenceText.length());
                             String excerpt = characters > 90 ? referenceText.substring(0, referenceText.offsetByCodePoints(0, 90)) + "…" : referenceText;
                             label(details, "参考文字（" + characters + " 字）：" + excerpt, 12, false);
-                            button(details, "修正文字并重建音色", () -> {
-                                File audio = new File(StudioFiles.dir(this, "profiles"), id + ".reference.wav");
-                                if (audio.isFile()) cloneDialog(Uri.fromFile(audio), j);
-                                else toast("此旧音色没有保留原声，请在当前音色页面重新录音");
-                            });
+                            label(details,"要修正参考文字，可以重新录音并保存新音色。",12,false);
                             new CosmicDialogBuilder(this)
                                     .setTitle(j.optString("name"))
                                     .setView(details)
@@ -563,7 +484,7 @@ public class WorkspaceActivity extends Activity {
                                             (x, y) -> {
                                                 getSharedPreferences("studio", 0)
                                                         .edit()
-                                                        .putString("selected-profile", id)
+                                                        .putString("selected-profile", id).putString("cloud-profile", id)
                                                         .apply();
                                                 toast("已选择音色，返回首页即可生成");
                                             })
@@ -602,8 +523,7 @@ public class WorkspaceActivity extends Activity {
                                                                                             "studio",
                                                                                             0)
                                                                                     .edit()
-                                                                                    .remove(
-                                                                                            "selected-profile")
+                                                                                    .remove("selected-profile").remove("cloud-profile")
                                                                                     .apply();
                                                                         new File(StudioFiles.dir(this, "profiles"), id + ".reference.wav").delete();
                                                                         toast("音色已删除");
@@ -1840,10 +1760,31 @@ public class WorkspaceActivity extends Activity {
         LinearLayout card = card(title, subtitle); sections.put(key, card); return card;
     }
 
+    void clearLegacyModels() {
+        new CosmicDialogBuilder(this).setTitle("清理所有旧离线模型？")
+          .setMessage("清理 OmniVoice、克隆编码器、Whisper、NLLB、分离及说话人识别模型目录；不会删除录音、人物音色、作品或历史任务。请先暂停全部任务。")
+          .setNegativeButton("取消",null)
+          .setPositiveButton("确认清理",(d,n)->{
+              if(!StudioFiles.beginModelWork(this)){toast("请先暂停所有任务");return;}
+              files.execute(()->{
+                  int removed=0;String failure="";
+                  try{
+                      for(String module:MODULE_CODES){
+                          File dir=new File(getFilesDir(),module+"-model");
+                          if(dir.exists()){OmniModels.remove(dir);if(dir.exists())throw new IOException("无法清理 "+module);removed++;}
+                      }
+                  }catch(Exception error){failure=error.getMessage();}
+                  finally{StudioFiles.endModelWork();}
+                  final int count=removed;final String err=failure;
+                  ui.post(()->{if(!gone)toast(err.isEmpty()?"已清理 "+count+" 个旧模型目录；录音和作品保留":"清理 "+count+" 个目录后出错："+err);});
+              });
+          }).show();
+    }
+
     void quickSections() {
         HorizontalScrollView strip = new HorizontalScrollView(this); strip.setHorizontalScrollBarEnabled(false);
         LinearLayout row = new LinearLayout(this); row.setOrientation(0);
-        for (String name : new String[]{"转写", "音色", "翻译", "音频", "有声书", "批量", "任务", "模型"}) {
+        for (String name : new String[]{"音色", "任务"}) {
             TextView chip = CosmicUi.label(this, name, 14, CosmicUi.CYAN, true);
             chip.setGravity(Gravity.CENTER); chip.setPadding(dp(16), dp(10), dp(16), dp(10));
             CosmicUi.press(chip); chip.setContentDescription(name);
