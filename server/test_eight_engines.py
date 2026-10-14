@@ -129,3 +129,22 @@ def test_gpt_bridge_rejects_arbitrary_upstream(monkeypatch):
          headers={"Authorization":"Bearer bridge-key"},
          json={"input":"不能访问远程主机","model":"gptsovits"})
     assert r.status_code==503
+
+def test_gptsovits_cannot_be_automatically_selected_without_reference(gateway,monkeypatch):
+    for engine in g.OPEN_MODELS:
+        monkeypatch.delenv("VOICE_"+engine.upper()+"_URL",raising=False)
+    for key in ("FISH_API_KEY","MINIMAX_API_KEY","ELEVENLABS_API_KEY","CARTESIA_API_KEY"):
+        monkeypatch.delenv(key,raising=False)
+    monkeypatch.setenv("VOICE_GPTSOVITS_URL","https://gpt-bridge.test")
+    async def forbidden(*args,**kw):
+        pytest.fail("GPT-SoVITS must not be called without a reference and transcript")
+    monkeypatch.setattr(g,"do_http",forbidden)
+    h={"Authorization":"Bearer unit-test-only"}
+    assert gateway.post("/v1/audio/speech",headers=h,
+           json={"input":"无参考声音","model":"auto"}).status_code==503
+    assert gateway.post("/v1/audio/speech",headers=h,
+           json={"input":"无参考声音","model":"gptsovits"}).status_code==422
+    ref=gateway.post("/v1/voices/reference",headers=h,
+       files={"file":("reference.wav",sample_wav(),"audio/wav")}).json()["voice"]
+    assert gateway.post("/v1/audio/speech",headers=h,
+           json={"input":"缺少准确原文","model":"auto","voice":ref}).status_code==503
