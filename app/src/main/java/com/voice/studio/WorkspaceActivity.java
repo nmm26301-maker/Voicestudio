@@ -496,6 +496,11 @@ public class WorkspaceActivity extends Activity {
                             String excerpt = characters > 90 ? referenceText.substring(0, referenceText.offsetByCodePoints(0, 90)) + "…" : referenceText;
                             label(details, "参考文字（" + characters + " 字）：" + excerpt, 12, false);
                             label(details,"要修正参考文字，可以重新录音并保存新音色。",12,false);
+                            button(details,"保存参考 WAV 到手机 · 用于免费网页克隆",()->{
+                                File original=new File(StudioFiles.dir(this,"profiles"),id+".reference.wav");
+                                if(original.isFile())saveOutput(original);
+                                else toast("参考录音不存在，请重新录制");
+                            });
                             new CosmicDialogBuilder(this)
                                     .setTitle(j.optString("name"))
                                     .setView(details)
