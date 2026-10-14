@@ -1597,6 +1597,10 @@ public class MainActivity extends Activity {
         add(inside,text("第 3 步 · 保存云端作品",16,INK,true));
         gap(inside,10);
         add(inside,button("③ 从手机下载的 WAV 导入 VoiceStudio 作品",true,this::importCloudDemo));
+        gap(inside,8);
+        add(inside,button("④ 将多段免费 WAV 拼成一份长作品",false,this::openFreeWavMerge));
+        gap(inside,8);
+        add(inside,text("免费网页有单段时长限制：请按 01、02、03 给片段命名，下载后一次选择多个 WAV。手机只处理音频拼接，不运行任何语音模型；不会自动把整篇文章发送到公共 Space。",12,MUTED,false));
         gap(inside,12);
         add(inside,text("免费不等于无限：ZeroGPU 每日额度有限，排队、登录和模型是否在线由平台决定。当前使用浏览器完成合成，作品再导入 App；还不是后台自动 API。请勿上传未经授权的他人声音。",12,MUTED,false));
         gap(inside,12);
@@ -1607,6 +1611,80 @@ public class MainActivity extends Activity {
         freeDemoDialog=new CosmicDialogBuilder(this).setTitle("✦ 免费云端，不用电脑")
             .setView(scroll).setPositiveButton("关闭",null).create();
         freeDemoDialog.show();
+    }
+
+    void openFreeWavMerge() {
+        if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
+        try{
+            Intent files=new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                 .addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*")
+                 .putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+            startActivityForResult(files,94);
+        }catch(Exception e){toast("没有找到支持多选音频的文件管理器");}
+    }
+
+    /** Sequentially normalize clips; no AI runtime and no third-party data upload. */
+    void mergeFreeWavResult(int result, Intent data) {
+        if(result!=RESULT_OK || data==null)return;
+        List<Uri> uris=new ArrayList<>();
+        if(data.getClipData()!=null){
+            ClipData selected=data.getClipData();
+            for(int i=0;i<selected.getItemCount();i++)uris.add(selected.getItemAt(i).getUri());
+        }else if(data.getData()!=null)uris.add(data.getData());
+        if(uris.size()<2 || uris.size()>CloudWavMerge.MAX_CLIPS){
+            toast("需要一次选择 2—24 段 WAV，文件名按 01、02、03 编号");return;
+        }
+        // SAF multi-selection order is not guaranteed; filename order is explicit.
+        Map<Uri,String> names=new HashMap<>();
+        for(Uri uri:uris){
+            try{names.put(uri,selectedFileName(uri));}
+            catch(Exception ignored){names.put(uri,uri.getLastPathSegment());}
+        }
+        Collections.sort(uris,(a,b)->{
+            String one=names.get(a),two=names.get(b);
+            return String.CASE_INSENSITIVE_ORDER.compare(one==null?"":one,two==null?"":two);
+        });
+        final List<Uri> selected=new ArrayList<>(uris);
+        toast("已选择 "+selected.size()+" 段，按文件名排序；将检查并合并音频");
+        fileExecutor.execute(()->{
+            List<File> temporary=new ArrayList<>();
+            File target=null,pending=null;boolean done=false;
+            try{
+                long copied=0;
+                for(int i=0;i<selected.size();i++){
+                    File part=new File(getCacheDir(),"cloud-clip-"+UUID.randomUUID()+".wav");
+                    temporary.add(part);
+                    try(InputStream in=getContentResolver().openInputStream(selected.get(i));
+                        OutputStream out=new FileOutputStream(part)){
+                        if(in==null)throw new IOException("无法读取第 "+(i+1)+" 段");
+                        byte[] buffer=new byte[32768];int n;
+                        while((n=in.read(buffer))!=-1){
+                            copied+=n;
+                            if(copied>96L*1024*1024)throw new IOException("选中片段合计超过 96 MiB，请减少片段");
+                            out.write(buffer,0,n);
+                        }
+                    }
+                }
+                String id=UUID.randomUUID().toString();
+                target=StudioFiles.output(this,id,"wav");
+                pending=new File(target.getPath()+".pending");
+                long millis=CloudWavMerge.merge(temporary,pending,new AtomicBoolean(),status->{});
+                if(!pending.renameTo(target))throw new IOException("保存合并音频失败，请检查可用空间");
+                StudioFiles.history(this,new JSONObject()
+                    .put("id",id).put("file",target.getName()).put("engine","cloud-demo-merged")
+                    .put("type","tts").put("title","免费云端 · "+selected.size()+" 段完整朗读")
+                    .put("text","").put("duration",millis).put("created",System.currentTimeMillis()));
+                done=true;
+                handler.post(()->{if(!destroyed){toast("已无损顺序拼接 "+selected.size()+" 段 WAV；作品已保存");change("作品");}});
+            }catch(Exception error){
+                String message=error.getMessage();
+                handler.post(()->{if(!destroyed)toast("合并失败："+(message==null?"音频格式不受支持":message));});
+            }finally{
+                for(File part:temporary)part.delete();
+                if(pending!=null)pending.delete();
+                if(!done && target!=null)target.delete();
+            }
+        });
     }
 
     void importCloudDemo() {
@@ -2501,6 +2579,7 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if(request==91 || request==92 || request==93){kaggleResult(request,result,data);return;}
+        if(request==94){mergeFreeWavResult(result,data);return;}
         if (request == 83) {
             if (result == RESULT_OK && data != null) {
                 List<Uri> files = new ArrayList<>();
