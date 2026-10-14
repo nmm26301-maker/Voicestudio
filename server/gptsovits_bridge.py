@@ -100,7 +100,7 @@ async def speech(task: GPTRequest, authorization: str | None = Header(None)):
               "prompt_text":task.reference_text, "prompt_lang":translated_language(None, task.reference_text),
               "speed_factor":task.speed, "text_split_method":"cut5",
               "media_type":"wav", "streaming_mode":False, "batch_size":1}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(180,connect=10),follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(180,connect=10),follow_redirects=False,trust_env=False) as client:
             try:
                 response=await client.post(endpoint+"/tts",json=body)
             except httpx.TimeoutException as e:

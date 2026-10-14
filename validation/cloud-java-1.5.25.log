@@ -1,0 +1,13 @@
+Official APIs: 84 host/mock checks passed.
+Fish MessagePack independently decoded with full UTF-8 text and exact reference WAV.
+Cloud health: 16 mock checks passed.
+Progress persistence: 1023 host checks passed.
+Audio validation: 42 format/full-read/nonfinite/cancellation checks passed.
+Download recovery: 123 mock transport checks passed.
+Cloud WAV merge: 10 host checks passed.
+Accelerated API: 67 mock checks passed.
+Omni upstream prompt/duration: 38 host checks passed.
+Remote pipeline: 10841 mocked speech checks passed.
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses with literal input data.
+No real phone, live speech model or actual commercial request accepted.

@@ -310,8 +310,8 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
             locale = "zh" if any("\u3400" <= c <= "\u9fff" for c in task.input) else "en"
         resp = await do_http(
             "POST", "https://api.cartesia.ai/tts/bytes",
-            headers={"X-API-Key": os.environ["CARTESIA_API_KEY"],
-                     "Cartesia-Version": "2025-04-16", "Accept": "audio/wav"},
+            headers={"Authorization": "Bearer " + os.environ["CARTESIA_API_KEY"],
+                     "Cartesia-Version": "2026-08-14", "Accept": "audio/wav"},
             json={"model_id": os.getenv("CARTESIA_MODEL", "sonic-3"),
                   "transcript": task.input, "voice": task.voice,
                   "language": locale,

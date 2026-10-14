@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class WorkspaceActivity extends Activity {
-    LinearLayout root, tasks, shell;
+    LinearLayout root, tasks, shell, bottomNav;
     final Map<String, View> sections = new LinkedHashMap<>();
     final Map<String, TextView> sectionButtons = new LinkedHashMap<>();
     final Map<TextView, String[]> requirements = new LinkedHashMap<>();
@@ -97,7 +97,8 @@ public class WorkspaceActivity extends Activity {
         TextView heading = CosmicUi.label(this, "声音实验室", 22, CosmicUi.INK, true);
         heading.setGravity(Gravity.CENTER_VERTICAL); toolbar.addView(heading, new LinearLayout.LayoutParams(0, dp(48), 1));
         shell.addView(toolbar); quickSections();
-        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1)); setContentView(shell);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        bottomNav=CosmicUi.navigation(this,"任务",this::navigate);shell.addView(bottomNav);setContentView(shell);
         LinearLayout voice=sectionCard("音色","把你的声音，装进星星里","清晰录制 3—10 秒，保存后可用云端引擎朗读新的文字。");
         voice.addView(CosmicUi.hero(this,"声音小宇宙","录音保存在手机，生成时才上传。","VOICE LAB",CosmicUi.PINK));
         voiceCapture=new VoiceCapturePanel(this,voice);
@@ -105,36 +106,10 @@ public class WorkspaceActivity extends Activity {
         button(voice,"✦ 免电脑免费克隆 · 官方 Qwen / IndexTTS",this::openFreeDemo);
         button(voice,"配置云端合成引擎",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
         button(voice,"♫ 进入文字合成工作台",()->jumpSection("合成"));
-        LinearLayout compose=sectionCard("合成","♫ 文字合成工作台","按步骤完成：选择平台 → 选择人物录音或 Voice ID → 输入文字 → 点击合成 → 检查结果。");
-        compose.addView(CosmicUi.hero(this,"让每一段文字都有声音",
-              "只通过网络调用你选定的语音引擎；手机端不安装 OmniVoice 或其他大型 TTS 模型。",
-              "✦ CLOUD SYNTHESIS",CosmicUi.PURPLE));
-        button(compose,"① 选择九引擎和录音 / 平台音色",()->startActivity(
-            new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE")
-                .putExtra("engine","accelerated")));
-        EditText synthesisText=new EditText(this);
-        synthesisText.setTextSize(16);synthesisText.setTextColor(CosmicUi.INK);
-        synthesisText.setHintTextColor(CosmicUi.MUTED);
-        synthesisText.setHint("② 输入要完整朗读的文字；可以直接粘贴长文（最多 12000 字）");
-        synthesisText.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-            android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        synthesisText.setMinLines(5);synthesisText.setGravity(Gravity.TOP);
-        synthesisText.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(12000)});
-        synthesisText.setPadding(dp(12),dp(12),dp(12),dp(12));
-        synthesisText.setBackground(CosmicUi.panel(this,CosmicUi.CYAN));
-        compose.addView(synthesisText,new LinearLayout.LayoutParams(-1,-2));
-        label(compose,"合成前会检查引擎配置、参考录音与可能收费的 API 授权；生成后在任务页查看分段进度和故障信息。",12,false);
-        button(compose,"③ 开始云端语音合成",()->{
-            String text=synthesisText.getText().toString().trim();
-            if(text.isEmpty()){synthesisText.setError("请输入要朗读的文字");return;}
-            try{
-                JSONObject job=speechJob(text).put("deduplicate",true);
-                StudioService.enqueue(this,job);
-                toast("任务已加入队列；请在任务页查看进度与结果");
-                jumpSection("任务");
-            }catch(Exception error){toast(error.getMessage()==null?"任务创建失败":error.getMessage());}
-        });
-        button(compose,"④ 查看任务进度与故障检测",()->jumpSection("任务"));
+        LinearLayout compose=sectionCard("合成","文字合成工作台","录音 / 音色 → 选择引擎 → 输入文字 → 合成 → 保存作品。");
+        compose.addView(CosmicUi.workflow(this,2));
+        button(compose,"♫ 打开合成工作台",()->openMainPage("合成"));
+        label(compose,"草稿、引擎和任务共用同一个工作台，切换页面会保存文字。",12,false);
         LinearLayout bulk=sectionCard("批量","云端批量朗读","每行一个任务；自动分段保存完整声音。批量可能消耗第三方 API 额度，请先确认配置和费用。");
         button(bulk,"输入批量文字并提交",this::batch);
         tasks=sectionCard("任务","生成任务与结果","查看任务状态、失败详情与旧版作品。后台不会加载已停用的本地语音模型。");
@@ -1868,6 +1843,15 @@ public class WorkspaceActivity extends Activity {
           }).show();
     }
 
+    void openMainPage(String page) {
+        if(voiceCapture!=null)voiceCapture.persist();
+        startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.OPEN_PAGE").putExtra("page",page));
+    }
+    void navigate(String page) {
+        if(page.equals("任务"))jumpSection("任务");
+        else if(page.equals("音色"))jumpSection("音色");
+        else openMainPage(page);
+    }
     void quickSections() {
         HorizontalScrollView strip = new HorizontalScrollView(this); strip.setHorizontalScrollBarEnabled(false);
         LinearLayout row = new LinearLayout(this); row.setOrientation(0);
@@ -1877,7 +1861,7 @@ public class WorkspaceActivity extends Activity {
             CosmicUi.press(chip); chip.setContentDescription(name);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(48)); lp.rightMargin = dp(8);
             row.addView(chip, lp); sectionButtons.put(name, chip);
-            chip.setOnClickListener(v -> jumpSection(name));
+            chip.setOnClickListener(v -> {if(name.equals("合成"))openMainPage("合成");else jumpSection(name);});
         }
         strip.addView(row); shell.addView(strip);
     }
@@ -1886,6 +1870,7 @@ public class WorkspaceActivity extends Activity {
         if (!sections.containsKey(name)) return;
         if (!name.equals("音色") && voiceCapture != null) voiceCapture.pause();
         section = name;
+        if(bottomNav!=null){shell.removeView(bottomNav);bottomNav=CosmicUi.navigation(this,name.equals("音色")?"音色":name.equals("合成")?"合成":"任务",this::navigate);shell.addView(bottomNav);}
         for (Map.Entry<String, View> entry : sections.entrySet())
             entry.getValue().setVisibility(name.equals(entry.getKey()) ? View.VISIBLE : View.GONE);
         for (Map.Entry<String, TextView> entry : sectionButtons.entrySet()) {

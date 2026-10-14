@@ -1,6 +1,6 @@
 # 平台申请、密钥与自动地址
 
-VoiceStudio 1.5.24 在“音色 > 九引擎 / 自动”内添加账号申请、API Key 页面、粘贴密钥和恢复自动地址。Fish、ElevenLabs、MiniMax、Cartesia 可直接调用官方 API，无需另填自建网关。开源模型使用保存过的自建网关，并自动复用该地址。
+VoiceStudio 1.5.25 在“音色 > 九引擎 / 自动”内添加账号申请、API Key 页面、粘贴密钥和恢复自动地址。Fish、ElevenLabs、MiniMax、Cartesia 可直接调用官方 API，无需另填自建网关。开源模型使用保存过的自建网关，并自动复用该地址。
 
 ## 注册和密钥入口
 

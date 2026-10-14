@@ -56,8 +56,8 @@ def test_cartesia_official_wire_shape_full_text(gateway,monkeypatch):
     assert g.check_wav(response.content)>=3
     method,url,kw=received[0]
     assert method=="POST" and url=="https://api.cartesia.ai/tts/bytes"
-    assert kw["headers"]["X-API-Key"]=="fake-key"
-    assert kw["headers"]["Cartesia-Version"]
+    assert kw["headers"]["Authorization"]=="Bearer fake-key"
+    assert kw["headers"]["Cartesia-Version"]=="2026-08-14"
     assert kw["json"]["model_id"]=="sonic-3"
     assert kw["json"]["transcript"]==full
     assert kw["json"]["output_format"]["container"]=="wav"

@@ -1,0 +1,2 @@
+29 passed, 1 warning in 2.59s
+Mocked nine-engine routing, GPT bridge and real FFmpeg audio normalization; no live model/platform calls.

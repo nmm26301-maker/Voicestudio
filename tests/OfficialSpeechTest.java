@@ -54,10 +54,11 @@ public class OfficialSpeechTest {
    check(millisSonic==5000,"Cartesia WAV preserved");
    check(cartesiaCalls.size()==1&&cartesiaCalls.get(0).closed,"Cartesia one POST");
    Fake cts=cartesiaCalls.get(0);
-   check("cartesia-fixture".equals(cts.getRequestProperty("X-API-Key")),"Cartesia key header");
-   check("2025-04-16".equals(cts.getRequestProperty("Cartesia-Version")),"Cartesia API version");
+   check("Bearer cartesia-fixture".equals(cts.getRequestProperty("Authorization")),"Cartesia key header");
+   check("2026-08-14".equals(cts.getRequestProperty("Cartesia-Version")),"Cartesia API version");
    JSONObject cbody=new JSONObject(cts.sent.toString("UTF-8"));
    check(cbody.getString("transcript").endsWith("最后一句。"),"Cartesia full text");
+   check(cbody.getString("voice").equals(cartesiaId),"Current Cartesia version uses string voice ID");
    check(cbody.getJSONObject("output_format").getString("container").equals("wav"),"Cartesia WAV request");
    reject(()->OfficialSpeechClient.body("cartesia","auto","hello",1));
    reject(()->OfficialSpeechClient.body("cartesia",cartesiaId,"hello",1.5f));

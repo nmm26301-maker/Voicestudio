@@ -4,7 +4,7 @@ import java.net.*;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.*;
-/** Three fixed official APIs, no redirects, no repeat POST; Android decodes to PCM. */
+/** Four fixed official APIs, no redirects, no repeat POST; Android decodes to PCM. */
 final class OfficialSpeechClient extends AcceleratedSpeechClient {
     interface Decoder {void decode(File input,File output,AtomicBoolean cancelled,Progress progress)throws Exception;}
     private final Connections connections;
@@ -78,8 +78,8 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             c.setInstanceFollowRedirects(false);c.setConnectTimeout(15000);c.setReadTimeout(180000);c.setRequestMethod("POST");c.setDoOutput(true);c.setFixedLengthStreamingMode(body.length);
             c.setRequestProperty("Content-Type",type);
             if(model.equals("cartesia")){
-                c.setRequestProperty("X-API-Key",key);
-                c.setRequestProperty("Cartesia-Version","2025-04-16");
+                c.setRequestProperty("Authorization","Bearer "+key);
+                c.setRequestProperty("Cartesia-Version","2026-08-14");
                 c.setRequestProperty("Accept","audio/wav");
             }else c.setRequestProperty(model.equals("elevenlabs")?"xi-api-key":"Authorization",model.equals("elevenlabs")?key:"Bearer "+key);
             if(model.equals("fish"))c.setRequestProperty("model","s2.1-pro-free");
