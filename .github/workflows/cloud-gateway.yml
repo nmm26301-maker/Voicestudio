@@ -1,0 +1,25 @@
+name: VoiceStudio cloud gateway checks
+on:
+  push:
+    branches: [feature/cloud-voice-20261014]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  gateway-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install FFmpeg and Python dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -r server/cloud_requirements.txt
+      - name: Compile Python and test without provider keys
+        run: |
+          python -m compileall -q server/cloud_gateway.py server/test_cloud_gateway.py
+          pytest -q server/test_cloud_gateway.py
