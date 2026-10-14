@@ -1947,7 +1947,6 @@ public class MainActivity extends Activity {
         add(c,button("保存并使用云端引擎",true,()->{
             try{
                 String id=CLOUD_IDS[provider.getSelectedItemPosition()];
-                if("fish".equals(id)){engine="fish";saveSettings();change("音色");return;}
                 String endpoint=AcceleratedSpeechClient.endpoint(url.getText().toString().trim());
                 String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();
                 AcceleratedSpeechClient.token(token);
