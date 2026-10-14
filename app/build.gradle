@@ -2,7 +2,7 @@ plugins { id 'com.android.application' }
 android {
     namespace 'com.voice.studio'
     compileSdk 35
-    defaultConfig { applicationId 'com.voice.studio'; minSdk 26; targetSdk 34; versionCode 34; versionName '1.5.18-hybrid' }
+    defaultConfig { applicationId 'com.voice.studio'; minSdk 26; targetSdk 34; versionCode 35; versionName '1.5.19-hybrid' }
     splits { abi { enable true; reset(); include 'arm64-v8a'; universalApk false } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
 }

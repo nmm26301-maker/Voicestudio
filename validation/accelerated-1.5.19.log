@@ -1,0 +1,9 @@
+Progress persistence: 1023 heartbeat/fast-step/lifecycle/preview/failed-save/clock checks passed; host only.
+Host 300s PCM16 validation median: previous=57.585 ms; bounded=2.477 ms; buffer=32768 bytes (not phone/GPU inference speed).
+Audio validation: 42 format/full-read/nonfinite/cancellation checks passed.
+Download recovery: 123 transient/permanent/cancel/no-repeat-POST checks passed (mock transport).
+Accelerated API: 67 checks passed; mock transport only, no live GPU/server speed claim.
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Remote pipeline: 10841 Unicode/checkpoint/transport/PCM/consent checks passed; mocked speech only.
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.

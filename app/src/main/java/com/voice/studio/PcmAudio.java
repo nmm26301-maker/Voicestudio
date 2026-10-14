@@ -89,6 +89,24 @@ final class PcmAudio {
             if (cancelled.get() || Thread.currentThread().isInterrupted()) throw new InterruptedIOException("已暂停生成");
         }
 
+        /** Generated local PCM must contain at least 20 ms of nontrivial samples. Not a word/ASR test. */
+        void validateSpeech(java.util.concurrent.atomic.AtomicBoolean cancelled) throws IOException {
+            if (encoding != 1 || width != 2 || channels != 1)
+                throw new IOException("本地合成音频格式无效");
+            file.seek(offset);byte[] bytes = new byte[32768];long remaining = dataBytes, audible = 0;
+            while (remaining > 0) {
+                if (cancelled.get() || Thread.currentThread().isInterrupted()) throw new InterruptedIOException("已暂停生成");
+                int count = (int)Math.min(bytes.length, remaining);file.readFully(bytes, 0, count);
+                for (int i = 0; i < count; i += 2) {
+                    int sample = (short)((bytes[i] & 255) | ((bytes[i+1] & 255) << 8));
+                    if (sample >= 2 || sample <= -2) audible++;
+                }
+                remaining -= count;
+            }
+            if (cancelled.get() || Thread.currentThread().isInterrupted()) throw new InterruptedIOException("已暂停生成");
+            if (audible < Math.max(1, rate / 50)) throw new IOException("合成结果没有足够的声音，已停止保存静音作品；请检查参考录音或重新生成");
+        }
+
         float[] read(double start, double seconds) throws IOException {
             return readChannels(start, seconds, false)[0];
         }

@@ -1,0 +1,71 @@
+Reference and local output checks: 42 passed; plausibility check, not semantic acceptance.
+Reference transcript and silent-output regression: 19 checks passed; ASR accuracy is separate.
+Host 10s decoder PCM write median: previous=4.214 ms; bounded=3.727 ms; reusable sample+byte buffers=98304 bytes (not model/phone speed).
+Bounded PCM writer: 838 exact-WAV/RMS/range/rollback/cancellation checks passed.
+Host segmentation benchmark (not phone inference): old=469.103454 ms, new=7.290436 ms
+Synthesis flow: 8560 assertions passed (host only).
+Fish mock transport: 55 assertions passed; no live API calls.
+Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
+Tokenizer / actual progress: 17555 checks passed (host JVM, not device inference)
+Staged chunk pipeline: 86502 checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.
+Progress persistence: 1023 heartbeat/fast-step/lifecycle/preview/failed-save/clock checks passed; host only.
+Host 300s PCM16 validation median: previous=64.080 ms; bounded=2.583 ms; buffer=32768 bytes (not phone/GPU inference speed).
+Audio validation: 42 format/full-read/nonfinite/cancellation checks passed.
+Download recovery: 123 transient/permanent/cancel/no-repeat-POST checks passed (mock transport).
+Accelerated API: 67 checks passed; mock transport only, no live GPU/server speed claim.
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Remote pipeline: 10841 Unicode/checkpoint/transport/PCM/consent checks passed; mocked speech only.
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.
+Sampler 1.5.4: 32656 checks passed against frozen 1.5.3; exact tokens, RNG and buffer state at 8/16/32 steps.
+----------
+1. WARNING in /workspace/scratch/c3f716f157e8/Voicestudio/tests/ParallelSamplerTest.java (at line 25)
+	return tied ? new Random(42) { public double nextDouble() { return .5; } } : new Random(42);
+	                  ^^^^^^^^^^
+The serializable class  does not declare a static final serialVersionUID field of type long
+----------
+1 problem (1 warning)
+Parallel sampler: 19033 checks passed against frozen 1.5.4; exact token/RNG/buffer state, cancellation, interruption, joined failures and bounded worker reuse.
+Output shape: 5108 checks passed; exact declared symbols, no guesses, conflicts and bounded allocation.
+24 assertions passed: volume ordering, download names, missing/mixed/duplicate volumes, lazy reads and closing.
+27 model import assertions passed: integrity, size, path rejection, missing files and cleanup.
+43 preflight assertions passed: missing/mixed/duplicate/incomplete parts, ZIP compatibility and six-module catalog.
+35 cancellation/progress assertions passed: before extraction, during extraction, before activation, old-file preservation and retry.
+24 recovery assertions passed with host Context/AtomicFile adapters; Android lifecycle is not simulated.
+100 assertions passed: concurrent appends/edits, stale refresh, trash/restore, backup recovery and guarded deletion (host file adapters).
+32 assertions passed: subtitle ordering/Unicode, stale edit conflict, export repair and concurrent commit (host adapters)
+55 queue workflow assertions passed (host filesystem; no Android service simulation).
+----------
+1. WARNING in /workspace/scratch/c3f716f157e8/Voicestudio/tests/AudioPipelineTest.java (at line 2)
+	import java.io.*;import java.util.*;
+	                        ^^^^^^^^^
+The import java.util is never used
+----------
+1 problem (1 warning)
+AudioChecks: 20 assertions passed; decoder/device checks separate.
+PCM16/24/32, float32, signed stereo, mono downmix and stereo silence checks passed.
+Duration ratio 0.5: 439.5070548312199 Hz
+Duration ratio 0.8: 439.875727183636 Hz
+Duration ratio 1.25: 440.2415403896548 Hz
+Duration ratio 2.0: 440.0904295403165 Hz
+Audio timing, resampling, synthetic metadata, WAV addressing and malformed WAV checks passed.
+17 assertions passed: PCM heartbeat, silent input, signed peak, clipping, recording limit
+11 assertions passed: finalized partial recording recovery, short/corrupt input rejection, existing input protection
+146 assertions passed: arbitrary chunk boundaries, sinc continuity, exact global duration, final drain
+3 dubbing assertions passed: complete 61-second clip, retained tail, oversized clip rejection.
+----------
+1. WARNING in /workspace/scratch/c3f716f157e8/Voicestudio/app/src/main/java/com/voice/studio/LookupTableInterpolator.java (at line 19)
+	import android.view.animation.Interpolator;
+	       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The import android.view.animation.Interpolator is never used
+----------
+1 problem (1 warning)
+Motion curve: 8003 checks passed (host Java; Android animation lifecycle not simulated).
+Speaker extraction: 653 checks passed (real PCM ranges/export; no model inference).
+Global speaker clustering: 943 passed; three-person fragmentation counterexample and constraints, no real video identity claim.
+Cosmic UI: 137 source/contrast checks passed; minimum shared text contrast 6.48:1. No native visual or lifecycle simulation.
+Inline generation routing: Omni/Fish stay on page; per-task resume/cancel wired. Source guard only.
+Progress persistence integration: live detail updates before coalescing; successful disk save precedes gate acknowledgement; terminal preview controls hidden. Source guard only.
+Local quality guards: output checks precede publication/reuse; saved voice loads without transcript rate rejection; automatic repair preserves acoustic codes; rebuild reuses original crop metadata. Source guard only.
+Speaker count integration: new extraction and regrouping carry explicit count; original audio and results retained. Source guard only.
+Host regression passed. Device UI, microphone, real model inference and Fish account calls require separate acceptance.

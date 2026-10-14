@@ -16,13 +16,15 @@ public class UpstreamEngineTest {
     engine.generate(models,text,"zh",1,output,new AtomicBoolean(),progress::add,ref,"None",steps,42);
     File frozen=new File(folder,"frozen.wav");LegacyEngine1511 before=new LegacyEngine1511();
     before.generate(models,text,"zh",1,frozen,new AtomicBoolean(),m->{},ref,"None",steps,42);
-    check(Arrays.equals(Files.readAllBytes(frozen.toPath()),Files.readAllBytes(output.toPath())),"same entire native WAV as frozen 1.5.11");
+    boolean shortQuality=steps==32&&text.equals("你好。");
+    if(!shortQuality)check(Arrays.equals(Files.readAllBytes(frozen.toPath()),Files.readAllBytes(output.toPath())),"same entire native WAV as frozen 1.5.11 outside short quality safeguard");
+    else check(output.length()>frozen.length(),"32-step two-character clone uses larger actual generated PCM budget");
     check(engine.bufferedPcmChunks==engine.chunkCount&&engine.pcmWriteNanos>0,"native decoder actually uses bounded PCM output");
     List<String> parts=OmniEngine.split(text,1,ref);long samples=0;
     for(String part:parts) {
      double raw=ref.frames*OmniDuration.total(part)/OmniDuration.total(ref.text);
      double expected=raw<50?50*Math.pow(raw/50,1.0/3):raw;
-     samples+=Math.max(1,(int)expected)*960L;
+     samples+=(shortQuality?Math.max(50,Math.max(1,(int)expected)):Math.max(1,(int)expected))*960L;
     }
     samples+=(parts.size()-1)*2880L;
     try(PcmAudio.Reader reader=new PcmAudio.Reader(output)) {

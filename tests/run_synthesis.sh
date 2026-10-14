@@ -9,6 +9,8 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$ou
  "$project_dir/app/src/main/java/com/voice/studio/OmniDuration.java" \
  "$project_dir/app/src/main/java/com/voice/studio/OmniSegments.java" \
  "$project_dir/app/src/main/java/com/voice/studio/VoicePrompt.java" \
+ "$project_dir/app/src/main/java/com/voice/studio/ReferenceTranscript.java" \
+ "$project_dir/tests/ReferenceTranscriptTest.java" \
  "$project_dir/app/src/main/java/com/voice/studio/SynthesisOutput.java" \
  "$project_dir/app/src/main/java/com/voice/studio/SynthesisRequests.java" \
  "$project_dir/app/src/main/java/com/voice/studio/FishClient.java" \
@@ -31,6 +33,7 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$ou
  "$project_dir/tests/SynthesisFlowTest.java" "$project_dir/tests/FishClientTest.java" \
  "$project_dir/tests/ReferenceSpeechChecksTest.java"
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.ReferenceSpeechChecksTest
+java -cp "$out_dir:$JSON_JAR" com.voice.studio.ReferenceTranscriptTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.PcmWriterTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.SynthesisFlowTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.FishClientTest

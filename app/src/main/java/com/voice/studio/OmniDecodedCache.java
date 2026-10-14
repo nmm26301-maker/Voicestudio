@@ -59,11 +59,17 @@ final class OmniDecodedCache {
         }finally{writer.f.seek(end);pending.delete();}
     }
     static void append(PcmAudio.Writer writer,Entry entry,AtomicBoolean cancel)throws Exception {
+        append(writer,entry,cancel,false);
+    }
+    static void append(PcmAudio.Writer writer,Entry entry,AtomicBoolean cancel,boolean requireSpeech)throws Exception {
         long start=writer.f.getFilePointer(),oldCount=writer.count;
         try(RandomAccessFile in=new RandomAccessFile(entry.file,"r")) {
-            in.seek(entry.offset);byte[] block=new byte[32768];long remaining=entry.samples*2L;
-            while(remaining>0){check(cancel);int n=(int)Math.min(block.length,remaining);in.readFully(block,0,n);writer.f.write(block,0,n);remaining-=n;}
-            check(cancel);writer.count=oldCount+entry.samples;
+            in.seek(entry.offset);byte[] block=new byte[32768];long remaining=entry.samples*2L,audible=0;
+            while(remaining>0){check(cancel);int n=(int)Math.min(block.length,remaining);in.readFully(block,0,n);
+                if(requireSpeech)for(int i=0;i<n;i+=2){int sample=(short)((block[i]&255)|((block[i+1]&255)<<8));if(sample>=2||sample<=-2)audible++;}
+                writer.f.write(block,0,n);remaining-=n;}
+            check(cancel);if(requireSpeech&&audible<Math.max(1,writer.rate/50))throw new OmniPcmWriter.SilentSpeech();
+            writer.count=oldCount+entry.samples;
         }catch(IOException|RuntimeException error){writer.count=oldCount;try{writer.f.setLength(start);writer.f.seek(start);}catch(IOException rollback){error.addSuppressed(rollback);}throw error;}
     }
     private static void check(AtomicBoolean cancel)throws InterruptedIOException {

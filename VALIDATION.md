@@ -1,3 +1,7 @@
+## 1.5.19 current validation (2026-10-14)
+
+Current signed package: 1.5.19-hybrid / 35, same com.voice.studio.preview installation identity. Build, 47 upgrade/signature checks, full initial regression and affected final suites passed. New checks cover plausible-length incorrect reference transcripts, one-time check reuse, source/crop/prompt changes, quiet audio, silent fresh/cached segment rollback, partial reads and quality short-clone duration. Actual generated 32-step 你好/谢谢 controls are recognized correctly with a 2-second generation budget; 16-step long control still has a recognition difference. No universal intelligibility, user-voice similarity or phone speed claim. See validation/current-checks.json and validation/real-reference-repair-1.5.19.json. Earlier sections below retain their original scope.
+
 # 当前版本 1.5.16（versionCode 32）
 
 变化见 [CHANGELOG-1.5.16.md](CHANGELOG-1.5.16.md)，证据见 `validation/current-checks.json`、`validation/accelerated-1.5.16.log`、`validation/regression-1.5.16.log` 与 `validation/upgrade-checks-1.5.16.json`。下文旧版本记录保留为历史证据，不代表本版真机验收。

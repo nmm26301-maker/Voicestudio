@@ -36,6 +36,17 @@ public class PcmWriterTest {
     public static void main(String[] args)throws Exception {
         File root=Files.createTempDirectory("pcm-writer").toFile(),output=new File(root,"rollback.wav");
         try {
+            FloatBuffer silent=buffer(new float[48000],true);
+            try(PcmAudio.Writer w=new PcmAudio.Writer(output,24000)) {
+                w.write(new float[]{.2f,.3f});long bytes=w.f.length();boolean rejected=false;
+                try{OmniPcmWriter.write(w,silent,1,false,new AtomicBoolean(),true);}catch(OmniPcmWriter.SilentSpeech expected){rejected=true;}
+                check(rejected&&w.count==2&&w.f.length()==bytes&&silent.position()==5,"silent speech rolls back the complete segment and preserves earlier audio");
+            }
+            float[] quiet=new float[48000];for(int i=0;i<quiet.length;i++)quiet[i]=(float)(.0002*Math.sin(i*.1));
+            try(PcmAudio.Writer w=new PcmAudio.Writer(output,24000)) {
+                OmniPcmWriter.write(w,buffer(quiet,true),1,false,new AtomicBoolean(),true);
+                check(w.count==quiet.length,"quiet but audible speech accepted");
+            }
             Random random=new Random(1512);
             for(int count:new int[]{0,1,2,3,239,240,479,480,481,4095,4096,4097,8193,16383,16384,16385,240000}) {
                 float[] values=new float[count];for(int i=0;i<count;i++)values[i]=(random.nextFloat()-.5f)*4;

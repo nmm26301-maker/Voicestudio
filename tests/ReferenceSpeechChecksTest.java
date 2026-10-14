@@ -26,6 +26,15 @@ public class ReferenceSpeechChecksTest {
         check(OmniDuration.referenceScale(wrong,157)==25/OmniDuration.total("Nice to meet you."), "fallback estimates arbitrary targets independently");
         reject(() -> OmniDuration.checkOutput(target, 1, 1.28), "明显短于输入文字");
         reject(() -> OmniDuration.checkOutput(target, 1, 1.4), "明显短于输入文字");
+        reject(() -> OmniDuration.checkOutput("你好",1,1.16,"zh",true,32), "旧短句");
+        OmniDuration.checkOutput("你好",1,2,"zh",true,32);checks++;
+        for(float speed:new float[]{.5f,1,1.5f,2})
+            check(OmniDuration.cloneFloor("谢谢！","zh",speed,true,32)==50/speed,"short quality clone budget scales with requested speed");
+        for(String text:new String[]{"今天的天气很好","hello","12","Hello你好","！！"})
+            check(OmniDuration.cloneFloor(text,"zh",1,true,32)==0,"only one/two Han characters use safeguard");
+        check(OmniDuration.cloneFloor("你好","zh",1,true,16)==0,"16-step short generation unchanged");
+        check(OmniDuration.cloneFloor("你好","en",1,true,32)==0,"other languages unchanged");
+        check(OmniDuration.cloneFloor("你好","zh",1,false,32)==0,"reference-free generation unchanged");
         for (float speed : new float[]{.5f,1,1.5f,2}) {
             OmniDuration.checkOutput(target,speed,6.28/speed); checks++;
             OmniDuration.checkOutput("你好。",speed,1.2/speed); checks++;

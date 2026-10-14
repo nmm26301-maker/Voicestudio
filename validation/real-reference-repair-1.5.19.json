@@ -1,0 +1,72 @@
+{
+  "version": "1.5.19-hybrid",
+  "scope": "Actual pinned OmniVoice INT8 + clone ONNX graphs on host CPU; independent faster-whisper-small CPU int8 recognition; no user audio uploaded or tested; no phone speed claim.",
+  "reference": {
+    "file": "control-reference.wav",
+    "source": "Generated locally with actual OmniVoice 32-step reference-free model",
+    "sha256": "2dd379dd03c730a108b19efcf90de72ff5cceedf67d35536165c9e98da754fcc",
+    "transcript": "你好,歡迎來到聲音工作室今天我們一起測試新的音色"
+  },
+  "plausibleWrongReference": "山上的树木很多，汽车经过桥梁。请检查这段不同的录音。",
+  "referenceCheck": "Old duration heuristic did not flag wrong content. New resolver chooses the actual recognized reference and keeps acoustic codes unchanged.",
+  "initialControl": [
+    {
+      "file": "fixed-16-0.wav",
+      "seconds": 1.16,
+      "asr": "你好",
+      "sha256": "0d582d5dbcefc87ccef0163e6f87c96fea1c00ad65361fcdb16bb964d2dec2d3"
+    },
+    {
+      "file": "fixed-16-1.wav",
+      "seconds": 1.16,
+      "asr": "謝謝",
+      "sha256": "c0f58d98055a01df1e3b804f6b0829c475fe16f41a04901056b68b1c751a217a"
+    },
+    {
+      "file": "fixed-16-2.wav",
+      "seconds": 3.52,
+      "asr": "今天的天氣很好我們一起去公園穿布",
+      "sha256": "341d1eb6204d46f6c57aea810c757e624e47c653c48ca90b442c48a8ea1c30c0"
+    },
+    {
+      "file": "fixed-32-0.wav",
+      "seconds": 1.16,
+      "asr": "你好",
+      "sha256": "b8d9aaa38715ee15c24f4fb537265003fb3fa285e01e1752d8cc79b824baa1f3"
+    },
+    {
+      "file": "fixed-32-1.wav",
+      "seconds": 1.16,
+      "asr": "喔喔喔 切了切了",
+      "sha256": "7a14e42fad45aec134cba4866dc8af825a701777c9591e9810a219dc2e60f580"
+    },
+    {
+      "file": "fixed-32-2.wav",
+      "seconds": 3.52,
+      "asr": "今天的天氣很好,我們一起去公園散步",
+      "sha256": "88bdbd27d0c1e757a61f9aae0f59ae1f50bf9708000e9989bd8a40f1632421e0"
+    }
+  ],
+  "shippedShortQualityControl": [
+    {
+      "file": "fixed-32-0.wav",
+      "seconds": 2.0,
+      "asr": "你好",
+      "sha256": "bab6b33ccda4a008ab8bc9da5a570f40982c90f766b93cc7e74f7a2cf59b4cf2"
+    },
+    {
+      "file": "fixed-32-1.wav",
+      "seconds": 2.0,
+      "asr": "谢谢",
+      "sha256": "0cd72b9156763a4b9629b549fd4af9c2965bb09011c94fb3c12bae4348349266"
+    }
+  ],
+  "shortAcceptance": "Shipped engine: 32-step 你好 and 谢谢 both independently recognized correctly, with 2.0s generated PCM; no padding added. Original 16-step controls match 你好 and 谢谢.",
+  "longAcceptance": "Unchanged 32-step long control matches 今天的天气很好我们一起去公园散步 (traditional/simplified and punctuation equivalents); 16-step control has a recognition difference at 散步. Not all texts/references passed verbatim.",
+  "selectedPolicy": "Only reference-backed zh 32-step one/two-Han-character generation uses a 50-frame / speed floor. 16 steps, long texts, other languages and reference-free generation preserve previous duration.",
+  "timingScope": "2.0 seconds is audio length, not generation wall time. Host timing cannot establish phone speed.",
+  "rejectedBoundaryExperiment": {
+    "adopted": false,
+    "reason": "Adding reference punctuation helped 谢谢 but regressed 你好 and a long control. Original prompt unchanged."
+  }
+}

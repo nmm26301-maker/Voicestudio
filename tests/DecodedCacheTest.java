@@ -19,6 +19,19 @@ public class DecodedCacheTest {
    }
    OmniDecodedCache.Entry entry=cache.read(0,key,75,true,new AtomicBoolean());check(entry!=null&&entry.rms==anchor.rms&&entry.anchor,"pre-fade anchor RMS exact");
    check(cache.read(0,"wrong",75,true,new AtomicBoolean())==null,"wrong input key ignored");
+   try(PcmAudio.Writer writer=new PcmAudio.Writer(source,24000)) {
+    writer.silence(3);check(cache.save(2,key,75,null,writer,44,new AtomicBoolean()),"legacy silent PCM fixture saved with valid hash");
+   }
+   OmniDecodedCache.Entry silence=cache.read(2,key,75,false,new AtomicBoolean());
+   check(silence!=null,"valid hash alone does not establish audible speech");
+   try(PcmAudio.Writer writer=new PcmAudio.Writer(output,24000)) {
+    writer.write(new float[]{.2f,.3f});long length=writer.f.length();boolean rejected=false;
+    try{OmniDecodedCache.append(writer,silence,new AtomicBoolean(),true);}catch(OmniPcmWriter.SilentSpeech expected){rejected=true;}
+    check(rejected&&writer.count==2&&writer.f.length()==length,"silent cached speech rejected with full rollback");
+   }
+   try(PcmAudio.Writer writer=new PcmAudio.Writer(source,24000)) {
+    writer.write(new float[]{.1f,.2f});writer.write(pcm);
+   }
    byte[] original=Files.readAllBytes(cache.path(0).toPath());
    try(PcmAudio.Writer writer=new PcmAudio.Writer(output,24000)){OmniDecodedCache.append(writer,entry,new AtomicBoolean());check(writer.count==pcm.length,"all cached samples appended");}
    byte[] from=Files.readAllBytes(source.toPath()),to=Files.readAllBytes(output.toPath());check(Arrays.equals(Arrays.copyOfRange(from,(int)offset,from.length),Arrays.copyOfRange(to,44,to.length)),"cached PCM byte-for-byte append without repeated fade");

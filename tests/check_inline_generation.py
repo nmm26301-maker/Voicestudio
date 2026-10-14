@@ -54,3 +54,14 @@ assert 'job.optBoolean("regroup")' in service
 assert 'job.put("audioSeconds", reader.seconds())' in service
 assert '原结果保留' in workspace
 print('Speaker count integration: new extraction and regrouping carry explicit count; original audio and results retained. Source guard only.')
+
+assert 'ReferenceTranscript.checked(meta, original, source, start, seconds)' in service
+assert 'ReferenceTranscript.select(original.text, transcript, original.frames)' in service
+assert 'ReferenceTranscript.identity(voice, source,' in service
+remote=service[service.index('void acceleratedSpeech'):service.index('VoicePrompt voiceForSpeech')]
+assert remote.index('voiceForSpeech(job)') < remote.index('referenceText=meta.optString')
+assert 'complete.validateSpeech(cancelled)' in engine
+assert 'OmniDuration.hasSpeech(chunk.text)' in engine
+assert 'catch(OmniPcmWriter.SilentSpeech silent)' in engine
+assert 'cache.path(index).delete()' in engine
+print('Reference content checks bound to saved voice/crop; GPU uses corrected text; each local segment and final/reused output checked for silence. Source guard only.')

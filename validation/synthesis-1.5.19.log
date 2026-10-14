@@ -1,0 +1,10 @@
+Reference and local output checks: 56 passed; plausibility check, not semantic acceptance.
+Reference transcript and silent-output regression: 19 checks passed; ASR accuracy is separate.
+Host 10s decoder PCM write median: previous=4.332 ms; bounded=2.743 ms; reusable sample+byte buffers=98304 bytes (not model/phone speed).
+Bounded PCM writer: 840 exact-WAV/RMS/range/rollback/cancellation checks passed.
+Host segmentation benchmark (not phone inference): old=496.875061 ms, new=13.3736 ms
+Synthesis flow: 8560 assertions passed (host only).
+Fish mock transport: 55 assertions passed; no live API calls.
+Acceleration / archive: 1589 checks passed. Sampling decisions match original; no phone speed claim.
+Tokenizer / actual progress: 17555 checks passed (host JVM, not device inference)
+Staged chunk pipeline: 86502 checks passed; 10 reference chunks use 2 loads vs 20, automatic anchor uses 4 vs 20. Counts are not phone timing.

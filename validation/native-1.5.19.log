@@ -1,0 +1,11 @@
+IPv4/IPv6 sockets blocked for this process and all children.
+Upstream native flow: 947566 checks passed; authored graph, corrected duration/output length/cancel/retry; no speech quality claim.
+Encoding cache: 22 integrity/identity/pending-file/mask/bounds checks passed.
+Decoded cache: 22 exact-PCM/anchor/hash/cancel/rollback/budget checks passed.
+IPv4/IPv6 sockets blocked for this process and all children.
+Local resume fixture automatic: chunks=12, first resume reused=2, full cache backbone loads/runs=0/0, decoder loads/runs=0/0; authored graph, not phone speed.
+Local resume fixture reference: chunks=24, first resume reused=2, full cache backbone loads/runs=0/0, decoder loads/runs=0/0; authored graph, not phone speed.
+Native local resume: 33 interruption/cache/PCM/anchor/corruption/parameter checks passed.
+Synthesis preview: 21 WAV/PCM/atomic/cancel/readiness/path/state checks passed.
+IPv4/IPv6 sockets blocked for this process and all children.
+Native preview flow: 14 readiness/PCM/model-load/cancel checks passed; authored graph, no device playback claim.

@@ -27,6 +27,27 @@ final class OmniDuration {
     return needsTranscript(text, frames) || scale > ordinary * 4 ? ordinary : scale;
   }
 
+  static double cloneFloor(String text, String language, float speed, boolean reference, int steps) {
+    if (!reference || steps != 32 || !"zh".equalsIgnoreCase(language) || text == null) return 0;
+    int han = 0;
+    for (int at = 0; at < text.length();) {
+      int cp = text.codePointAt(at);at += Character.charCount(cp);
+      if ((cp >= 0x3400 && cp <= 0x9fff) || (cp >= 0x20000 && cp <= 0x3134f)) han++;
+      else if (Character.isLetterOrDigit(cp)) return 0;
+    }
+    // Actual graph controls: 32-step 1.16s short clones were unstable; 2s budget
+    // recovered both 你好 and 谢谢. Do not change 16-step or long-text duration.
+    return han >= 1 && han <= 2 ? 50 / speed : 0;
+  }
+
+  static void checkOutput(String text, float speed, double seconds, String language,
+      boolean reference, int steps) throws java.io.IOException {
+    checkOutput(text, speed, seconds);
+    double floor = cloneFloor(text, language, speed, reference, steps);
+    if (floor > 0 && seconds * 25 + 1 < floor)
+      throw new java.io.IOException("旧短句未使用完整的质量模式时长，正在重新生成");
+  }
+
   static void checkOutput(String text, float speed, double seconds) throws java.io.IOException {
     if (text == null || !hasSpeech(text))
       throw new java.io.IOException("文本中没有可朗读的文字");

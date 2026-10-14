@@ -1,12 +1,12 @@
 # VoiceStudio repository
 
-Current source: **1.5.16-hybrid (versionCode 32)**. `VOICE_STANDALONE=1` produces the formal-name VoiceStudio build using the shipped preview package and signing identity, so it can update that branch. See CHANGELOG-1.5.16.md and validation/upgrade-checks-1.5.16.json. No private key or APK binary is committed in this public repository.
+Current source: **1.5.19-hybrid (versionCode 35)**. `VOICE_STANDALONE=1` retains the installed VoiceStudio signing/package identity. No APK or private signing key is committed to this public source repository.
 
-Each delivered release must be backed up privately with its exact APK and the unchanged signing key, preserving older versions. `tools/backup_release.py` verifies the matching certificate and archived bytes. Never commit the release ZIP or private key.
+The exact delivered APK and unchanged signing key/password instructions are retained in `VoiceStudio-1.5.19-Release-Backup.zip`. An AES-256-GCM encrypted copy and a separate `VoiceStudio-1.5.19-Backup-Recovery-Key.json` have also been prepared and round-trip verified. The plaintext ZIP independently restores the same APK/key and needs no decryption.
 
-The standalone signing key, its password/alias instructions and 1.5.16 APK are retained in the user's private `VoiceStudio-1.5.16-Release-Backup.zip`, under the historical filename `voicestudio-preview.p12`. Restore it to signing/ for future standalone updates. It is not the original 1.5.0 key.
+The proposed private GitHub destination is `nmm26301-maker/Zizai`, branch `backup/voicestudio-1.5.19-20261014`, path `backups/VoiceStudio/1.5.19`. The automatic approval review rejected the final backup tree mutation because the trusted user text did not explicitly authorize that signing payload in Zizai. No completed GitHub release backup exists at that path. Source, APK and saved direct recovery archives are unaffected. Explicit authorization of this exact private destination is required before completing the archive commit; retain that authorization for later routine releases. Do not upload signing data to the public repository.
 
-A separate `VOICE_PREVIEW=1` build uses package `com.voice.studio.preview` and a dedicated preview key. The user's uploaded original APK matched the historical hash and certificate; the original private signing key remains unavailable. Preview certificate and isolation evidence are in validation/preview-checks-1.5.1.json. Preview is not an upgrade of the original installation.
+Restore `signing/voicestudio-preview.p12` from the archive for future standalone builds. Never generate a replacement key. This is the established 1.5.1+ installation identity, not the original 1.5.0 identity. Preserve earlier release archives. `tools/backup_release.py` checks certificate continuity and exact archived bytes; the encrypted restore round-trip also matches the complete ZIP.
 
 The original backup below remains the source provenance. PROVENANCE.json and old validation logs describe their original releases, not current device acceptance.
 
@@ -26,4 +26,4 @@ See SETUP.md and PROVENANCE.json for build steps and the precise scope of histor
 
 ## GitHub private backup requirement
 
-The user requires every delivered APK, the unchanged signing key and its password to be backed up on GitHub, preserving earlier releases. The proposed destination is the private `nmm26301-maker/Zizai` repository under `backups/VoiceStudio/<version>/`. Complete ZIPs for 1.5.1 through 1.5.16 are prepared, but this task has not committed them there: automatic review requires explicit authorization of that exact credential destination. Once that authorization is given, retain it for later releases; do not request it again for routine backups to the same destination. Never put these files in the public VoiceStudio repository.
+Every delivered release must retain its exact APK and unchanged signature recovery data. Once explicitly authorized, use the private destination above; keep public source free of signing credentials. The prepared encrypted archive includes the actual APK, private key and password instructions; it is not yet committed to GitHub.

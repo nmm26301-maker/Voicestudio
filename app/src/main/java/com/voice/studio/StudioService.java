@@ -370,6 +370,7 @@ public class StudioService extends Service {
                 if(!profile.equals(getSharedPreferences("studio",0).getString("gpu-hf-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
                 if(!profile.isEmpty()) {
                     if(!profile.matches("[a-f0-9-]{36}"))throw new IOException("参考人物音色编号无效");
+                    voiceForSpeech(job);
                     File folder=StudioFiles.dir(this,"profiles");JSONObject meta=StudioFiles.read(new File(folder,profile+".json"));
                     double referenceStart=meta.optDouble("referenceStart",0),seconds=meta.optDouble("referenceSeconds",6);
                     if(!Double.isFinite(referenceStart)||referenceStart<0||!Double.isFinite(seconds)||seconds<3||seconds>10)throw new IOException("远程参考录音需为 3—10 秒，请重新选择片段");
@@ -395,8 +396,7 @@ public class StudioService extends Service {
     VoicePrompt voiceForSpeech(JSONObject job) throws Exception {
         String id = job.optString("profile");
         VoicePrompt original = StudioFiles.voice(this, id);
-        if (original == null || !OmniDuration.needsTranscript(original.text, original.frames)) return original;
-        state(job, "running", "已读取克隆音色，新文字独立估算时长…");
+        if (original == null) return null;
         File profiles = StudioFiles.dir(this, "profiles"), source = new File(profiles, id + ".reference.wav");
         if (!source.isFile() || !StudioFiles.ready(this, "whisper")) return original;
         VoicePrompt resolved = original;
@@ -407,6 +407,7 @@ public class StudioService extends Service {
             JSONObject meta = StudioFiles.read(new File(profiles, id + ".json"));
             double start = meta.optDouble("referenceStart", 0), seconds = meta.optDouble("referenceSeconds", original.frames / 25.0);
             if (!Double.isFinite(start) || start < 0 || !Double.isFinite(seconds) || seconds < 3 || seconds > 20) return original;
+            if (ReferenceTranscript.checked(meta, original, source, start, seconds)) return original;
             state(job, "running", "正在自动识别原参考录音，保留克隆音色…");
             try (PcmAudio.Reader reader = new PcmAudio.Reader(source);PcmAudio.Writer writer = new PcmAudio.Writer(cut, 24000)) {
                 if (start + seconds > reader.seconds() + .02) return original;
@@ -417,16 +418,22 @@ public class StudioService extends Service {
             for (WhisperEngine.Segment segment : whisper.transcribe(cut, "auto", false, cancel, m -> state(job, "running", m)))
                 content.append(segment.text).append(' ');
             String transcript = content.toString().trim();
-            if (transcript.isEmpty() || transcript.length() > 2000 || OmniDuration.needsTranscript(transcript, original.frames)) return original;
+            transcript = ReferenceTranscript.select(original.text, transcript, original.frames);
             resolved = new VoicePrompt(transcript, original.codes, original.frames, original.rms);
-            resolved.save(pending);OmniEngine.check(cancel);
             File current = new File(profiles, id + ".vpc");
-            if (current.isFile() && VoicePrompt.load(current).identity().equals(original.identity()) && pending.renameTo(current)) {
-                meta.put("providedReferenceText", original.text).put("referenceText", transcript).put("referenceTextAutoRepaired", true);
-                StudioFiles.save(new File(profiles, id + ".json"), meta);
+            boolean changed = !transcript.equals(original.text);
+            if (!current.isFile() || !VoicePrompt.load(current).identity().equals(original.identity())) return original;
+            OmniEngine.check(cancel);
+            if (changed) {
+                resolved.save(pending);OmniEngine.check(cancel);
+                if (!pending.renameTo(current)) throw new IOException("保存参考文字修复失败");
+                if (!meta.has("providedReferenceText")) meta.put("providedReferenceText", original.text);
+                meta.put("referenceText", transcript).put("referenceTextAutoRepaired", true);
             }
-            job.put("referenceTextAutoRepaired", true);
-            state(job, "running", "已识别参考录音内容，正在用克隆音色朗读新文字…");
+            meta.put("referenceTranscriptCheckedFor", ReferenceTranscript.identity(resolved, source, start, seconds));
+            StudioFiles.save(new File(profiles, id + ".json"), meta);
+            job.put("referenceTranscriptChecked", true).put("referenceTextAutoRepaired", changed);
+            state(job, "running", "已核对参考录音内容，正在用克隆音色朗读新文字…");
         } catch (Exception repairFailure) {
             OmniEngine.check(cancel);
             state(job, "running", "沿用已保存的克隆音色，新文字独立估算时长…");
@@ -518,11 +525,16 @@ public class StudioService extends Service {
             File audio = StudioFiles.output(this, id, cloud ? "mp3" : "wav");
             long existing = SynthesisOutput.existing(audio, cloud ? "mp3" : "wav", StudioService::audioDuration);
             if (existing > 0 && !cloud && !api) {
-                try { OmniDuration.checkOutput(job.getString("text"), (float)job.optDouble("speed", 1), existing / 1000.0); }
+                try {
+                    OmniDuration.checkOutput(job.getString("text"), (float)job.optDouble("speed", 1), existing / 1000.0,
+                            job.optString("language","zh"),!job.optString("profile").isEmpty(),job.optInt("steps",32));
+                    try (PcmAudio.Reader reader = new PcmAudio.Reader(audio)) { reader.validateSpeech(cancel); }
+                }
                 catch (IOException incomplete) {
+                    OmniEngine.check(cancel);
                     // Keep the original file until a valid replacement is ready.
                     existing = 0;
-                    state(job, "running", "旧结果明显截短，正在重新生成完整音频…");
+                    state(job, "running", "旧结果截短或静音，正在重新生成完整音频…");
                 }
             }
             if (existing > 0) {
@@ -569,14 +581,11 @@ public class StudioService extends Service {
                 }
             }
 
-            String transcript = job.getString("text");
-            if (!transcript.trim().isEmpty() && StudioFiles.ready(this, "whisper")
-                    && OmniDuration.needsTranscript(transcript, (int)(job.optDouble("seconds", 6) * 25))) {
-                state(job, "running", "正在从录音自动识别参考内容；此音色可朗读其他新文字…");
-                transcript = "";
-            }
-            if (transcript.trim().isEmpty()) {
+            String supplied = job.getString("text"), transcript = supplied;
+            boolean transcriptChecked = false;
+            if (transcript.trim().isEmpty() || StudioFiles.ready(this, "whisper")) {
                 if (!StudioFiles.ready(this, "whisper")) throw new IOException("自动参考文字需要识别模型");
+                state(job, "running", "正在核对录音内容；此音色可朗读其他新文字…");
                 File cut = new File(folder, id + ".cut.wav");
                 try {
                     try (PcmAudio.Reader reader = new PcmAudio.Reader(source);
@@ -598,11 +607,17 @@ public class StudioService extends Service {
                             whisper.transcribe(
                                     cut, "auto", false, cancel, m -> state(job, "running", m)))
                         text.append(segment.text).append(' ');
-                    transcript = text.toString().trim();
-                    if (transcript.isEmpty()) throw new IOException("没有识别到参考文字，请手动填写");
+                    transcript = ReferenceTranscript.select(supplied, text.toString().trim(),
+                            (int)(job.optDouble("seconds", 6) * 25));
+                    transcriptChecked = true;
                     job.put("referenceText", transcript);
+                } catch (Exception recognitionFailure) {
+                    OmniEngine.check(cancel);
+                    if (supplied.trim().isEmpty()) throw recognitionFailure;
+                    transcript = supplied;
+                    state(job, "running", "自动核对暂不可用，沿用填写的录音文字…");
                 } finally {
-                    cut.delete();
+                    whisper = null;cut.delete();
                 }
             }
             VoicePrompt voice =
@@ -628,6 +643,9 @@ public class StudioService extends Service {
                             .put("referenceStart", job.optDouble("start", 0))
                             .put("referenceSeconds", job.optDouble("seconds", 6))
                             .put("created", System.currentTimeMillis());
+            if (!supplied.equals(transcript)) info.put("providedReferenceText", supplied).put("referenceTextAutoRepaired", true);
+            if (transcriptChecked) info.put("referenceTranscriptCheckedFor", ReferenceTranscript.identity(voice, source,
+                    job.optDouble("start", 0), job.optDouble("seconds", 6)));
             StudioFiles.save(new File(folder, id + ".json"), info);
             job.put("profileResult", id);
             // Preserve the original reference recording for later listening.

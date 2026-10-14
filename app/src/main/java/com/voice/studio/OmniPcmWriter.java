@@ -8,14 +8,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 final class OmniPcmWriter {
     static final int BLOCK_SAMPLES = 16384;
     static final int BUFFER_BYTES = BLOCK_SAMPLES * 6;
+    static final class SilentSpeech extends IOException {
+        private static final long serialVersionUID = 1L;
+        SilentSpeech() { super("合成片段没有足够的声音，已停止保存静音作品；请检查参考录音或重新生成"); }
+    }
     static double write(PcmAudio.Writer writer,FloatBuffer source,double gain,boolean measureRms,
             AtomicBoolean cancelled) throws IOException {
+        return write(writer,source,gain,measureRms,cancelled,false);
+    }
+    static double write(PcmAudio.Writer writer,FloatBuffer source,double gain,boolean measureRms,
+            AtomicBoolean cancelled,boolean requireSpeech) throws IOException {
         int position=source.position(),count=source.remaining();
         if(writer.channels!=1||!Double.isFinite(gain)||gain<0||writer.count+count>1000000000L)
             throw new IOException("解码音频输出参数无效");
         long before=writer.f.getFilePointer(),oldCount=writer.count;
         float[] samples=new float[BLOCK_SAMPLES];byte[] bytes=new byte[BLOCK_SAMPLES*2];
-        int fade=Math.min(240,count/2);double square=0;
+        int fade=Math.min(240,count/2);double square=0;long audible=0;
         try {
             for(int at=0;at<count;) {
                 check(cancelled);int take=Math.min(BLOCK_SAMPLES,count-at);source.get(samples,0,take);
@@ -28,11 +36,14 @@ final class OmniPcmWriter {
                     float value=samples[i];
                     if(!Float.isFinite(value))throw new IOException("模型返回无效音频");
                     int pcm=Math.round(Math.max(-1,Math.min(1,value))*32767);
+                    if(requireSpeech&&(pcm>=2||pcm<=-2))audible++;
                     bytes[i*2]=(byte)pcm;bytes[i*2+1]=(byte)(pcm>>8);
                 }
                 check(cancelled);writer.f.write(bytes,0,take*2);at+=take;
             }
-            check(cancelled);writer.count=oldCount+count;
+            check(cancelled);
+            if(requireSpeech&&audible<Math.max(1,writer.rate/50))throw new SilentSpeech();
+            writer.count=oldCount+count;
             return measureRms?Math.sqrt(square/Math.max(1,count)):0;
         }catch(IOException|RuntimeException error) {
             source.position(position);writer.count=oldCount;
