@@ -82,11 +82,22 @@ final class AcceleratedSpeechClient {
         IncompleteSpeech(){super("接口返回的音频过短，可能只合成了开头，请检查服务器的完整文本处理");}
     }
     static long minimumDuration(String text) {
-        double units=0;
-        for(int i=0;i<text.length();) {int c=text.codePointAt(i);if(Character.isLetterOrDigit(c))units+=OmniDuration.weight(c);i+=Character.charCount(c);}
-        // Deliberately loose guard, allowing up to 100 weighted speech units per second.
-        // Detects obvious truncation; it is not transcription or pronunciation acceptance.
-        return units<30?0:Math.max(500,Math.round(units*10));
+        // Loose lower bound, NOT proof of word-for-word correctness. Handle even
+        // one/two-character utterances; the old rule skipped them entirely.
+        long minimum=0;int spoken=0;
+        for(int i=0;i<text.length();) {
+            int c=text.codePointAt(i);i+=Character.charCount(c);
+            if(!Character.isLetterOrDigit(c))continue;
+            spoken++;
+            Character.UnicodeScript script=Character.UnicodeScript.of(c);
+            boolean syllabic=script==Character.UnicodeScript.HAN
+                    || script==Character.UnicodeScript.HIRAGANA
+                    || script==Character.UnicodeScript.KATAKANA
+                    || script==Character.UnicodeScript.HANGUL;
+            minimum+=syllabic?30:11;
+        }
+        // At 2x speed, 250 ms is a deliberately forgiving short-clone bound.
+        return spoken==0?0:Math.max(250,minimum);
     }
     static long validate(File output,String text,AtomicBoolean cancelled) throws Exception {
         check(cancelled);AudioChecks.validate(output,"wav");
