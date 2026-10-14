@@ -22,3 +22,11 @@ assert 'SynthesisPreview.file' in body('void updateGenerationPanel()')
 assert 'fragmentPreview.close()' in body('void stopPreview()')
 assert 'stopPreview()' in body('protected void onPause()')
 print('Inline generation routing: Omni/Fish stay on page; per-task resume/cancel wired. Source guard only.')
+
+service=(Path(__file__).resolve().parents[1]/'app/src/main/java/com/voice/studio/StudioService.java').read_text()
+state=service[service.index('void state(JSONObject job, String state, String message)'):service.index('void drain()')]
+assert '!state.equals(previous)||progressGate.shouldWrite' in state
+assert state.index('job.put("state", state).put("progress", message)') < state.index('if(persist)')
+assert state.index('StudioFiles.save') < state.index('progressGate.written') < state.index('sendBroadcast')
+assert 'stop.setVisibility(active&&!cancelRequested?View.VISIBLE:View.GONE)' in body('void updateGenerationPanel()')
+print('Progress persistence integration: live detail updates before coalescing; successful disk save precedes gate acknowledgement; terminal preview controls hidden. Source guard only.')

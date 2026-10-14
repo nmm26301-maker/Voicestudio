@@ -284,6 +284,10 @@ public class MainActivity extends Activity {
         generationCopy.setVisibility(failed ? View.VISIBLE : View.GONE);
         generationPreview.setVisibility(SynthesisPreview.file(StudioFiles.dir(this,"jobs"),trackedJob)!=null?View.VISIBLE:View.GONE);
         generationPreview.setEnabled(!cancelRequested);
+        if(fragmentPreview!=null&&fragmentPreview.dialog.isShowing()) {
+            Button stop=fragmentPreview.dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+            if(stop!=null)stop.setVisibility(active&&!cancelRequested?View.VISIBLE:View.GONE);
+        }
         generationAction.setText(active ? cancelRequested ? "正在取消…" : "取消生成" : done ? "播放这段声音" : trackedJob != null ? "继续此任务" : "重新生成");
         generationAction.setEnabled(!cancelRequested);
         generationAction.setVisibility(active || done || trackedJob != null || "创作".equals(page) ? View.VISIBLE : View.GONE);
@@ -2115,7 +2119,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.15 · 云端与离线合成",
+                "VoiceStudio 1.5.16 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");

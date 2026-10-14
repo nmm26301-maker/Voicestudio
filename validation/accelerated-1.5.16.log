@@ -1,0 +1,17 @@
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Progress persistence: 1023 heartbeat/fast-step/lifecycle/preview/failed-save/clock checks passed; host only.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Host 300s PCM16 validation median: previous=44.328 ms; bounded=1.475 ms; buffer=32768 bytes (not phone/GPU inference speed).
+Audio validation: 42 format/full-read/nonfinite/cancellation checks passed.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Download recovery: 123 transient/permanent/cancel/no-repeat-POST checks passed (mock transport).
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Accelerated API: 67 checks passed; mock transport only, no live GPU/server speed claim.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Remote pipeline: 10841 Unicode/checkpoint/transport/PCM/consent checks passed; mocked speech only.
+Picked up JAVA_TOOL_OPTIONS: -XX:-UsePerfData
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.

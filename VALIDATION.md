@@ -1,6 +1,6 @@
-# 当前版本 1.5.15（versionCode 31）
+# 当前版本 1.5.16（versionCode 32）
 
-变化见 [CHANGELOG-1.5.15.md](CHANGELOG-1.5.15.md)，证据见 `validation/current-checks.json`、`validation/native-flow-1.5.15.log`、`validation/regression-1.5.15.log` 与 `validation/upgrade-checks-1.5.15.json`。下文旧版本记录保留为历史证据，不代表本版真机验收。
+变化见 [CHANGELOG-1.5.16.md](CHANGELOG-1.5.16.md)，证据见 `validation/current-checks.json`、`validation/accelerated-1.5.16.log`、`validation/regression-1.5.16.log` 与 `validation/upgrade-checks-1.5.16.json`。下文旧版本记录保留为历史证据，不代表本版真机验收。
 
 # 当前验证：1.5.10-hybrid（versionCode 26）
 

@@ -17,6 +17,7 @@ public class StudioService extends Service {
     final Object gate = new Object();
     final ExecutorService worker = Executors.newSingleThreadExecutor();
     final AtomicBoolean cancel = new AtomicBoolean();
+    final JobProgressGate progressGate=new JobProgressGate();
     final OmniEngine engine = new OmniEngine();
     final FishClient fish = new FishClient();
     final AcceleratedSpeechClient accelerated = new AcceleratedSpeechClient();
@@ -240,15 +241,21 @@ public class StudioService extends Service {
 
     void state(JSONObject job, String state, String message) {
         try {
-            String previous = job.optString("state");
+            String id=job.getString("id");long now=System.nanoTime();
+            String previous=job.optString("state");
+            boolean persist=!state.equals(previous)||progressGate.shouldWrite(id,state,message,now);
             job.put("state", state).put("progress", message);
             if (state.equals("running") && (!job.has("started") || previous.equals("queued"))) {
                 job.put("started", System.currentTimeMillis());
                 job.remove("finished"); job.remove("failureStage"); job.remove("failureDetail"); job.remove("previewReady");
             }
             if (state.equals("done") || state.equals("failed") || state.equals("paused")) job.put("finished", System.currentTimeMillis());
-            StudioFiles.save(StudioFiles.job(this, job.getString("id")), job);
-            sendBroadcast(new Intent("com.voice.studio.JOB").setPackage(getPackageName()));
+            // Always update live state for cancellation/failure detail, even when UI persistence is coalesced.
+            if(persist) {
+                StudioFiles.save(StudioFiles.job(this,id),job);
+                progressGate.written(id,state,message,now);
+                sendBroadcast(new Intent("com.voice.studio.JOB").setPackage(getPackageName()));
+            }
         } catch (Exception ignored) {
         }
     }
