@@ -8,6 +8,8 @@ import org.json.JSONObject;
 
 /** Upload a single reference to the SAME HTTPS origin as the explicit speech gateway. */
 final class CloudReferenceClient {
+    volatile HttpURLConnection active;
+    void cancel(){HttpURLConnection c=active;if(c!=null)c.disconnect();}
     JSONObject upload(String endpoint,String key,File wav,String transcript,AtomicBoolean cancelled) throws Exception {
         String speech=AcceleratedSpeechClient.endpoint(endpoint);
         if(!speech.endsWith("/audio/speech"))throw new IOException("无效的云端网关地址");
@@ -19,7 +21,7 @@ final class CloudReferenceClient {
         String boundary="vs-"+UUID.randomUUID().toString().replace("-","");
         byte[] head=("--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"reference.wav\"\r\nContent-Type: audio/wav\r\n\r\n").getBytes("UTF-8");
         byte[] tail=("\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"transcript\"\r\n\r\n"+(transcript==null?"":transcript)+"\r\n--"+boundary+"--\r\n").getBytes("UTF-8");
-        HttpURLConnection c=(HttpURLConnection)url.openConnection();c.setInstanceFollowRedirects(false);
+        HttpURLConnection c=(HttpURLConnection)url.openConnection();active=c;c.setInstanceFollowRedirects(false);
         c.setConnectTimeout(15000);c.setReadTimeout(120000);c.setRequestMethod("POST");
         c.setDoOutput(true);c.setFixedLengthStreamingMode((long)head.length+wav.length()+tail.length);
         c.setRequestProperty("Content-Type","multipart/form-data; boundary="+boundary);
@@ -33,10 +35,11 @@ final class CloudReferenceClient {
             }
             int status=c.getResponseCode();if(status!=200)throw new IOException("上传参考录音 HTTP "+status+"；请检查网关及费用配置");
             ByteArrayOutputStream data=new ByteArrayOutputStream();
-            try(InputStream in=c.getInputStream()){byte[] b=new byte[2048];int n;while((n=in.read(b))!=-1){if(data.size()+n>32768)throw new IOException("网关响应过大");data.write(b,0,n);}}
+            try(InputStream in=c.getInputStream()){byte[] b=new byte[2048];int n;while((n=in.read(b))!=-1){AcceleratedSpeechClient.check(cancelled);if(data.size()+n>32768)throw new IOException("网关响应过大");data.write(b,0,n);}}
             JSONObject result=new JSONObject(data.toString("UTF-8"));String voice=result.optString("voice");
-            if(!voice.matches("ref-[a-f0-9-]{36}"))throw new IOException("网关未返回有效参考录音编号");
+            if(!voice.matches("ref-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"))throw new IOException("网关未返回有效参考录音编号");
+            AcceleratedSpeechClient.check(cancelled);
             return new JSONObject().put("voice",voice);
-        }finally{c.disconnect();}
+        }finally{active=null;c.disconnect();}
     }
 }

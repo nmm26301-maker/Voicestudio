@@ -11,9 +11,10 @@ import android.widget.*;
 
 /** Shared native styling; motion never owns click handling or audio state. */
 final class CosmicUi {
-    static final int BG=0xff080F20, SURFACE=0xff121D34, INK=0xffEEF4FF,
-            MUTED=0xffA7B6D1, CYAN=0xff7CEBFA, PURPLE=0xffB2A2FF,
-            LINE=0xff354663, SECONDARY=0xff1B2A46, SUCCESS=0xff7BE6C0;
+    static final int BG=0xff090E24, SURFACE=0xff17213C, INK=0xffF2F4FF,
+            MUTED=0xffB3BFDC, CYAN=0xff8BEEFF, PURPLE=0xffC6AFFF,
+            LINE=0xff3C4C76, SECONDARY=0xff1F2D4C, SUCCESS=0xff79E2C6,
+            PINK=0xffFFB0D9, PRIMARY_START=0xff8043C4, PRIMARY_END=0xff4E54AC;
     static final FastOutSlowInInterpolator EASE=new FastOutSlowInInterpolator();
     static int dp(Context c,int n) { return (int)(n*c.getResources().getDisplayMetrics().density+.5f); }
     static boolean motionAllowed(Context c) {
@@ -34,8 +35,8 @@ final class CosmicUi {
     }
     static Drawable button(Context c,boolean primary) {
         GradientDrawable bg;
-        if(primary) { bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{0xff7153D9,0xff365EAF}); bg.setCornerRadius(dp(c,16)); }
-        else { bg=rounded(c,SECONDARY,16); bg.setStroke(dp(c,1),LINE); }
+        if(primary) { bg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{PRIMARY_START,PRIMARY_END}); bg.setCornerRadius(dp(c,20));bg.setStroke(dp(c,1),0xff9F83E6); }
+        else { bg=rounded(c,SECONDARY,18); bg.setStroke(dp(c,1),LINE); }
         return new RippleDrawable(ColorStateList.valueOf(0x447CEBFA),bg,rounded(c,0xffFFFFFF,16));
     }
     static void press(View v) {
@@ -94,6 +95,6 @@ final class CosmicUi {
     }
     static void field(EditText t) {
         Context c=t.getContext();t.setTextColor(INK);t.setHintTextColor(MUTED);t.setPadding(dp(c,14),dp(c,12),dp(c,14),dp(c,12));
-        GradientDrawable bg=rounded(c,0xff0C162B,14);bg.setStroke(dp(c,1),LINE);t.setBackground(bg);
+        GradientDrawable bg=rounded(c,0xff111A33,18);bg.setStroke(dp(c,1),LINE);t.setBackground(bg);
     }
 }

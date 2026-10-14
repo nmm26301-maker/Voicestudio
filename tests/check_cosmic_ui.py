@@ -14,7 +14,7 @@ for fg in ['INK','MUTED','CYAN','PURPLE','SUCCESS']:
     for bg in ['BG','SURFACE','SECONDARY']:
         ratio=contrast(colors[fg],colors[bg]);assert ratio>=4.5,(fg,bg,ratio);minimum=min(minimum,ratio);checks+=1
 for i in range(101):
-    t=i/100;a=0x7153D9;b=0x365EAF;c=sum(round(((a>>n)&255)*(1-t)+((b>>n)&255)*t)<<n for n in (16,8,0))
+    t=i/100;a=colors['PRIMARY_START'];b=colors['PRIMARY_END'];c=sum(round(((a>>n)&255)*(1-t)+((b>>n)&255)*t)<<n for n in (16,8,0))
     assert contrast(0xffffff,c)>=4.5;checks+=1
 vendor=root/'third_party/androidx-interpolator'
 for item in json.loads((vendor/'source.json').read_text()):

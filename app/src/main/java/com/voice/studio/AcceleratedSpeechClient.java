@@ -6,32 +6,33 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
-/** Explicitly selected OmniVoice-compatible GPU service; never an automatic network fallback. */
+/** Explicit HTTPS cloud gateway; no automatic retry of a possibly billed POST. */
 final class AcceleratedSpeechClient {
     interface Connections { HttpURLConnection open(URL url) throws IOException; }
     interface Progress { void update(String message); }
     private final Connections connections;
+    final CloudReferenceClient references=new CloudReferenceClient();
     volatile HttpURLConnection active;
     AcceleratedSpeechClient() { this(url -> (HttpURLConnection)url.openConnection()); }
     AcceleratedSpeechClient(Connections connections) { this.connections = connections; }
-    void cancel() { HttpURLConnection value=active;if(value!=null)value.disconnect(); }
+    void cancel() { references.cancel();HttpURLConnection value=active;if(value!=null)value.disconnect(); }
 
     static final class RequestRejected extends IOException {
         private static final long serialVersionUID=1L;
         final int status;
-        RequestRejected(int status){super("加速接口 HTTP "+status+"："+(status==401||status==403?"请检查接口密钥":status==429?"额度不足或服务繁忙，请稍后重试":"请检查服务状态、模型与音色配置"));this.status=status;}
-        boolean definitelyRejected(){return status==400||status==401||status==403||status==404||status==413||status==422||status==429;}
+        RequestRejected(int status){super("云端接口 HTTP "+status+"："+(status==401||status==403?"请检查接口密钥":status==410?"参考录音已过期，继续任务时会重新上传":status==429?"额度不足或服务繁忙，请稍后重试":"请检查服务状态、模型与音色配置"));this.status=status;}
+        boolean definitelyRejected(){return status==400||status==401||status==403||status==404||status==410||status==413||status==422||status==429;}
     }
     static String endpoint(String configured) throws IOException {
         try {
             URI uri=new URI(configured==null?"":configured.trim());
             if(!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost()==null ||
                     uri.getUserInfo()!=null || uri.getQuery()!=null || uri.getFragment()!=null)
-                throw new IOException("请填写 HTTPS 加速服务地址，密钥请填写在独立密钥框中");
+                throw new IOException("请填写 HTTPS 云端服务地址，密钥请填写在独立密钥框中");
             String value=uri.toASCIIString();while(value.endsWith("/"))value=value.substring(0,value.length()-1);
             if(value.endsWith("/v1/audio/speech"))return value;
             return value+(value.endsWith("/v1")?"/audio/speech":"/v1/audio/speech");
-        } catch(URISyntaxException e) { throw new IOException("加速服务地址格式无效"); }
+        } catch(URISyntaxException e) { throw new IOException("云端服务地址格式无效"); }
     }
     static void token(String key) throws IOException {
         if(key==null || key.length()>4096 || (!key.isEmpty() && !key.matches("[!-~]+")))
@@ -62,13 +63,13 @@ final class AcceleratedSpeechClient {
             connection.setRequestProperty("Content-Type","application/json");
             connection.setRequestProperty("Accept","audio/wav");
             if(!key.isEmpty())connection.setRequestProperty("Authorization","Bearer "+key);
-            progress.update("连接加速服务…");
+            progress.update("连接云端服务…");
             try(OutputStream stream=connection.getOutputStream()){check(cancelled);stream.write(body);}
             int status=connection.getResponseCode();check(cancelled);
             if(status!=200)throw new RequestRejected(status);
             String type=connection.getContentType();
             if(type!=null && (type.toLowerCase(Locale.ROOT).contains("json") || type.toLowerCase(Locale.ROOT).contains("text")))
-                throw new IOException("加速服务返回了文字或错误消息，没有返回 WAV 音频");
+                throw new IOException("云端服务返回了文字或错误消息，没有返回 WAV 音频");
             progress.update("服务器正在合成并接收完整音频…");
             try(InputStream input=connection.getInputStream();OutputStream stream=new FileOutputStream(output)) {
                 byte[] buffer=new byte[32768];long total=0;int n;

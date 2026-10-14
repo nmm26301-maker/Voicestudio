@@ -25,7 +25,7 @@ final class VoiceCapturePanel {
         body = new LinearLayout(owner); body.setOrientation(1);
         body.setPadding(owner.dp(16), owner.dp(16), owner.dp(16), owner.dp(16));
         body.setBackground(CosmicUi.panel(owner, CosmicUi.CYAN)); parent.addView(body);
-        owner.label(body, "VOICE LAB  /  人物音色采集", 13, true);
+        owner.label(body, "我的声音 · 参考录音", 13, true);
         status = owner.label(body, "点击录音，清晰说话 3—10 秒", 14, true);
         meter = new Meter(owner); body.addView(meter, new LinearLayout.LayoutParams(-1, owner.dp(92)));
         name = owner.field(body, "人物 / 音色名称", owner.getSharedPreferences("studio", 0).getString("voice-draft-name", "我的声音"));

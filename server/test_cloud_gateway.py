@@ -25,6 +25,8 @@ def wav(seconds=5, rate=24000, silence=False):
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(g, "STORE", tmp_path)
     monkeypatch.setenv("VOICE_GATEWAY_TOKEN", "test-gateway-only")
+    async def ready(provider): return True
+    monkeypatch.setattr(g, "worker_ready", ready)
     return TestClient(g.app)
 
 
@@ -104,3 +106,131 @@ def test_rejects_fake_audio(client,monkeypatch):
     result=client.post("/v1/audio/speech",headers=HEADERS,
                        json={"input":"你好","model":"indextts25"})
     assert result.status_code==502,result.text
+
+
+def test_health_auth_and_configured_not_fake(client, monkeypatch):
+    assert client.get('/v1/health').status_code == 401
+    for name in g.OPEN_MODELS:
+        monkeypatch.delenv('VOICE_' + name.upper() + '_URL', raising=False)
+    monkeypatch.setenv('VOICE_COSYVOICE3_URL', 'https://configured.invalid')
+    result = client.get('/v1/health', headers=HEADERS)
+    assert result.status_code == 200
+    assert result.json()['voice_reference'] == ['cosyvoice3']
+    assert result.json()['auto_fallback_after_submit'] is False
+
+
+def test_truncated_declared_frames_rejected(client):
+    full = wav()
+    # Keeps the declared five-second RIFF/data header, discards actual tail.
+    truncated = full[:-24000]
+    response = client.post('/v1/voices/reference', headers=HEADERS,
+                           files={'file': ('ref.wav', truncated, 'audio/wav')})
+    assert response.status_code == 422
+
+
+def test_expired_reference_not_sent_to_provider(client, monkeypatch):
+    monkeypatch.setenv('VOICE_QWEN3TTS_URL', 'https://configured.invalid')
+    identifier = client.post('/v1/voices/reference', headers=HEADERS,
+                            files={'file': ('ref.wav', wav(), 'audio/wav')}).json()['voice']
+    old = g.time.time() - g.TTL_SECONDS - 1
+    os.utime(g.ref_path(identifier), (old, old))
+    result = client.post('/v1/audio/speech', headers=HEADERS,
+                         json={'input': '新的完整文本', 'voice': identifier, 'model': 'qwen3tts'})
+    assert result.status_code == 410
+
+
+def test_all_four_reference_models_receive_entire_new_text(client, monkeypatch):
+    seen = []
+    async def mock_call(method, url, **kwargs):
+        seen.append(kwargs['json'])
+        return httpx.Response(200, content=wav())
+    monkeypatch.setattr(g, 'do_http', mock_call)
+    ref = client.post('/v1/voices/reference', headers=HEADERS,
+                      files={'file': ('ref.wav', wav(), 'audio/wav')}).json()['voice']
+    for engine in g.OPEN_MODELS:
+        monkeypatch.setenv('VOICE_' + engine.upper() + '_URL', 'https://configured.invalid')
+        text = '这是新的文字，与参考录音无关。最后一句也要读完。'
+        result = client.post('/v1/audio/speech', headers=HEADERS,
+                             json={'input': text, 'voice': ref, 'model': engine})
+        assert result.status_code == 200
+        assert seen[-1]['input'] == text
+        assert seen[-1]['model'] == engine
+
+
+def test_auto_switches_before_post_when_first_worker_unreachable(client, monkeypatch):
+    for p in g.OPEN_MODELS:
+        monkeypatch.delenv('VOICE_' + p.upper() + '_URL', raising=False)
+    monkeypatch.setenv('VOICE_QWEN3TTS_URL', 'https://down.invalid')
+    monkeypatch.setenv('VOICE_COSYVOICE3_URL', 'https://ready.invalid')
+    probes=[]; posts=[]
+    async def ready(provider):
+        probes.append(provider)
+        return provider == 'cosyvoice3'
+    async def send(method, url, **kwargs):
+        posts.append((method,url))
+        return httpx.Response(200, content=wav())
+    monkeypatch.setattr(g, 'worker_ready', ready)
+    monkeypatch.setattr(g, 'do_http', send)
+    result=client.post('/v1/audio/speech', headers=HEADERS,
+                       json={'input':'故障切换后的完整句子。', 'model':'auto'})
+    assert result.status_code == 200
+    assert result.headers['x-voicestudio-engine'] == 'cosyvoice3'
+    assert len(posts) == 1 and posts[0][1] == 'https://ready.invalid/v1/audio/speech'
+    assert set(probes) == {'qwen3tts', 'cosyvoice3'}
+
+
+@pytest.mark.parametrize('provider,variable', [('fish','FISH_API_KEY'),('minimax','MINIMAX_API_KEY'),('elevenlabs','ELEVENLABS_API_KEY')])
+def test_commercial_voice_id_routes_and_full_text(client, monkeypatch, provider, variable):
+    monkeypatch.setenv(variable, 'fake-only-provider-key')
+    seen=[]
+    async def call(method, url, **kwargs):
+        seen.append((method, url, kwargs))
+        if provider == 'minimax':
+            return httpx.Response(200, json={'base_resp': {'status_code': 0}, 'data': {'audio': wav().hex()}})
+        return httpx.Response(200, content=wav())
+    monkeypatch.setattr(g, 'do_http', call)
+    text='商业平台也必须收到最后一句。'
+    result=client.post('/v1/audio/speech', headers=HEADERS,
+                       json={'input': text, 'voice': 'VoiceID123', 'model': provider, 'speed': 1.2})
+    assert result.status_code == 200, result.text
+    assert len(seen) == 1 and seen[0][0] == 'POST'
+    payload=seen[0][2]['json']
+    assert payload['text'] == text
+    if provider == 'fish': assert payload['prosody']['speed'] == 1.2
+    if provider == 'minimax': assert payload['voice_setting']['voice_id'] == 'VoiceID123'
+    if provider == 'elevenlabs': assert seen[0][1].endswith('/VoiceID123')
+
+
+def test_recording_not_silently_created_as_paid_commercial_voice(client, monkeypatch):
+    voice=client.post('/v1/voices/reference', headers=HEADERS,
+                      files={'file':('ref.wav',wav(),'audio/wav')}).json()['voice']
+    async def forbidden(*args, **kwargs):
+        pytest.fail('Reference-only voice made commercial call')
+    monkeypatch.setattr(g, 'do_http', forbidden)
+    for provider, key in [('minimax','MINIMAX_API_KEY'),('elevenlabs','ELEVENLABS_API_KEY')]:
+        monkeypatch.setenv(key,'fake-key')
+        response=client.post('/v1/audio/speech',headers=HEADERS,
+                             json={'input':'新的文字','model':provider,'voice':voice})
+        assert response.status_code == 422
+
+
+def test_fish_inline_reference_msgpack_uses_new_text(client, monkeypatch):
+    import msgpack
+    monkeypatch.setenv('FISH_API_KEY','fake-fish-key')
+    seen=[]
+    async def call(method,url,**kwargs):
+        seen.append(kwargs)
+        return httpx.Response(200,content=wav())
+    monkeypatch.setattr(g,'do_http',call)
+    ref=client.post('/v1/voices/reference',headers=HEADERS,
+        files={'file':('ref.wav',wav(),'audio/wav')},data={'transcript':'原录音内容'}).json()['voice']
+    result=client.post('/v1/audio/speech',headers=HEADERS,
+                       json={'input':'任意新的文字，最后一句。','model':'fish','voice':ref})
+    assert result.status_code==200, result.text
+    assert len(seen)==1
+    body=msgpack.unpackb(seen[0]['content'],raw=False)
+    assert body['text']=='任意新的文字，最后一句。'
+    assert body['references'][0]['text']=='原录音内容'
+    assert body['references'][0]['audio']==wav()
+    assert 'reference_id' not in body
+    assert seen[0]['headers']['Content-Type']=='application/msgpack'

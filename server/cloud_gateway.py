@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 app = FastAPI(title="VoiceStudio Cloud Gateway", version="0.1")
 OPEN_MODELS = ("indextts25", "cosyvoice3", "qwen3tts", "chatterboxv3")
+REFERENCE_MODELS = OPEN_MODELS + ("fish",)
 PROVIDERS = OPEN_MODELS + ("elevenlabs", "minimax", "fish")
 PREFER = ("qwen3tts", "cosyvoice3", "indextts25", "chatterboxv3", "fish", "minimax", "elevenlabs")
 STORE = pathlib.Path(os.getenv("VOICE_REFERENCE_DIR", "/tmp/voicestudio-references"))
@@ -85,7 +86,9 @@ def check_wav(audio: bytes, reference: bool = False) -> float:
             if f.getnchannels() != 1 or f.getsampwidth() != 2 or rate < 8000 or rate > 48000:
                 raise ValueError("Expected mono PCM16 WAV")
             samples = f.readframes(frames)
-        if not samples or max(samples)==0 and min(samples)==0:
+        if len(samples) != frames * 2:
+            raise ValueError("Truncated PCM data")
+        if not samples or not any(samples):
             raise ValueError("Silent audio")
         seconds = frames / rate
         if seconds < (3 if reference else .12) or (reference and seconds > 10.01):
@@ -146,7 +149,7 @@ def choose(model: str, has_reference: bool, voice: str = "auto") -> str:
             raise HTTPException(422, "Unsupported provider")
         if not configured(model):
             raise HTTPException(503, f"{model} is not configured")
-        if has_reference and model not in OPEN_MODELS:
+        if has_reference and model not in REFERENCE_MODELS:
             raise HTTPException(422, "Selected provider needs a registered voice ID; choose an OSS reference-enabled engine")
         return model
     for provider in PREFER:
@@ -159,7 +162,15 @@ async def do_http(method: str, url: str, **kwargs) -> httpx.Response:
     # Provider URLs are fixed in server configuration, never taken from user input.
     async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=15), follow_redirects=False) as client:
         try:
-            resp = await client.request(method, url, **kwargs)
+            async with client.stream(method, url, **kwargs) as incoming:
+                if incoming.status_code != 200:
+                    raise HTTPException(502, f"Provider rejected synthesis (HTTP {incoming.status_code})")
+                data = bytearray()
+                async for block in incoming.aiter_bytes():
+                    if len(data) + len(block) > MAX_AUDIO:
+                        raise HTTPException(502, "Provider response too large")
+                    data.extend(block)
+                resp = httpx.Response(incoming.status_code, headers=incoming.headers, content=bytes(data))
         except httpx.TimeoutException as e:
             # Request may already have been billed. Never silently resubmit.
             raise HTTPException(504, "Provider timed out; submission may have been billed") from e
@@ -170,10 +181,42 @@ async def do_http(method: str, url: str, **kwargs) -> httpx.Response:
     return resp
 
 
+async def worker_ready(provider: str) -> bool:
+    """Safe GET preflight only; never retry speech or probe with paid synthesis."""
+    root = os.getenv("VOICE_" + provider.upper() + "_URL", "").rstrip("/")
+    if not root.startswith("https://") and not root.startswith("http://127.0.0.1:"):
+        return False
+    key = os.getenv("VOICE_" + provider.upper() + "_TOKEN", "")
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(4, connect=2), follow_redirects=False) as client:
+            response = await client.get(root + "/v1/health", headers={"Authorization": "Bearer " + key})
+            if response.status_code != 200 or len(response.content) > 32768:
+                return False
+            info = response.json()
+            return info.get("status") == "ok" and info.get("engine") == provider
+    except (httpx.HTTPError, ValueError, TypeError):
+        return False
+
+
+async def automatic_model(has_reference: bool, voice: str, reference_text: str = "") -> str:
+    import asyncio
+    candidates = [p for p in PREFER if configured(p) and
+                  (not has_reference or p in OPEN_MODELS or p == "fish" and bool(reference_text.strip())) and
+                  (p in OPEN_MODELS or voice not in ("", "auto"))]
+    # Concurrent read-only probes bound overall selection latency to one timeout.
+    open_candidates = [p for p in candidates if p in OPEN_MODELS]
+    readiness = dict(zip(open_candidates, await asyncio.gather(*(worker_ready(p) for p in open_candidates))))
+    for provider in candidates:
+        if provider not in OPEN_MODELS or readiness.get(provider):
+            return provider
+    raise HTTPException(503, "No reachable cloud worker or configured suitable provider")
+
+
 @app.get("/v1/health")
-def health():
+def health(authorization: str | None = Header(default=None)):
+    authenticate(authorization)
     return {"status": "ok", "configured": [p for p in PROVIDERS if configured(p)],
-            "voice_reference": [p for p in OPEN_MODELS if configured(p)],
+            "voice_reference": [p for p in REFERENCE_MODELS if configured(p)],
             "auto_fallback_after_submit": False}
 
 
@@ -189,6 +232,13 @@ async def upload_reference(
     data = await file.read(MAX_REFERENCE + 1)
     check_wav(data, reference=True)
     STORE.mkdir(parents=True, exist_ok=True)
+    for stale in STORE.glob("ref-*.wav"):
+        try:
+            if time.time() - stale.stat().st_mtime > TTL_SECONDS:
+                stale.unlink(missing_ok=True)
+                stale.with_suffix(".json").unlink(missing_ok=True)
+        except OSError:
+            pass
     identifier = "ref-" + str(uuid.uuid4())
     target = ref_path(identifier)
     # Atomic publication; no model run or paid call during upload.
@@ -210,8 +260,8 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
     if not task.input.strip():
         raise HTTPException(422, "Text is empty")
     reference_id = task.voice if task.voice.startswith("ref-") else None
-    model = choose(task.model, reference_id is not None, task.voice)
     reference_audio, reference_text = read_reference(reference_id) if reference_id else (None, None)
+    model = await automatic_model(reference_id is not None, task.voice, reference_text or "") if task.model == "auto" else choose(task.model, reference_id is not None, task.voice)
 
     if model in OPEN_MODELS:
         url = os.environ["VOICE_" + model.upper() + "_URL"].rstrip("/")
@@ -267,12 +317,29 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
     else:
         if task.voice in ("auto", ""):
             raise HTTPException(422, "Enter Fish Audio reference/voice ID")
-        resp = await do_http(
-            "POST", "https://api.fish.audio/v1/tts",
-            headers={"Authorization": "Bearer " + os.environ["FISH_API_KEY"], "model": os.getenv("FISH_MODEL", "s2.1-pro-free")},
-            json={"text": task.input, "reference_id": task.voice, "format": "mp3", "speed": task.speed},
-        )
+        headers = {"Authorization": "Bearer " + os.environ["FISH_API_KEY"],
+                   "model": os.getenv("FISH_MODEL", "s2.1-pro-free")}
+        body = {"text": task.input, "format": "mp3", "prosody": {"speed": task.speed}}
+        if reference_audio:
+            if not reference_text or not reference_text.strip():
+                raise HTTPException(422, "Fish inline cloning requires the exact reference transcript")
+            import msgpack
+            body["references"] = [{"audio": reference_audio, "text": reference_text}]
+            headers["Content-Type"] = "application/msgpack"
+            resp = await do_http("POST", "https://api.fish.audio/v1/tts", headers=headers,
+                                 content=msgpack.packb(body, use_bin_type=True))
+        else:
+            body["reference_id"] = task.voice
+            resp = await do_http("POST", "https://api.fish.audio/v1/tts", headers=headers, json=body)
         wav = normalized_wav(resp.content, "mp3")
+
+    if model == "elevenlabs" and task.speed != 1:
+        proc = subprocess.run(["ffmpeg", "-v", "error", "-nostdin", "-i", "pipe:0",
+                "-af", f"atempo={task.speed}", "-f", "wav", "pipe:1"],
+                input=wav, capture_output=True, timeout=90, check=False)
+        if proc.returncode:
+            raise HTTPException(502, "Speed adjustment failed")
+        wav = normalized_wav(proc.stdout, "wav")
 
     # Basic truncation guard: duration alone cannot prove every word was pronounced.
     duration = check_wav(wav)

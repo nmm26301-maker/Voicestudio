@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" package="com.voice.studio" android:versionCode="36" android:versionName="1.5.20-cloud">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" package="com.voice.studio" android:versionCode="37" android:versionName="1.5.21-cloud">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -8,8 +8,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <queries><intent><action android:name="android.intent.action.TTS_SERVICE" /></intent></queries>
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
@@ -24,6 +22,5 @@
         <activity android:name=".RecordingActivity" android:exported="false" android:excludeFromRecents="true" android:theme="@style/RecordingTheme" />
         <service android:name=".StudioService" android:exported="false" android:foregroundServiceType="specialUse|microphone"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-requested cloud speech synthesis and reference audio recording" /></service>
         <provider android:name=".AudioProvider" android:authorities="com.voice.studio.audio" android:exported="false" android:grantUriPermissions="true" />
-    <service android:name=".DictationOverlay" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-visible movable offline dictation controls"/></service>
     </application>
 </manifest>

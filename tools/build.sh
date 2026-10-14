@@ -45,10 +45,10 @@ artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
 out_dir="$(mktemp -d "$artifact_dir/compile.XXXXXX")"
 aapt_flags=()
-apk_name="VoiceStudio-1.5.20-Cloud.apk"
+apk_name="VoiceStudio-1.5.21-Cloud.apk"
 if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
-    apk_name="VoiceStudio-1.5.20-Cloud-debug.apk"
+    apk_name="VoiceStudio-1.5.21-Cloud-debug.apk"
 fi
 manifest_flags=()
 if [ "${VOICE_PREVIEW:-0}" = "1" ]; then
@@ -77,10 +77,13 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
         if path.read_bytes() != data:
             raise RuntimeError('Incomplete runtime extraction: ' + name)
 PY
-mkdir -p "$out_dir/classes" "$out_dir/dex" "$out_dir/res" "$out_dir/generated"
+mkdir -p "$out_dir/classes" "$out_dir/dex" "$out_dir/res" "$out_dir/generated" "$out_dir/assets"
+# Language metadata only. Cloud APK carries no phone model installer manifests,
+# mel filters, self-test ONNX graph or download catalogue.
+cp "$project_dir/app/src/main/assets/omni-languages.json" "$out_dir/assets/omni-languages.json"
 "$android_tools/aapt2" compile --dir "$project_dir/app/src/main/res" -o "$out_dir/res"
 python3 "$project_dir/tools/prepare_manifest.py" "$project_dir/app/src/main/AndroidManifest.xml" "$out_dir/AndroidManifest.xml" "${manifest_flags[@]}"
-"$android_tools/aapt2" link -o "$out_dir/base.apk" -I "$platform_jar" --manifest "$out_dir/AndroidManifest.xml" --custom-package com.voice.studio --java "$out_dir/generated" -A "$project_dir/app/src/main/assets" --min-sdk-version 26 --target-sdk-version 34 "${aapt_flags[@]}" "$out_dir"/res/*.flat
+"$android_tools/aapt2" link -o "$out_dir/base.apk" -I "$platform_jar" --manifest "$out_dir/AndroidManifest.xml" --custom-package com.voice.studio --java "$out_dir/generated" -A "$out_dir/assets" --min-sdk-version 26 --target-sdk-version 34 "${aapt_flags[@]}" "$out_dir"/res/*.flat
 java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -classpath "$platform_jar:$out_dir/ort/classes.jar" -d "$out_dir/classes" "$project_dir"/app/src/main/java/com/voice/studio/*.java "$out_dir"/generated/com/voice/studio/R.java
 python3 - "$out_dir/classes" "$out_dir/classes.jar" <<'PY'
 import sys,zipfile,pathlib

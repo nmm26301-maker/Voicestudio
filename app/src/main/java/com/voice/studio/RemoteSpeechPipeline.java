@@ -39,7 +39,7 @@ final class RemoteSpeechPipeline {
         }
         if(reference!=null&&!useGradio&&uploaded==null){
             progress.update("上传参考录音到你配置的 HTTPS 云端网关…");
-            uploaded=new CloudReferenceClient().upload(job.getString("endpoint"),key,reference,referenceText,cancelled);
+            uploaded=rest.references.upload(job.getString("endpoint"),key,reference,referenceText,cancelled);
             session.data.put("reference",uploaded);session.save();
         }
         boolean complete=false;
@@ -67,7 +67,7 @@ final class RemoteSpeechPipeline {
                         try {
                             duration=rest.generate(job.getString("endpoint"),key,job.optString("model"),uploaded==null?job.optString("apiVoice","auto"):uploaded.getString("voice"),part,
                                 job.optString("language","zh"),(float)job.optDouble("speed",1),job.optInt("steps",32),job.optLong("seed",42),pending,cancelled,stage);
-                        }catch(AcceleratedSpeechClient.RequestRejected error){if(error.definitelyRejected()){state.remove("phase");session.save();}throw error;}
+                        }catch(AcceleratedSpeechClient.RequestRejected error){if(error.definitelyRejected()){state.remove("phase");if(error.status==410)session.data.remove("reference");session.save();}throw error;}
                     }
                     AcceleratedSpeechClient.check(cancelled);
                     if(!pending.renameTo(cached))throw new IOException("保存 GPU 分段失败");

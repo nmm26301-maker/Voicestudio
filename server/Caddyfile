@@ -1,9 +1,6 @@
 {$API_DOMAIN} {
-    @authorized header Authorization "Bearer {$API_TOKEN}"
-    handle @authorized {
-        reverse_proxy omnivoice:8080
+    request_body {
+        max_size 6MB
     }
-    handle {
-        respond "Unauthorized" 401
-    }
+    reverse_proxy gateway:8765
 }

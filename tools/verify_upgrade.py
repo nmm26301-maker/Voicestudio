@@ -14,6 +14,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--cloud", action="store_true", help="Verify deliberate removal of native/local assets")
 parser.add_argument("release")
 parser.add_argument("previous", help="Previously shipped preview or standalone APK")
 args = parser.parse_args()
@@ -72,7 +73,8 @@ expected_version = manifest.get(android + "versionName")
 check(new["versionCode"] == int(manifest.get(android + "versionCode")) and new["version"] == expected_version, "Incorrect release version")
 check(new["label"] == "VoiceStudio", "Release still has the preview launcher name")
 check(new["authorities"] == old["authorities"] == {"com.voice.studio.preview.audio"}, "Sharing identity changed")
-check(new["classes"] == old["classes"], "Application/component identity changed")
+removed = {"com.voice.studio.ModelDownloadsActivity", "com.voice.studio.ModelInstallActivity", "com.voice.studio.DictationOverlay"} if args.cloud else set()
+check(new["classes"] == old["classes"] - removed, "Application/component identity changed unexpectedly")
 check(not re.search(r"android:debuggable[^=]*=.*0xffffffff", new["manifest"]), "Release is debuggable")
 check("Number of signers: 1" in new["signature"], "Unexpected signer count")
 for scheme in ("v2", "v3"):
@@ -90,11 +92,17 @@ with zipfile.ZipFile(args.release) as built, zipfile.ZipFile(args.previous) as p
             check(("Lcom/voice/studio/" + name + ";").encode() in dex, "Voice workflow class missing: " + name)
         check(b"extractVoices" in dex, "Video voice task routing missing")
     check(b"content://com.voice.studio.audio/" not in dex, "Sharing points to the legacy app")
-    for prefix in ("lib/", "assets/"):
-        names = {n for n in built.namelist() if n.startswith(prefix)}
-        check(names == {n for n in previous.namelist() if n.startswith(prefix)}, "Asset/runtime set changed")
-        for name in names:
-            check(built.read(name) == previous.read(name), "Unexpected asset/runtime change: " + name)
+    if args.cloud:
+        check(not any(n.startswith("lib/") for n in built.namelist()), "Cloud APK includes a native inference library")
+        assets = {n for n in built.namelist() if n.startswith("assets/")}
+        check(assets == {"assets/omni-languages.json"}, "Unexpected cloud APK assets")
+        check(built.read("assets/omni-languages.json") == previous.read("assets/omni-languages.json"), "Language metadata changed")
+    else:
+        for prefix in ("lib/", "assets/"):
+            names = {n for n in built.namelist() if n.startswith(prefix)}
+            check(names == {n for n in previous.namelist() if n.startswith(prefix)}, "Asset/runtime set changed")
+            for name in names:
+                check(built.read(name) == previous.read(name), "Unexpected asset/runtime change: " + name)
     check(built.getinfo("resources.arsc").compress_type == zipfile.ZIP_STORED, "Compressed resources")
     check(not any(n.endswith((".p12", ".jks", ".keystore")) for n in built.namelist()), "Signing key bundled in APK")
 print(json.dumps({
@@ -103,5 +111,5 @@ print(json.dumps({
     "version": new["version"], "versionCode": new["versionCode"],
     "certificateSha256": new["certificate"], "apkSha256": new["sha256"],
     "previousApkSha256": old["sha256"], "previousVersionCode": old["versionCode"],
-    "scope": "Signed APK identity/version/provider continuity and unchanged assets/runtime verified. No device installation, data-retention or functional acceptance performed."
+    "scope": ("Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified." if args.cloud else "Signed APK identity/version/provider continuity and unchanged assets/runtime verified.") + " This script performs no device installation or speech-quality acceptance."
 }, indent=2))
