@@ -1,3 +1,13 @@
+# VoiceStudio 1.5.20-cloud（开发分支）
+
+> **云端版迁移，尚未进行 Android 真机验收或签名升级测试。** [七引擎配置与网关说明](docs/CLOUD_ENGINES.md) · [云端版变更记录](CHANGELOG-1.5.20.md)
+
+此版本界面取消 OmniVoice、本地语音模型安装/下载页和手机语音 TTS 选项；原人物录音、音色参考 WAV、作品、历史任务不会在升级过程中被自动删除。提供经确认的旧模型目录清理功能。云端功能包括原 Fish Audio 和七种引擎选择（IndexTTS 2.5、CosyVoice 3、Qwen3-TTS、Chatterbox V3、ElevenLabs、MiniMax、Fish Audio），保留分段/断点、参考录音和故障检测。
+
+**重要限制：** 四个开源模型需要自行部署对应兼容推理服务；商业服务需要账户、平台音色 ID 和 API Key。CI 模拟测试和 APK 编译不等于七个模型已真实部署可用。当前分支没有原签名私钥时，只能生成不可安装的未签名验证包。旧版离线工具任务保留历史结果但不能再继续本地推理。
+
+---
+
 # VoiceStudio 1.5.19
 
 Android ARM64 声音工作室：文字合成、音色克隆、录音转写、字幕配音、翻译、人声分离与有声书。最低 Android 8.0（API 26），当前源码版本 `1.5.19-hybrid`，`versionCode 35`。
