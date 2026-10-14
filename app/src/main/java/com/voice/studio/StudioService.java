@@ -365,12 +365,11 @@ public class StudioService extends Service {
             if(!job.optString("protocol","rest").equals(getSharedPreferences("studio",0).getString("accelerated-protocol","rest")))throw new IOException("GPU 调用方式已改变，请重新创建任务");
             if(useGradio&&!provider.equals("hf"))throw new IOException("Space 平台配置无效");
             String referenceText=null;File ref=null;
-            if(useGradio) {
+            if(useGradio || !job.optString("profile").isEmpty()) {
                 String profile=job.optString("profile");
-                if(!profile.equals(getSharedPreferences("studio",0).getString("gpu-hf-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
+                if(!profile.equals(getSharedPreferences("studio",0).getString(useGradio?"gpu-hf-profile":"cloud-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
                 if(!profile.isEmpty()) {
                     if(!profile.matches("[a-f0-9-]{36}"))throw new IOException("参考人物音色编号无效");
-                    voiceForSpeech(job);
                     File folder=StudioFiles.dir(this,"profiles");JSONObject meta=StudioFiles.read(new File(folder,profile+".json"));
                     double referenceStart=meta.optDouble("referenceStart",0),seconds=meta.optDouble("referenceSeconds",6);
                     if(!Double.isFinite(referenceStart)||referenceStart<0||!Double.isFinite(seconds)||seconds<3||seconds>10)throw new IOException("远程参考录音需为 3—10 秒，请重新选择片段");
@@ -520,6 +519,8 @@ public class StudioService extends Service {
         String id = job.getString("id");
         String type = job.optString("type", "tts");
         if (type.equals("tts")) {
+            if(!"fish".equals(job.optString("engine"))&&!"accelerated".equals(job.optString("engine")))
+                throw new IOException("本地合成已移除。请改用 Fish Audio 或七引擎云端服务。");
             boolean cloud = "fish".equals(job.optString("engine"));
             boolean api = "accelerated".equals(job.optString("engine"));
             File audio = StudioFiles.output(this, id, cloud ? "mp3" : "wav");
