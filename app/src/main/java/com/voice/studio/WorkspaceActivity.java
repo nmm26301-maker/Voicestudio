@@ -71,10 +71,14 @@ public class WorkspaceActivity extends Activity {
             pendingResume = saved.getString("pendingResume", "");
             taskLimit = saved.getInt("taskLimit", 50);
             taskFilter = Math.max(0, Math.min(4, saved.getInt("taskFilter", 0)));
-            String name = saved.getString("exportFile", "");
-            if (name.matches("[a-f0-9-]+\\.(mp3|wav|mp4|zip|txt|srt|json)")) {
-                File file = new File(StudioFiles.dir(this, "audio"), name);
-                if (file.isFile()) export = file;
+            // Persist the exact chosen source while Android's document picker is open.
+            // Resolve only two trusted internal directories; never restore an arbitrary path.
+            String name=saved.getString("exportFile","");
+            String directory=saved.getString("exportDirectory","audio");
+            if (name.matches("[a-f0-9-]+\\.(mp3|wav|mp4|zip|txt|srt|json)")
+                    && (directory.equals("audio") || directory.equals("profiles"))) {
+                File file=new File(StudioFiles.dir(this,directory),name);
+                if(file.isFile())export=file;
             }
         }
         CosmicUi.install(this);
@@ -118,6 +122,10 @@ public class WorkspaceActivity extends Activity {
         if (inspectModule != null || importModule != null) section = "任务";
 
         jumpSection(sections.containsKey(section) ? section : "音色");
+        if (saved == null && getIntent().getBooleanExtra("chooseReferenceForFree",false)) {
+            getIntent().removeExtra("chooseReferenceForFree");
+            ui.post(this::profiles);
+        }
         if (Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")
                         != android.content.pm.PackageManager.PERMISSION_GRANTED)
@@ -509,10 +517,20 @@ public class WorkspaceActivity extends Activity {
                             String excerpt = characters > 90 ? referenceText.substring(0, referenceText.offsetByCodePoints(0, 90)) + "…" : referenceText;
                             label(details, "参考文字（" + characters + " 字）：" + excerpt, 12, false);
                             label(details,"要修正参考文字，可以重新录音并保存新音色。",12,false);
-                            button(details,"保存参考 WAV 到手机 · 用于免费网页克隆",()->{
+                            button(details,"① 导出参考 WAV 到下载文件夹",()->{
                                 File original=new File(StudioFiles.dir(this,"profiles"),id+".reference.wav");
                                 if(original.isFile())saveOutput(original);
                                 else toast("参考录音不存在，请重新录制");
+                            });
+                            button(details,"② 复制参考录音原文 · 网页克隆使用",()->{
+                                String transcript=j.optString("referenceText","").trim();
+                                if(transcript.isEmpty()){
+                                    toast("没有填写参考录音原文，请先听原声并自行核对，不能用生成文本冒充录音原文");
+                                    return;
+                                }
+                                ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(
+                                     ClipData.newPlainText("VoiceStudio 参考音频原文",transcript));
+                                toast("录音原文已复制；在网页克隆的参考文本栏粘贴");
                             });
                             new CosmicDialogBuilder(this)
                                     .setTitle(j.optString("name"))
@@ -1902,7 +1920,12 @@ public class WorkspaceActivity extends Activity {
 
     protected void onSaveInstanceState(Bundle state) {
         if (voiceCapture != null) voiceCapture.persist();
-        if (export != null) state.putString("exportFile", export.getName());
+        if (export != null) {
+            state.putString("exportFile",export.getName());
+            File parent=export.getParentFile();
+            state.putString("exportDirectory",
+                parent != null && parent.equals(StudioFiles.dir(this,"profiles")) ? "profiles" : "audio");
+        }
         state.putString("section", section); state.putString("pendingResume", pendingResume);
         state.putInt("taskLimit", taskLimit);
         state.putInt("taskFilter", taskFilter);
