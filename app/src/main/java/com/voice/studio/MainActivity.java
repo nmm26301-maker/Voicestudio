@@ -1571,6 +1571,14 @@ public class MainActivity extends Activity {
             ()->openUrl("https://huggingface.co/spaces/IndexTeam/IndexTTS-2.5-Demo")));
         gap(inside,12);
         add(inside,text("使用步骤：在网页选择声音克隆 → 上传你有权使用的 3—10 秒录音 → 输入要朗读的文字 → 生成 → 保存 WAV 到手机。",12,MUTED,false));
+        gap(inside,8);
+        add(inside,button("复制创作页文字 · 网页直接粘贴",false,()->{
+            saveDraft();
+            if(draft.trim().isEmpty()){toast("请先在创作页输入文字");return;}
+            android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+            clipboard.setPrimaryClip(ClipData.newPlainText("VoiceStudio 朗读文字",draft));
+            toast("已复制文字，可在网页中粘贴并生成");
+        }));
         gap(inside,12);
         add(inside,button("③ 从手机下载的 WAV 导入 VoiceStudio 作品",true,this::importCloudDemo));
         gap(inside,12);
