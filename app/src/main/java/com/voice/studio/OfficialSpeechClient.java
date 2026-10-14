@@ -24,6 +24,14 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             return new JSONObject().put("text",text).put("model_id","eleven_multilingual_v2")
                 .put("voice_settings",new JSONObject().put("speed",speed));
         }
+        if(engine.equals("cartesia")){
+            if(!voice.matches("[a-zA-Z0-9-]{10,120}"))throw new IOException("Cartesia Sonic 音色 ID 无效");
+            if(speed != 1)throw new IOException("Cartesia Sonic 官方直连当前支持 1.0× 语速，请在创作页设为 1.0");
+            return new JSONObject().put("model_id","sonic-3").put("transcript",text)
+                .put("voice",voice).put("language","zh")
+                .put("output_format",new JSONObject().put("container","wav")
+                    .put("encoding","pcm_s16le").put("sample_rate",24000));
+        }
         if(!engine.equals("minimax"))throw new IOException("所选引擎不支持官方直连");
         if(voice.length()>200)throw new IOException("MiniMax 音色 ID 过长");
         return new JSONObject().put("model","speech-2.8-hd").put("text",text).put("stream",false).put("output_format","hex")
@@ -51,11 +59,15 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
         }else body=body(model,voice,text,speed).toString().getBytes("UTF-8");
         String target=model.equals("elevenlabs")?root+"/"+voice+"?output_format=mp3_44100_128":root;
         check(cancelled);HttpURLConnection c=connections.open(new URL(target));active=c;
-        File downloaded=new File(output.getPath()+".provider.mp3");boolean complete=false;
+        File downloaded=new File(output.getPath()+".provider."+(model.equals("cartesia")?"wav":"mp3"));boolean complete=false;
         try{
             c.setInstanceFollowRedirects(false);c.setConnectTimeout(15000);c.setReadTimeout(180000);c.setRequestMethod("POST");c.setDoOutput(true);c.setFixedLengthStreamingMode(body.length);
             c.setRequestProperty("Content-Type",type);
-            c.setRequestProperty(model.equals("elevenlabs")?"xi-api-key":"Authorization",model.equals("elevenlabs")?key:"Bearer "+key);
+            if(model.equals("cartesia")){
+                c.setRequestProperty("X-API-Key",key);
+                c.setRequestProperty("Cartesia-Version","2025-04-16");
+                c.setRequestProperty("Accept","audio/wav");
+            }else c.setRequestProperty(model.equals("elevenlabs")?"xi-api-key":"Authorization",model.equals("elevenlabs")?key:"Bearer "+key);
             if(model.equals("fish"))c.setRequestProperty("model","s2.1-pro-free");
             progress.update("连接 "+CloudEngineCatalog.label(model)+" 官方 API…");
             try(OutputStream out=c.getOutputStream()){check(cancelled);out.write(body);}
@@ -70,7 +82,25 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             }else{
                 try(InputStream in=c.getInputStream();OutputStream out=new FileOutputStream(downloaded)){byte[] buffer=new byte[32768];long total=0;int n;while((n=in.read(buffer))!=-1){check(cancelled);total+=n;if(total>4L*1024*1024)throw new IOException("平台返回音频过大");out.write(buffer,0,n);}}
             }
-            check(cancelled);AudioChecks.validate(downloaded,"mp3");progress.update("接收完整音频并转换为 WAV…");decoder.decode(downloaded,output,cancelled,progress);
+            check(cancelled);
+            if(model.equals("cartesia")){
+                // Sonic bytes already returns WAV; don't pass it to an MP3 decoder.
+                // Validate the exact expected PCM format for the long-text merger.
+                AudioChecks.validate(downloaded,"wav");
+                try(PcmAudio.Reader reader=new PcmAudio.Reader(downloaded)){
+                    if(reader.rate!=24000||reader.channels!=1||reader.encoding!=1||reader.width!=2)
+                        throw new IOException("Cartesia 返回的格式不是 24kHz 单声道 PCM16 WAV");
+                    reader.validateSpeech(cancelled);
+                }
+                try(InputStream in=new FileInputStream(downloaded);OutputStream out=new FileOutputStream(output)){
+                    byte[] buffer=new byte[32768];int n;
+                    while((n=in.read(buffer))!=-1){check(cancelled);out.write(buffer,0,n);}
+                }
+            }else{
+                AudioChecks.validate(downloaded,"mp3");
+                progress.update("接收完整音频并转换为 WAV…");
+                decoder.decode(downloaded,output,cancelled,progress);
+            }
             long duration=validate(output,text,cancelled);complete=true;return duration;
         }finally{active=null;c.disconnect();downloaded.delete();if(!complete)output.delete();}
     }
