@@ -64,6 +64,31 @@ final class CloudWavMerge {
             if (!complete) output.delete();
         }
     }
+    static int compareNames(String first,String second) {
+        String a=first==null?"":first.toLowerCase(Locale.ROOT);
+        String b=second==null?"":second.toLowerCase(Locale.ROOT);
+        int i=0,j=0;
+        while(i<a.length() && j<b.length()) {
+            char one=a.charAt(i),two=b.charAt(j);
+            if(one>='0' && one<='9' && two>='0' && two<='9') {
+                int endA=i,endB=j;
+                while(endA<a.length() && a.charAt(endA)>='0' && a.charAt(endA)<='9')endA++;
+                while(endB<b.length() && b.charAt(endB)>='0' && b.charAt(endB)<='9')endB++;
+                int startA=i,startB=j;
+                while(startA<endA-1 && a.charAt(startA)=='0')startA++;
+                while(startB<endB-1 && b.charAt(startB)=='0')startB++;
+                int cmp=Integer.compare(endA-startA,endB-startB);
+                if(cmp==0)cmp=a.substring(startA,endA).compareTo(b.substring(startB,endB));
+                if(cmp!=0)return cmp;
+                i=endA;j=endB;
+            }else{
+                if(one!=two)return Character.compare(one,two);
+                i++;j++;
+            }
+        }
+        int cmp=Integer.compare(a.length()-i,b.length()-j);
+        return cmp!=0?cmp:a.compareTo(b);
+    }
     static void check(AtomicBoolean cancelled) throws InterruptedIOException {
         if (cancelled != null && cancelled.get() || Thread.currentThread().isInterrupted())
             throw new InterruptedIOException("已取消音频合并");

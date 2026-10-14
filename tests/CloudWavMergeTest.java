@@ -49,6 +49,17 @@ public final class CloudWavMergeTest {
         try{CloudWavMerge.merge(Collections.singletonList(a),new File(dir,"one.wav"),new AtomicBoolean(),s->{});}
         catch(IOException expected){failed=true;}
         check(failed,"a single file is not a merge");
-        System.out.println("Cloud WAV merge: 5 host checks passed");
+        List<String> names=new ArrayList<>(Arrays.asList("10.wav","2.wav","1.wav"));
+        names.sort(CloudWavMerge::compareNames);
+        check(names.equals(Arrays.asList("1.wav","2.wav","10.wav")),"natural numeric sequence");
+        check(CloudWavMerge.compareNames("clip999999999999999999999999.wav","clip1000000000000000000000000.wav")<0,"no numeric overflow");
+        check(CloudWavMerge.compareNames("01.wav","2.WAV")<0,"zero padding and case");
+        check(CloudWavMerge.compareNames(null,"1.wav")<0,"missing name");
+        File midCancel=new File(dir,"mid-cancel.wav");failed=false;
+        AtomicBoolean stop=new AtomicBoolean();
+        try{CloudWavMerge.merge(Arrays.asList(a,b),midCancel,stop,message->stop.set(true));}
+        catch(InterruptedIOException expected){failed=true;}
+        check(failed && !midCancel.exists(),"cancel during processing cleans temporary WAV");
+        System.out.println("Cloud WAV merge: 10 host checks passed");
     }
 }

@@ -65,7 +65,8 @@ public class MainActivity extends Activity {
     SignalOrbView headerOrb;
     TextView generationTitle, generationStage, generationTime, generationDetail, generationAction, generationCopy, generationPreview;
     AudioPreview fragmentPreview;
-    AlertDialog freeDemoDialog;
+    AlertDialog freeDemoDialog, mergeDialog;
+    AtomicBoolean mergeCancelled;
     String trackedJobId = "", localGenerationState = "idle";
     JSONObject trackedJob, localCompletedJob;
     boolean jobReloadPending, refreshTracked = true, cancelRequested;
@@ -1187,7 +1188,7 @@ public class MainActivity extends Activity {
     LinearLayout archiveCard(JSONObject item) {
         LinearLayout card=card(); card.setBackground(border(SPACE_CARD,0xff2E3A59,21));
         String file=item.optString("file"), format=file.endsWith("wav") ? "WAV" : "MP3";
-        String source="kaggle".equals(item.optString("engine")) ? "KAGGLE GPU" : "accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
+        String source="cloud-demo".equals(item.optString("engine")) ? "网页云端作品" : "cloud-demo-merged".equals(item.optString("engine")) ? "云端片段合并" : "kaggle".equals(item.optString("engine")) ? "KAGGLE GPU" : "accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
         LinearLayout top=row(); TextView badge=text(source+" / "+format,10,CYAN,true); badge.setLetterSpacing(.07f); flexible(top,badge);
         TextView star=archiveButton(item.optBoolean("favorite") ? "★" : "☆",false,()->{
             if(updateWork(item,"favorite",!item.optBoolean("favorite")))render();
@@ -1623,66 +1624,94 @@ public class MainActivity extends Activity {
         }catch(Exception e){toast("没有找到支持多选音频的文件管理器");}
     }
 
-    /** Sequentially normalize clips; no AI runtime and no third-party data upload. */
+    /** SAF selection order varies; show the actual sequence before processing. */
     void mergeFreeWavResult(int result, Intent data) {
         if(result!=RESULT_OK || data==null)return;
-        List<Uri> uris=new ArrayList<>();
+        if(mergeCancelled!=null){toast("正在合并，请先等待或取消当前合并");return;}
+        Set<Uri> unique=new LinkedHashSet<>();
         if(data.getClipData()!=null){
-            ClipData selected=data.getClipData();
-            for(int i=0;i<selected.getItemCount();i++)uris.add(selected.getItemAt(i).getUri());
-        }else if(data.getData()!=null)uris.add(data.getData());
-        if(uris.size()<2 || uris.size()>CloudWavMerge.MAX_CLIPS){
-            toast("需要一次选择 2—24 段 WAV，文件名按 01、02、03 编号");return;
+            ClipData clips=data.getClipData();
+            for(int i=0;i<clips.getItemCount();i++)if(clips.getItemAt(i).getUri()!=null)
+                unique.add(clips.getItemAt(i).getUri());
+        }else if(data.getData()!=null)unique.add(data.getData());
+        if(unique.size()<2 || unique.size()>CloudWavMerge.MAX_CLIPS){
+            toast("需要一次选择 2—24 个不同的 WAV 片段");return;
         }
-        // SAF multi-selection order is not guaranteed; filename order is explicit.
+        List<Uri> selected=new ArrayList<>(unique);
         Map<Uri,String> names=new HashMap<>();
-        for(Uri uri:uris){
+        for(Uri uri:selected){
             try{names.put(uri,selectedFileName(uri));}
-            catch(Exception ignored){names.put(uri,uri.getLastPathSegment());}
+            catch(Exception ignored){names.put(uri,"未命名片段");}
         }
-        Collections.sort(uris,(a,b)->{
-            String one=names.get(a),two=names.get(b);
-            return String.CASE_INSENSITIVE_ORDER.compare(one==null?"":one,two==null?"":two);
+        Collections.sort(selected,(a,b)->CloudWavMerge.compareNames(names.get(a),names.get(b)));
+        StringBuilder order=new StringBuilder("请核对顺序，合并后会新增作品。原文件保留。\n\n");
+        for(int i=0;i<selected.size();i++)order.append(i+1).append(". ")
+            .append(names.get(selected.get(i))).append('\n');
+        order.append("\n最多 24 段、总计 30 分钟。不同采样率会统一为 24 kHz。");
+        new CosmicDialogBuilder(this).setTitle("核对片段顺序")
+            .setMessage(order.toString()).setNegativeButton("重新选择",(d,n)->openFreeWavMerge())
+            .setPositiveButton("开始合并",(d,n)->startFreeWavMerge(selected,names)).show();
+    }
+
+    void startFreeWavMerge(List<Uri> selected,Map<Uri,String> names) {
+        if(mergeCancelled!=null)return;
+        final AtomicBoolean cancellation=new AtomicBoolean();mergeCancelled=cancellation;
+        TextView progress=text("正在读取片段…",14,INK,false);
+        progress.setPadding(dp(20),dp(16),dp(20),dp(16));
+        mergeDialog=new CosmicDialogBuilder(this).setTitle("拼成一段声音")
+            .setView(progress).setNegativeButton("取消合并",(d,n)->cancellation.set(true)).create();
+        mergeDialog.setCanceledOnTouchOutside(false);
+        mergeDialog.setOnCancelListener(d->cancellation.set(true));mergeDialog.show();
+        CloudWavMerge.Progress update=message->handler.post(()->{
+            if(!destroyed && mergeCancelled==cancellation)progress.setText(message);
         });
-        final List<Uri> selected=new ArrayList<>(uris);
-        toast("已选择 "+selected.size()+" 段，按文件名排序；将检查并合并音频");
         fileExecutor.execute(()->{
             List<File> temporary=new ArrayList<>();
             File target=null,pending=null;boolean done=false;
             try{
                 long copied=0;
                 for(int i=0;i<selected.size();i++){
+                    CloudWavMerge.check(cancellation);
+                    update.update("正在读取第 "+(i+1)+" / "+selected.size()+" 段…");
                     File part=new File(getCacheDir(),"cloud-clip-"+UUID.randomUUID()+".wav");
                     temporary.add(part);
                     try(InputStream in=getContentResolver().openInputStream(selected.get(i));
                         OutputStream out=new FileOutputStream(part)){
                         if(in==null)throw new IOException("无法读取第 "+(i+1)+" 段");
-                        byte[] buffer=new byte[32768];int n;
+                        byte[] buffer=new byte[32768];int n;long partBytes=0;
                         while((n=in.read(buffer))!=-1){
-                            copied+=n;
+                            CloudWavMerge.check(cancellation);copied+=n;partBytes+=n;
+                            if(partBytes>64L*1024*1024)throw new IOException("第 "+(i+1)+" 段超过 64 MiB");
                             if(copied>96L*1024*1024)throw new IOException("选中片段合计超过 96 MiB，请减少片段");
                             out.write(buffer,0,n);
                         }
                     }
                 }
-                String id=UUID.randomUUID().toString();
-                target=StudioFiles.output(this,id,"wav");
+                String id=UUID.randomUUID().toString();target=StudioFiles.output(this,id,"wav");
                 pending=new File(target.getPath()+".pending");
-                long millis=CloudWavMerge.merge(temporary,pending,new AtomicBoolean(),status->{});
+                long millis=CloudWavMerge.merge(temporary,pending,cancellation,update);
+                CloudWavMerge.check(cancellation);
                 if(!pending.renameTo(target))throw new IOException("保存合并音频失败，请检查可用空间");
+                JSONArray segments=new JSONArray();
+                for(Uri uri:selected)segments.put(names.get(uri));
                 StudioFiles.history(this,new JSONObject()
                     .put("id",id).put("file",target.getName()).put("engine","cloud-demo-merged")
-                    .put("type","tts").put("title","免费云端 · "+selected.size()+" 段完整朗读")
-                    .put("text","").put("duration",millis).put("created",System.currentTimeMillis()));
+                    .put("type","tts").put("title","免费云端 · "+selected.size()+" 段合并作品")
+                    .put("segments",segments).put("text","").put("duration",millis)
+                    .put("created",System.currentTimeMillis()));
                 done=true;
-                handler.post(()->{if(!destroyed){toast("已无损顺序拼接 "+selected.size()+" 段 WAV；作品已保存");change("作品");}});
+                handler.post(()->{if(!destroyed){toast("已按顺序合并 "+selected.size()+" 段 WAV，作品已保存");change("作品");}});
             }catch(Exception error){
-                String message=error.getMessage();
-                handler.post(()->{if(!destroyed)toast("合并失败："+(message==null?"音频格式不受支持":message));});
+                String message=error instanceof InterruptedIOException?"已取消合并，原片段保留":
+                    "合并失败："+(error.getMessage()==null?"音频格式不受支持":error.getMessage());
+                handler.post(()->{if(!destroyed)toast(message);});
             }finally{
                 for(File part:temporary)part.delete();
-                if(pending!=null)pending.delete();
-                if(!done && target!=null)target.delete();
+                if(pending!=null)pending.delete();if(!done && target!=null)target.delete();
+                handler.post(()->{
+                    if(mergeCancelled==cancellation){mergeCancelled=null;
+                        if(mergeDialog!=null){mergeDialog.dismiss();mergeDialog=null;}}
+                });
             }
         });
     }
@@ -2110,7 +2139,7 @@ public class MainActivity extends Activity {
         info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
         add(content,privacy);gap(content,12);
         LinearLayout about=card();
-        info(about,"VoiceStudio 1.5.22 · 云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
+        info(about,"VoiceStudio 1.5.24 · 云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
         add(content,about);
     }
 
@@ -2652,6 +2681,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         destroyed = true;
+        if(mergeCancelled!=null)mergeCancelled.set(true);
+        if(mergeDialog!=null){mergeDialog.dismiss();mergeDialog=null;}
+        if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
         stopPreview();
         if (noisyRegistered) { unregisterReceiver(noisyReceiver); noisyRegistered = false; }
         cancelled.set(true);

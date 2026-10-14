@@ -1,6 +1,6 @@
-# VoiceStudio 1.5.23 云端版
+# VoiceStudio 1.5.24 云端版
 
-原生 Android 声音工作室，最低 Android 8.0（API 26），版本 `1.5.23-cloud / versionCode 39`。沿用已交付版包名 `com.voice.studio.preview` 和原签名覆盖升级，不自动删除旧作品、参考 WAV 与录音。
+原生 Android 声音工作室，最低 Android 8.0（API 26），版本 `1.5.24-cloud / versionCode 40`。沿用已交付版包名 `com.voice.studio.preview` 和原签名覆盖升级，不自动删除旧作品、参考 WAV 与录音。
 
 本次采用科幻、可爱、梦幻风的原生界面：柔和星空、机器人伙伴、圆角紫蓝卡片。手机端移除本地模型合成、模型安装入口和 Android TTS。APK 不包含本地推理原生库或模型安装资源。
 
@@ -12,7 +12,7 @@
 | 作品 | 搜索、收藏、排序、播放、波形、重命名、导出和回收站 |
 | 设置 | 云端连接、动效、平台申请入口与作品管理 |
 
-[免电脑免费试用](docs/FREE_MOBILE_CLOUD.md) · [平台申请与自动地址](docs/PLATFORM_ACCESS.md) · [七引擎部署和使用](docs/CLOUD_ENGINES.md) · [本次变更](CHANGELOG-1.5.23.md) · [验证范围](validation/current-checks.md) · [历史版本说明](docs/HISTORY-1.5.19.md)
+[免电脑免费试用](docs/FREE_MOBILE_CLOUD.md) · [平台申请与自动地址](docs/PLATFORM_ACCESS.md) · [七引擎部署和使用](docs/CLOUD_ENGINES.md) · [本次变更](CHANGELOG-1.5.24.md) · [验证范围](validation/current-checks.md) · [历史版本说明](docs/HISTORY-1.5.19.md)
 
 包含 Fish Audio、IndexTTS 2.5、CosyVoice 3、Qwen3-TTS、Chatterbox V3、ElevenLabs、MiniMax 的接口路由；四款开源模型的 Python worker 包装器已提供。Fish、ElevenLabs、MiniMax 已提供官方直连与自动地址，用户领取密钥后无需另建网关。开源模型必须有自己的可用 GPU/权重和部署网关，商业直连需 API Key/Voice ID 才能真实合成，此安装包不会自动提供免费服务器。模拟回归不代表已通过七模型真实音质验收。
 
