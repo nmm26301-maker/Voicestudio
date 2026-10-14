@@ -98,6 +98,8 @@ public class WorkspaceActivity extends Activity {
         voiceCapture=new VoiceCapturePanel(this,voice);
         button(voice,"选择 / 删除已保存音色",this::profiles);
         button(voice,"配置云端合成引擎",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
+        LinearLayout bulk=sectionCard("批量","云端批量朗读","每行一个任务；自动分段保存完整声音。批量可能消耗第三方 API 额度，请先确认配置和费用。");
+        button(bulk,"输入批量文字并提交",this::batch);
         tasks=sectionCard("任务","生成任务与结果","查看任务状态、失败详情与旧版作品。后台不会加载已停用的本地语音模型。");
         button(tasks,"暂停整个队列",()->startService(new Intent(this,StudioService.class).setAction("cancel")));
         button(tasks,"清理旧离线模型（保留所有录音和作品）",this::clearLegacyModels);
@@ -121,16 +123,34 @@ public class WorkspaceActivity extends Activity {
     }
 
     JSONObject speechJob(String text) throws Exception {
-        android.content.SharedPreferences p = getSharedPreferences("studio", 0);
-        return new JSONObject()
-                .put("type", "tts")
-                .put("text", text)
-                .put("language", p.getString("omniLang", "zh"))
-                .put("speed", p.getFloat("speed", 1))
-                .put("profile", p.getString("selected-profile", ""))
-                .put("style", p.getString("voice-style", "None"))
-                .put("steps", p.getInt("voice-steps", 16))
-                .put("seed", p.getLong("voice-seed", 42));
+        android.content.SharedPreferences p=getSharedPreferences("studio",0);
+        String engine=p.getString("engine","fish");
+        if(engine.equals("fish")){
+            String voice=p.getString("voiceId","");
+            if(voice.isEmpty())throw new IOException("请先在 Fish Audio 设置 Voice ID");
+            return new JSONObject().put("type","tts").put("engine","fish").put("text",text)
+                .put("reference",voice).put("model",p.getString("model","s2.1-pro-free"))
+                .put("speed",p.getFloat("speed",1)).put("voice",p.getString("voiceName","Fish 音色"));
+        }
+        if(!engine.equals("accelerated"))throw new IOException("请先在首页选择并配置云端引擎");
+        String url=p.getString("accelerated-url","");
+        if(url.isEmpty())throw new IOException("请先填写云端网关地址");
+        boolean gradio="gradio".equals(p.getString("accelerated-protocol","rest"));
+        if(gradio)GradioSpeechClient.base(url);else AcceleratedSpeechClient.endpoint(url);
+        String model=p.getString("accelerated-model","auto");
+        String voice=p.getString("accelerated-voice","auto");
+        AcceleratedSpeechClient.request(text,model,voice,p.getString("omniLang","zh"),
+            p.getFloat("speed",1),p.getInt("accelerated-steps",32),p.getLong("voice-seed",42));
+        return new JSONObject().put("type","tts").put("engine","accelerated")
+            .put("text",text).put("endpoint",url)
+            .put("provider",p.getString("accelerated-provider","custom"))
+            .put("protocol",gradio?"gradio":"rest")
+            .put("profile",gradio?p.getString("gpu-hf-profile",""):p.getString("cloud-profile",""))
+            .put("language",p.getString("omniLang","zh"))
+            .put("languageName","Auto")
+            .put("model",model).put("apiVoice",voice)
+            .put("speed",p.getFloat("speed",1)).put("steps",p.getInt("accelerated-steps",32))
+            .put("seed",p.getLong("voice-seed",42)).put("voice",voice);
     }
 
     void batch() {
@@ -148,8 +168,6 @@ public class WorkspaceActivity extends Activity {
                 jobs.add(speechJob(line.trim()));
             }
             if (jobs.isEmpty()) throw new IOException("请先输入文字");
-            if (!StudioFiles.ready(this, "omni"))
-                throw new IOException("请先导入基础模型");
             for (int at = 0; at < jobs.size(); at++) {
                 StudioService.enqueue(this, jobs.get(at));
                 StringBuilder remaining = new StringBuilder();
@@ -1784,7 +1802,7 @@ public class WorkspaceActivity extends Activity {
     void quickSections() {
         HorizontalScrollView strip = new HorizontalScrollView(this); strip.setHorizontalScrollBarEnabled(false);
         LinearLayout row = new LinearLayout(this); row.setOrientation(0);
-        for (String name : new String[]{"音色", "任务"}) {
+        for (String name : new String[]{"音色", "批量", "任务"}) {
             TextView chip = CosmicUi.label(this, name, 14, CosmicUi.CYAN, true);
             chip.setGravity(Gravity.CENTER); chip.setPadding(dp(16), dp(10), dp(16), dp(10));
             CosmicUi.press(chip); chip.setContentDescription(name);
