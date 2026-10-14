@@ -2116,6 +2116,13 @@ public class MainActivity extends Activity {
                 String id=CLOUD_IDS[provider.getSelectedItemPosition()];boolean direct=mode.getSelectedItemPosition()==1;
                 String endpoint=direct?CloudConnectionPolicy.validate(id,url.getText().toString().trim()):CloudConnectionPolicy.gateway(url.getText().toString().trim());
                 String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException(direct?"请领取并填写平台 API Key":"请填写自建网关访问密钥");if(voiceId.isEmpty())voiceId="auto";
+                if(id.equals("gptsovits")){
+                    if(!clone.isChecked()||selected[0].isEmpty())
+                        throw new IOException("GPT-SoVITS 必须先录制并选择人物声音，勾选参考录音克隆");
+                    JSONObject meta=StudioFiles.read(new File(StudioFiles.dir(this,"profiles"),selected[0]+".json"));
+                    if(meta.optString("referenceText","").trim().isEmpty())
+                        throw new IOException("GPT-SoVITS 需要准确参考原文；请重新保存包含原文的录音");
+                }
                 if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")||id.equals("cartesia")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
                 if(direct&&!clone.isChecked())OfficialSpeechClient.body(id,voiceId,"配置检查",1);
                 new SecretStore(this,direct?"official-"+id:"accelerated").save(token);
