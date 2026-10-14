@@ -23,3 +23,35 @@ jobs:
         run: |
           python -m compileall -q server/cloud_gateway.py server/test_cloud_gateway.py
           python -m pytest -q server/test_cloud_gateway.py
+  android-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Android build dependencies
+        run: |
+          export ANDROID_SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          curl --fail --location --retry 3 --output /tmp/ecj.jar https://repo.maven.apache.org/maven2/org/eclipse/jdt/ecj/3.38.0/ecj-3.38.0.jar
+      - name: Compile unsigned Android APK
+        run: |
+          export ANDROID_SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ECJ_JAR=/tmp/ecj.jar
+          VOICE_UNSIGNED=1 bash tools/build.sh
+          unzip -l build-manual/VoiceStudio-1.5.20-Cloud-unsigned.apk | grep -E 'classes.dex|AndroidManifest.xml'
+          if unzip -Z1 build-manual/VoiceStudio-1.5.20-Cloud-unsigned.apk | grep -q 'libonnxruntime'; then
+            echo "Unexpected local ONNX runtime in cloud-only APK" >&2; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceStudio-1.5.20-cloud-unsigned-compile-check
+          path: build-manual/VoiceStudio-1.5.20-Cloud-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
