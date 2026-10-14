@@ -1566,7 +1566,17 @@ public class MainActivity extends Activity {
             "不需要自己电脑或 GPU。打开官方 ZeroGPU 网页即可上传参考录音、输入新文字并试读；额度和排队由 Hugging Face 决定。",
             "✦  CLOUD PLAYGROUND",CosmicUi.CYAN));
         gap(inside,14);
-        add(inside,text("✦ 两个真实可访问的在线演示",16,INK,true));
+        add(inside,text("第 1 步 · 准备参考录音",16,INK,true));
+        gap(inside,10);
+        add(inside,button("① 选择录好的音色 → 导出 WAV / 复制原文",true,()->{
+            if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}
+            startActivity(new Intent(this,WorkspaceActivity.class).putExtra("section","音色")
+                .putExtra("chooseReferenceForFree",true));
+        }));
+        gap(inside,8);
+        add(inside,text("还没录音？先在声音实验室录制 3—10 秒自己的声音，保存后即可导出。浏览器不能直接访问 App 的私有录音文件。",12,MUTED,false));
+        gap(inside,14);
+        add(inside,text("第 2 步 · 免费云端生成",16,INK,true));
         gap(inside,10);
         add(inside,button("① Qwen3-TTS 官方演示 · 零 GPU 本机占用",true,
             ()->openUrl("https://huggingface.co/spaces/Qwen/Qwen3-TTS")));
@@ -1574,7 +1584,7 @@ public class MainActivity extends Activity {
         add(inside,button("② IndexTTS 2.5 演示 · 中文克隆",false,
             ()->openUrl("https://huggingface.co/spaces/IndexTeam/IndexTTS-2.5-Demo")));
         gap(inside,12);
-        add(inside,text("使用步骤：在网页选择声音克隆 → 上传你有权使用的 3—10 秒录音 → 输入要朗读的文字 → 生成 → 保存 WAV 到手机。",12,MUTED,false));
+        add(inside,text("手机浏览器中选择 Voice Clone / 音色克隆，上传导出的参考 WAV，粘贴录音原文，再输入要朗读的新文字。生成后下载 WAV。",12,MUTED,false));
         gap(inside,8);
         add(inside,button("复制创作页文字 · 网页直接粘贴",false,()->{
             saveDraft();
@@ -1584,6 +1594,8 @@ public class MainActivity extends Activity {
             toast("已复制文字，可在网页中粘贴并生成");
         }));
         gap(inside,12);
+        add(inside,text("第 3 步 · 保存云端作品",16,INK,true));
+        gap(inside,10);
         add(inside,button("③ 从手机下载的 WAV 导入 VoiceStudio 作品",true,this::importCloudDemo));
         gap(inside,12);
         add(inside,text("免费不等于无限：ZeroGPU 每日额度有限，排队、登录和模型是否在线由平台决定。当前使用浏览器完成合成，作品再导入 App；还不是后台自动 API。请勿上传未经授权的他人声音。",12,MUTED,false));
@@ -1728,8 +1740,11 @@ public class MainActivity extends Activity {
                     }
                     long duration=AcceleratedSpeechClient.validate(pending,"",new AtomicBoolean());
                     if(!pending.renameTo(target))throw new IOException("保存作品失败");
+                    String importedName=selectedFileName(uri);
+                    String label=importedName==null?"":importedName.replaceAll("[\\r\\n\\t]"," ").trim();
+                    if(label.length()>50)label=label.substring(0,50);
                     StudioFiles.history(this,new JSONObject().put("id",id).put("file",target.getName()).put("engine",request==93?"cloud-demo":"kaggle").put("type","tts")
-                        .put("title",request==93?"免费云端试听作品":"Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
+                        .put("title",request==93?"免费云端 · "+(label.isEmpty()?"试听作品":label):"Kaggle GPU 作品").put("text","").put("duration",duration).put("created",System.currentTimeMillis()));
                     complete=true;
                 }
                 handler.post(()->{if(!destroyed){toast(request==91?"任务已导出，请在 Kaggle 导入并运行":request==93?"免费云端作品已导入":"GPU 作品已导入");if(request==92||request==93)change("作品");}});
