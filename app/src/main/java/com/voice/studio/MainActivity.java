@@ -735,6 +735,11 @@ public class MainActivity extends Activity {
         sideGap(shortcuts,10);
         flexible(shortcuts,button("批量与任务",false,()->openWorkspace("批量")));
         add(content,shortcuts);gap(content,10);
+        LinearLayout synth=card();
+        info(synth,"♫ 云端文字合成工作台","步骤：① 录音克隆或平台 Voice ID → ② 选择九引擎 / 自动 → ③ 输入全文 → ④ 开始合成 → ⑤ 检查并保存作品。");
+        gap(synth,9);
+        add(synth,button("② 选择引擎 / 配置音色",false,()->change("音色")));
+        add(content,synth);gap(content,12);
         add(content,button("✦ 免电脑免费试用 · Qwen3-TTS / IndexTTS",false,this::freeCloudStarter));gap(content,16);
         LinearLayout draftCard = card();
         LinearLayout label = row();
@@ -942,10 +947,11 @@ public class MainActivity extends Activity {
             engine="fish";saveSettings();render();
         }));
         sideGap(options,8);
-        flexible(options,button("七引擎 / 自动","accelerated".equals(engine),()->{
+        flexible(options,button("九引擎 / 自动","accelerated".equals(engine),()->{
             engine="accelerated";saveSettings();render();
         }));
         add(content,options);gap(content,12);
+        add(content,button("♫ 打开文字合成工作台",true,()->change("创作")));gap(content,12);
         add(content,button("✦ 无需电脑 · 免费云端语音克隆体验",false,this::freeCloudStarter));gap(content,12);
         if("fish".equals(engine))fishVoicePage();
         else cloudSettings();
@@ -2037,11 +2043,11 @@ public class MainActivity extends Activity {
     void cloudSettings() {
         cloudApiProtection(content);
         LinearLayout c=card();
-        info(c,"七颗声音星球","选择平台，申请密钥，保存后开始创作。三家官方 API 可直连；开源模型使用你部署的云端网关。");
+        info(c,"九颗声音星球","原有 Fish Audio 加上你选择的八款语音引擎。四款官方 API 可直连；五款开源模型连接远端 GPU 服务。选择、保存后返回创作页点击合成。");
         Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
         String chosen=prefs.getString("cloud-engine","auto");for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
         add(c,provider);gap(c,8);
-        Spinner mode=new Spinner(this);mode.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"我的云端网关 · 七引擎 / 自动","官方 API 直连 · Fish / ElevenLabs / MiniMax"}));
+        Spinner mode=new Spinner(this);mode.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"我的云端网关 · 开源 / 自动","官方 API 直连 · Fish / ElevenLabs / MiniMax / Cartesia"}));
         boolean wasOfficial=prefs.getString("accelerated-protocol","rest").equals("official");
         mode.setSelection(wasOfficial||prefs.getString("cloud-url","").isEmpty()&&CloudConnectionPolicy.official(chosen)?1:0);add(c,mode);gap(c,12);
         TextView routeInfo=text("",12,MUTED,false);add(c,routeInfo);gap(c,10);
@@ -2081,7 +2087,7 @@ public class MainActivity extends Activity {
             }
             url.setFocusable(!direct);url.setFocusableInTouchMode(!direct);url.setCursorVisible(!direct);url.setHint(direct?"官方 API 地址（自动填写）":"你部署的 HTTPS 网关地址（会记住并复用）");
             key.setHint(direct?CloudEngineCatalog.label(id)+" API Key（加密保存）":"自建网关访问密钥（不是平台 API Key）");
-            routeInfo.setText(direct?"官方地址已自动填写。登录平台领取密钥后粘贴即可；生成可能消耗平台额度。":"自动复用你保存的自建网关。四款开源模型没有统一公共网关，申请 GPU / Token 后仍需部署服务。");
+            routeInfo.setText(direct?"官方地址已自动填写。需要本平台 API Key、音色 ID；可能消耗免费额度或产生费用。":"自动复用你保存的自建网关。五款开源模型（含 GPT-SoVITS）需要远端 GPU 及实际运行的网关。");
             apply.setText((CloudConnectionPolicy.official(id)?CloudEngineCatalog.label(id):"Hugging Face")+" · 注册 / 申请账号");
             getKey.setText(CloudConnectionPolicy.official(id)?"打开 "+CloudEngineCatalog.label(id)+" API Key 页面":"领取 Hugging Face 部署 Token");
             docs.setText(CloudConnectionCatalogTitle(id));
@@ -2101,24 +2107,25 @@ public class MainActivity extends Activity {
             if(direct){try{CloudConnectionPolicy.validate(id,address);AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException("请先领取并粘贴平台 API Key");health.setText("官方地址与密钥格式正确 · 尚未验证权限 / 额度（未提交生成）");}catch(Exception e){health.setText(e.getMessage());}return;}
             probe.setEnabled(false);health.setText("正在检测网关连接…");new Thread(()->{try{CloudConnectionPolicy.gateway(address);Set<String> configured=new CloudHealthClient().check(address,token);runOnUiThread(()->{if(isFinishing()||isDestroyed())return;if(!activeRoute[0].equals("gateway")||!address.equals(url.getText().toString().trim())||!token.equals(key.getText().toString().trim()))health.setText("配置已变更 · 请重新检测");else{health.setText("网关连接成功 · "+configured.size()+" 款已配置");for(int i=1;i<stateLabels.length;i++){boolean ok=configured.contains(CLOUD_IDS[i]);stateLabels[i].setText(ok?"已配置":"未配置");stateLabels[i].setTextColor(ok?CosmicUi.SUCCESS:MUTED);}}probe.setEnabled(true);});}catch(Exception e){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;health.setText(e.getMessage()==null?"网关连接失败":e.getMessage());probe.setEnabled(true);});}},"cloud-health").start();
         });add(c,probe);gap(c,8);
-        add(c,button("查看 / 收起七引擎配置状态",false,()->states.setVisibility(states.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE)));add(c,states);gap(c,12);
+        add(c,button("查看 / 收起九引擎配置状态",false,()->states.setVisibility(states.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE)));add(c,states);gap(c,12);
         TextView languageChoice=button("文字语言 · "+omniLanguageName(),false,()->{});languageChoice.setOnClickListener(v->pickCloudLanguage(languageChoice));add(c,languageChoice);gap(c,10);
         String[] selected={prefs.getString("cloud-profile","")};CheckBox clone=new CheckBox(this);clone.setText("使用已录制的参考声音克隆");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());add(c,clone);add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));gap(c,8);
-        add(c,text("Fish 录音克隆须准确填写录音原文；ElevenLabs、MiniMax 请在平台先创建音色 ID。自建网关密钥要与服务器设置一致，部署 Token 不能当网关密钥。",12,MUTED,false));gap(c,12);
+        add(c,text("GPT-SoVITS 与 Fish 参考录音需准确原文；ElevenLabs、MiniMax、Cartesia 需使用平台注册的 Voice ID。免费试用入口与付费 API 分开。",12,MUTED,false));gap(c,12);
         add(c,button("保存并使用",true,()->{
             try{
                 String id=CLOUD_IDS[provider.getSelectedItemPosition()];boolean direct=mode.getSelectedItemPosition()==1;
                 String endpoint=direct?CloudConnectionPolicy.validate(id,url.getText().toString().trim()):CloudConnectionPolicy.gateway(url.getText().toString().trim());
                 String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException(direct?"请领取并填写平台 API Key":"请填写自建网关访问密钥");if(voiceId.isEmpty())voiceId="auto";
-                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
+                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")||id.equals("cartesia")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
                 if(direct&&!clone.isChecked())OfficialSpeechClient.body(id,voiceId,"配置检查",1);
                 new SecretStore(this,direct?"official-"+id:"accelerated").save(token);
                 SharedPreferences.Editor save=prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint).putString("cloud-voice",voiceId).putString("cloud-profile",clone.isChecked()?selected[0]:"")
                     .putString("accelerated-url",endpoint).putString("accelerated-model",id).putString("accelerated-voice",voiceId).putString("accelerated-provider","custom").putString("accelerated-protocol",direct?"official":"rest");
                 if(direct)save.putString("official-"+id+"-voice",voiceId);else save.putString("gateway-url",endpoint).putString("gateway-voice",voiceId);save.apply();
-                engine="accelerated";saveSettings();hideKeyboard();toast(direct?"官方 API 已保存，地址自动填写":"网关已保存，切换引擎会自动复用");change("创作");
+                engine="accelerated";saveSettings();hideKeyboard();toast("已保存 "+CloudEngineCatalog.label(id)+"，进入创作页点击“开始合成”");change("创作");
             }catch(Exception e){toast(e.getMessage());}
         }));gap(c,12);
+        add(c,button("♫ 前往合成入口 · 文字 / 试听 / 保存",false,()->change("创作")));gap(c,12);
         add(c,button("网关部署与密钥配置说明",false,()->openUrl(CloudConnectionPolicy.documentation("auto"))));gap(c,8);
         add(c,button("Modal · GPU 申请 / 部署",false,()->openUrl("https://modal.com/signup")));gap(c,8);
         add(c,button("Kaggle · GPU Notebook 申请",false,()->openUrl("https://www.kaggle.com/account/login")));
