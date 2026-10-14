@@ -16,12 +16,10 @@ public class StudioApplication extends Application {
             public void onActivitySaveInstanceState(android.app.Activity a,android.os.Bundle b){}
         });
         StudioFiles.recoverInterrupted(this);
-        OmniModels.recoverImports(getFilesDir());
-        ModelImports.recover(this);
     }
     @Override public void onTrimMemory(int level) {
         super.onTrimMemory(level);
-        if(level>=android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) OmniEngine.tokenizerCache.clear();
+
     }
-    @Override public void onLowMemory() { super.onLowMemory(); OmniEngine.tokenizerCache.clear(); }
+    @Override public void onLowMemory() { super.onLowMemory(); }
 }
