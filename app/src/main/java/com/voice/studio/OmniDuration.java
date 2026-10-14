@@ -14,12 +14,17 @@ final class OmniDuration {
     return false;
   }
 
-  static void checkReference(String text, int frames) throws java.io.IOException {
-    if (text == null || !hasSpeech(text))
-      throw new java.io.IOException("参考文字没有可朗读内容，请填写录音实际说出的文字");
+  static boolean needsTranscript(String text, int frames) {
+    if (text == null || !hasSpeech(text)) return true;
     double ordinary = total(text) * 25 / total("Nice to meet you.");
-    if (frames < ordinary * MIN_REFERENCE_SCALE)
-      throw new java.io.IOException("参考文字与录音时长明显不匹配，会导致漏字或截短；请仅填写所选片段实际说出的文字，再重新创建音色");
+    return frames < ordinary * MIN_REFERENCE_SCALE;
+  }
+
+  static double referenceScale(String text, int frames) {
+    // Suspect metadata must not block the voice or shrink any new target sentence.
+    double ordinary = 25 / total("Nice to meet you.");
+    double scale = text == null ? ordinary : frames / Math.max(1, total(text));
+    return needsTranscript(text, frames) || scale > ordinary * 4 ? ordinary : scale;
   }
 
   static void checkOutput(String text, float speed, double seconds) throws java.io.IOException {

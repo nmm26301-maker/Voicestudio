@@ -392,9 +392,51 @@ public class StudioService extends Service {
         } finally {pending.delete();reference.delete();}
     }
 
+    VoicePrompt voiceForSpeech(JSONObject job) throws Exception {
+        String id = job.optString("profile");
+        VoicePrompt original = StudioFiles.voice(this, id);
+        if (original == null || !OmniDuration.needsTranscript(original.text, original.frames)) return original;
+        state(job, "running", "已读取克隆音色，新文字独立估算时长…");
+        File profiles = StudioFiles.dir(this, "profiles"), source = new File(profiles, id + ".reference.wav");
+        if (!source.isFile() || !StudioFiles.ready(this, "whisper")) return original;
+        VoicePrompt resolved = original;
+        File folder = new File(StudioFiles.dir(this, "jobs"), job.getString("id"));folder.mkdirs();
+        File cut = new File(folder, "reference-transcript.wav");
+        File pending = new File(profiles, id + ".vpc.pending");
+        try {
+            JSONObject meta = StudioFiles.read(new File(profiles, id + ".json"));
+            double start = meta.optDouble("referenceStart", 0), seconds = meta.optDouble("referenceSeconds", original.frames / 25.0);
+            if (!Double.isFinite(start) || start < 0 || !Double.isFinite(seconds) || seconds < 3 || seconds > 20) return original;
+            state(job, "running", "正在自动识别原参考录音，保留克隆音色…");
+            try (PcmAudio.Reader reader = new PcmAudio.Reader(source);PcmAudio.Writer writer = new PcmAudio.Writer(cut, 24000)) {
+                if (start + seconds > reader.seconds() + .02) return original;
+                writer.write(PcmAudio.resample(reader.read(start, seconds), reader.rate, 24000));
+            }
+            whisper = new WhisperEngine(new File(getFilesDir(), "whisper-model"), getAssets().open("whisper-mel80.bin"));
+            StringBuilder content = new StringBuilder();
+            for (WhisperEngine.Segment segment : whisper.transcribe(cut, "auto", false, cancel, m -> state(job, "running", m)))
+                content.append(segment.text).append(' ');
+            String transcript = content.toString().trim();
+            if (transcript.isEmpty() || transcript.length() > 2000 || OmniDuration.needsTranscript(transcript, original.frames)) return original;
+            resolved = new VoicePrompt(transcript, original.codes, original.frames, original.rms);
+            resolved.save(pending);OmniEngine.check(cancel);
+            File current = new File(profiles, id + ".vpc");
+            if (current.isFile() && VoicePrompt.load(current).identity().equals(original.identity()) && pending.renameTo(current)) {
+                meta.put("providedReferenceText", original.text).put("referenceText", transcript).put("referenceTextAutoRepaired", true);
+                StudioFiles.save(new File(profiles, id + ".json"), meta);
+            }
+            job.put("referenceTextAutoRepaired", true);
+            state(job, "running", "已识别参考录音内容，正在用克隆音色朗读新文字…");
+        } catch (Exception repairFailure) {
+            OmniEngine.check(cancel);
+            state(job, "running", "沿用已保存的克隆音色，新文字独立估算时长…");
+        } finally { whisper = null;cut.delete();pending.delete(); }
+        return resolved;
+    }
+
     void speech(JSONObject job, String text, File out) throws Exception {
         if (!StudioFiles.ready(this, "omni")) throw new IOException("请先导入基础模型");
-        VoicePrompt ref = StudioFiles.voice(this, job.optString("profile"));
+        VoicePrompt ref = voiceForSpeech(job);
         File anchor = null;
         boolean bookAuto = job.optString("type").equals("book") && ref == null;
         boolean anchored = false;
@@ -528,6 +570,11 @@ public class StudioService extends Service {
             }
 
             String transcript = job.getString("text");
+            if (!transcript.trim().isEmpty() && StudioFiles.ready(this, "whisper")
+                    && OmniDuration.needsTranscript(transcript, (int)(job.optDouble("seconds", 6) * 25))) {
+                state(job, "running", "正在从录音自动识别参考内容；此音色可朗读其他新文字…");
+                transcript = "";
+            }
             if (transcript.trim().isEmpty()) {
                 if (!StudioFiles.ready(this, "whisper")) throw new IOException("自动参考文字需要识别模型");
                 File cut = new File(folder, id + ".cut.wav");
@@ -667,7 +714,7 @@ public class StudioService extends Service {
         } else if (type.equals("speaker")) {
             String sourceId = job.getString("sourceJob");
             JSONObject source = StudioFiles.read(StudioFiles.job(this, sourceId));
-            File input = new File(new File(StudioFiles.dir(this, "jobs"), sourceId), "input.wav");
+            File input = new File(new File(StudioFiles.dir(this, "jobs"), source.optString("sourceJob", sourceId)), "input.wav");
             if (!StudioFiles.ready(this, "speaker")) throw new IOException("请先导入说话人模型");
             try (SpeakerEngine runtime =
                     new SpeakerEngine(new File(getFilesDir(), "speaker-model"))) {
@@ -677,6 +724,7 @@ public class StudioService extends Service {
                                 input,
                                 job.getJSONArray("segments"),
                                 job.optDouble("threshold", .55),
+                                job.optInt("speakerCount", 0),
                                 cancel,
                                 m -> state(job, "running", m));
                 OmniEngine.check(cancel);
@@ -895,28 +943,37 @@ public class StudioService extends Service {
                 if (!pending.renameTo(input)) throw new IOException("保存视频音轨失败");
             } finally { pending.delete(); }
         }
-        if (!job.has("segments")) {
-            if (!StudioFiles.ready(this, "whisper") || !StudioFiles.ready(this, "speaker")) throw new IOException("请先安装识别与说话人模型");
-            whisper = new WhisperEngine(new File(getFilesDir(), "whisper-model"), getAssets().open("whisper-mel80.bin"));
+        if (!job.has("segments") || job.optBoolean("regroup")) {
+            if (!StudioFiles.ready(this, "speaker")) throw new IOException("请先安装说话人模型");
             JSONArray segments = new JSONArray(), shortSegments = new JSONArray();
-            for (WhisperEngine.Segment segment : whisper.transcribe(input, "auto", false, cancel, m -> state(job, "running", m))) {
-                JSONObject item = new JSONObject().put("start", segment.start).put("end", segment.end).put("text", segment.text);
-                if (segment.end - segment.start >= .5) segments.put(item); else shortSegments.put(item.put("speaker", 0));
+            if (job.has("segments")) {
+                JSONArray previous = job.getJSONArray("segments");
+                for (int n=0;n<previous.length();n++) {
+                    JSONObject item=new JSONObject(previous.getJSONObject(n).toString());
+                    if (item.getDouble("end")-item.getDouble("start")>=.5) segments.put(item);
+                    else shortSegments.put(item.put("speaker",0));
+                }
+            } else {
+                if (!StudioFiles.ready(this,"whisper")) throw new IOException("请先安装识别模型");
+                whisper = new WhisperEngine(new File(getFilesDir(), "whisper-model"), getAssets().open("whisper-mel80.bin"));
+                for (WhisperEngine.Segment segment : whisper.transcribe(input, "auto", false, cancel, m -> state(job, "running", m))) {
+                    JSONObject item = new JSONObject().put("start", segment.start).put("end", segment.end).put("text", segment.text);
+                    if (segment.end - segment.start >= .5) segments.put(item); else shortSegments.put(item.put("speaker", 0));
+                }
+                whisper=null;
             }
             if (segments.length() == 0) throw new IOException("没有足够长的单人对白；请转写后人工校对人物片段");
-            whisper = null;
             try (SpeakerEngine runtime = new SpeakerEngine(new File(getFilesDir(), "speaker-model"))) {
                 speaker = runtime;
-                JSONArray grouped = runtime.group(input, segments, job.optDouble("threshold", .55), cancel, m -> state(job, "running", m));
+                JSONArray grouped = runtime.group(input, segments, job.optDouble("threshold", .55), job.optInt("speakerCount", 0), cancel, m -> state(job, "running", m));
                 for (int n = 0; n < shortSegments.length(); n++) grouped.put(shortSegments.getJSONObject(n));
-                job.put("segments", grouped).put("shortSegments", shortSegments.length());
-            }
-            speaker = null;
-            // Keep subtitle checkpoints for manual correction and process recovery.
+                job.put("segments", grouped).put("shortSegments", shortSegments.length()).put("regroup", false).put("speakerGroupingVersion", 1);
+            } finally { speaker=null; }
             state(job, "running", "分组完成 · 正在提取人物声音");
         }
         JSONArray results = new JSONArray();
         try (PcmAudio.Reader reader = new PcmAudio.Reader(input)) {
+            job.put("audioSeconds", reader.seconds());
             Map<Integer, JSONArray> groups = SpeakerClips.plan(job.getJSONArray("segments"), reader.seconds());
             for (Map.Entry<Integer, JSONArray> entry : groups.entrySet()) {
                 OmniEngine.check(cancel);

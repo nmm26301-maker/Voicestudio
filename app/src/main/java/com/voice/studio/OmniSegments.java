@@ -10,7 +10,12 @@ final class OmniSegments {
         return estimate < 50 ? 50 * Math.pow(estimate / 50, 1.0 / 3) : estimate;
     }
     static double duration(double weight, float speed, VoicePrompt ref) {
-        return (ref == null ? frames(weight) : OmniDuration.boost(ref.frames * weight / Math.max(1, OmniDuration.total(ref.text)))) / speed;
+        if (ref == null) return frames(weight) / speed;
+        double scale = OmniDuration.referenceScale(ref.text, ref.frames);
+        double raw = OmniDuration.needsTranscript(ref.text, ref.frames)
+            || ref.frames / Math.max(1, OmniDuration.total(ref.text)) > UNIT * 4
+            ? scale * weight : ref.frames * weight / Math.max(1, OmniDuration.total(ref.text));
+        return OmniDuration.boost(raw) / speed;
     }
     static double estimate(double weight, float speed, double referenceScale) {
         return (referenceScale == 0 ? frames(weight) : OmniDuration.boost(referenceScale * weight)) / speed;
@@ -24,7 +29,7 @@ final class OmniSegments {
             int cp = input.codePointAt(at), next = at + Character.charCount(cp);
             prefix[next] = prefix[at] + OmniDuration.weight(cp); at = next;
         }
-        double referenceScale = ref == null ? 0 : ref.frames / Math.max(1, OmniDuration.total(ref.text));
+        double referenceScale = ref == null ? 0 : OmniDuration.referenceScale(ref.text, ref.frames);
         int start = 0;
         while (start < input.length()) {
             if (estimate(prefix[input.length()] - prefix[start], speed, referenceScale) <= 180) {

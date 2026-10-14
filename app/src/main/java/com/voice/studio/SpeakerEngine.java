@@ -51,7 +51,7 @@ final class SpeakerEngine implements AutoCloseable {
                 values.get(out);
                 double norm = 0;
                 for (float x : out) norm += x * x;
-                if (norm < 1e-12) throw new IOException("说话人特征无效");
+                if (!Double.isFinite(norm) || norm < 1e-12) throw new IOException("说话人特征无效");
                 norm = Math.sqrt(norm);
                 for (int i = 0; i < out.length; i++) out[i] /= norm;
                 return out;
@@ -74,65 +74,33 @@ final class SpeakerEngine implements AutoCloseable {
             AtomicBoolean cancel,
             OmniEngine.Progress progress)
             throws Exception {
+        return group(wav, segments, threshold, 0, cancel, progress);
+    }
+
+    JSONArray group(File wav, JSONArray segments, double threshold, int speakerCount,
+            AtomicBoolean cancel, OmniEngine.Progress progress) throws Exception {
         if (!Double.isFinite(threshold) || threshold < .2 || threshold > .95)
             throw new IOException("分组阈值无效");
-        List<float[]> centers = new ArrayList<>();
-        List<Integer> counts = new ArrayList<>();
+        if (speakerCount < 0 || speakerCount > 32) throw new IOException("人物数量需为 0—32，0 为自动");
+        List<float[]> features = new ArrayList<>();List<Double> weights = new ArrayList<>();List<Integer> indices = new ArrayList<>();
         JSONArray result = new JSONArray();
         try (PcmAudio.Reader reader = new PcmAudio.Reader(wav)) {
             for (int n = 0; n < segments.length(); n++) {
                 OmniEngine.check(cancel);
                 JSONObject segment = new JSONObject(segments.getJSONObject(n).toString());
-                double start = segment.getDouble("start"),
-                        duration = Math.min(10, segment.getDouble("end") - start);
-                if (start < 0 || duration < .5 || start + duration > reader.seconds() + .05)
+                double start = segment.getDouble("start"), duration = Math.min(10, segment.getDouble("end") - start);
+                if (!Double.isFinite(start) || !Double.isFinite(duration) || start < 0 || duration < .5 || start + duration > reader.seconds() + .05)
                     throw new IOException("请将字幕校对为至少 0.5 秒的有效片段，再进行说话人分组");
-                float[] samples =
-                        PcmAudio.resample(reader.read(start, duration), reader.rate, 16000);
-                if (PcmAudio.rms(samples) < .002) {
-                    segment.put("speaker", 0);
-                    result.put(segment);
-                    continue;
-                }
-                float[] feature = embedding(samples, cancel);
-                int chosen = -1;
-                double best = threshold;
-                for (int i = 0; i < centers.size(); i++) {
-                    double similarity = cosine(feature, centers.get(i));
-                    if (similarity > best) {
-                        best = similarity;
-                        chosen = i;
-                    }
-                }
-                if (chosen < 0) {
-                    if (centers.size() >= 32) throw new IOException("分组超过 32 个，请调低阈值并人工校对");
-                    chosen = centers.size();
-                    centers.add(feature);
-                    counts.add(1);
-                } else {
-                    float[] old = centers.get(chosen);
-                    int count = counts.get(chosen);
-                    double norm = 0;
-                    for (int i = 0; i < old.length; i++) {
-                        old[i] = (old[i] * count + feature[i]) / (count + 1);
-                        norm += old[i] * old[i];
-                    }
-                    norm = Math.sqrt(norm);
-                    for (int i = 0; i < old.length; i++) old[i] /= norm;
-                    counts.set(chosen, count + 1);
-                }
-                segment.put("speaker", chosen + 1);
-                result.put(segment);
-                progress.update(
-                        "说话人分组 · "
-                                + (n + 1)
-                                + " / "
-                                + segments.length()
-                                + " 条 · "
-                                + centers.size()
-                                + " 组");
+                float[] samples = PcmAudio.resample(reader.read(start, duration), reader.rate, 16000);
+                segment.put("speaker", 0);result.put(segment);
+                if (PcmAudio.rms(samples) < .002) continue;
+                features.add(embedding(samples, cancel));weights.add(Math.min(8, duration));indices.add(n);
+                progress.update("人物声音特征 · " + (n + 1) + " / " + segments.length() + " 条");
             }
         }
+        progress.update(speakerCount > 0 ? "正在按 " + speakerCount + " 人统一分组…" : "正在合并同一人物的声音片段…");
+        int[] labels = SpeakerClusters.group(features, weights, speakerCount, threshold, cancel);
+        for (int n = 0; n < labels.length; n++) result.getJSONObject(indices.get(n)).put("speaker", labels[n]);
         return result;
     }
 

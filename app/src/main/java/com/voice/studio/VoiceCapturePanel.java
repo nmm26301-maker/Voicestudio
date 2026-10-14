@@ -31,7 +31,7 @@ final class VoiceCapturePanel {
         name = owner.field(body, "人物 / 音色名称", owner.getSharedPreferences("studio", 0).getString("voice-draft-name", "我的声音"));
         transcript = owner.field(body, "说出的文字（留空可自动识别）", owner.getSharedPreferences("studio", 0).getString("voice-draft-text", ""));
         transcript.setMinLines(2);
-        owner.label(body, "对应文字仅填写这段录音实际说出的内容，避免漏字或截短。最长 10 秒自动停止；离开页面会保留录音。", 12, false);
+        owner.label(body, "录音用于克隆音色，保存后可朗读任意新文字。录音内容可留空自动识别；最长 10 秒，离开页面会保留录音。", 12, false);
         record = action("● 开始录音", this::request);
         listen = action("▷ 试听录音", () -> { if (draft != null) owner.preview(draft, "人物声音试听"); });
         save = action("保存为人物音色", this::submit);

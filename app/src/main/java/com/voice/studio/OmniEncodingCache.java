@@ -17,7 +17,7 @@ final class OmniEncodingCache {
         if(!folder.isDirectory()&&!folder.mkdirs())throw new IOException("无法保存本地合成进度");
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();
         try(DataOutputStream out=new DataOutputStream(bytes)) {
-            out.writeUTF("VoiceStudio acoustic cache v2: reference and duration checks");out.writeUTF(modelDir.getCanonicalPath());
+            out.writeUTF("VoiceStudio acoustic cache v3: fallback duration and automatic reference transcript");out.writeUTF(modelDir.getCanonicalPath());
             fingerprint(modelDir,out,0,new int[]{0});
             File tokenizer=new File(modelDir,"tokenizer.json");
             out.writeUTF(hash(tokenizer));

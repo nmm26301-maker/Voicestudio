@@ -27,7 +27,6 @@ final class OmniCodec {
         if (rms < .001) throw new IOException("参考音频没有足够的人声");
         if (rms < .1) for (int i = 0; i < samples.length; i++) samples[i] *= .1 / rms;
         int frames = samples.length / 960;
-        OmniDuration.checkReference(text, frames);
         samples = Arrays.copyOf(samples, frames * 960);
         float[][][] acoustic = features(models, "acoustic_encoder.onnx", samples, cancel, progress);
         float[][][] semantic =

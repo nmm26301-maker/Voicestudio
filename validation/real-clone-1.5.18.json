@@ -1,0 +1,105 @@
+{
+  "scope": "Actual shipped OmniVoice INT8 and clone graphs on host CPU; public synthetic control reference, not user audio. No phone speed or user-video identity claim.",
+  "referenceText": "你好，欢迎来到声音工作室。今天测试免费 GPU 的完整语音合成。",
+  "referenceSource": "anonymous official HF text-only synthesis; no reference audio uploaded",
+  "referenceSeconds": 5.64,
+  "targets": [
+    "你好",
+    "谢谢",
+    "今天的天气很好，我们一起去公园散步。"
+  ],
+  "samples": [
+    {
+      "file": "clone-16-0.wav",
+      "seconds": 1.2,
+      "rate": 24000,
+      "sha256": "45a4a9ab44fa35f0dfaa8bd5c567b4c5ed315bb115a3089746eccfc8abc38f44"
+    },
+    {
+      "file": "clone-16-1.wav",
+      "seconds": 1.2,
+      "rate": 24000,
+      "sha256": "b85e69bbb42d11e0a361fe3ecc889eea6ef80e720ceb5125256fca36f3d8d84a"
+    },
+    {
+      "file": "clone-16-2.wav",
+      "seconds": 3.56,
+      "rate": 24000,
+      "sha256": "f130876190c703c6d0090eed6c94c1f717d1a154dfac35515197fe210bc6f956"
+    },
+    {
+      "file": "clone-32-0.wav",
+      "seconds": 1.2,
+      "rate": 24000,
+      "sha256": "e2e787737c84498acb32285f4830dadac4d696acf2a91e277324aa92e69c85e0"
+    },
+    {
+      "file": "clone-32-1.wav",
+      "seconds": 1.2,
+      "rate": 24000,
+      "sha256": "60bfdb3bcdc935f85bb0e3acaa39f906ab1383ba89b64b3afd24990fbde03e53"
+    },
+    {
+      "file": "clone-32-2.wav",
+      "seconds": 3.56,
+      "rate": 24000,
+      "sha256": "4a809889f0e0380bd91d3ad41f18ffbccda438b1e24780fa73bcabb98d7a3469"
+    }
+  ],
+  "recognizer": "Systran/faster-whisper-small, CPU int8, beam 5, zh, no target prompt, no VAD",
+  "asr16": [
+    {
+      "file": "hq-reference.wav",
+      "asr": [
+        "你好 歡迎來到聲音工作室",
+        "今天測試免費GPU的完整語音合成"
+      ]
+    },
+    {
+      "file": "clone-16-0.wav",
+      "asr": [
+        "你好"
+      ]
+    },
+    {
+      "file": "clone-16-1.wav",
+      "asr": [
+        "謝謝"
+      ]
+    },
+    {
+      "file": "clone-16-2.wav",
+      "asr": [
+        "中间的天气很好",
+        "我们一起去公园散步"
+      ]
+    }
+  ],
+  "asr32": [
+    {
+      "file": "clone-32-0.wav",
+      "asr": [
+        "你好"
+      ]
+    },
+    {
+      "file": "clone-32-1.wav",
+      "asr": [
+        "谢谢"
+      ]
+    },
+    {
+      "file": "clone-32-2.wav",
+      "asr": [
+        "今天天氣很好,我們一起去公園散步!"
+      ]
+    }
+  ],
+  "shortSemanticAcceptance": "你好 and 谢谢 match in both 16 and 32 steps, simplified/traditional equivalents. User reference not tested.",
+  "longSemanticAcceptance": "NOT PASSED verbatim: 16-step transcription differs at start; 32-step transcription omits 的.",
+  "regressionCause": "1.5.17 rejected stored voice during load, before inference, for mismatched reference duration; screenshot showed 你好 input and that exact error.",
+  "regressionFix": "Legacy VPC1 loads, fallback target duration independent of suspect reference ratio; original acoustic codes preserved during automatic transcription repair.",
+  "speakerTests": 943,
+  "speakerScope": "Synthetic feature counterexample and global count constraints; not real user video",
+  "referenceHash": "11a20c97d70aeb573badab4be28683e64b249bbf484d24a8329759b6b440bf60"
+}

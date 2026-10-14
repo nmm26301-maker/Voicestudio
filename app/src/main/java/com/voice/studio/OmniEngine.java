@@ -166,8 +166,7 @@ final class OmniEngine {
     }
 
     static double duration(String text, float speed, VoicePrompt ref) {
-        return (ref == null ? OmniDuration.frames(text) : OmniDuration.boost(ref.frames * OmniDuration.total(text)
-                / Math.max(1, OmniDuration.total(ref.text)))) / speed;
+        return OmniSegments.duration(OmniDuration.total(text), speed, ref);
     }
 
     static List<String> split(String text, float speed, VoicePrompt ref) {

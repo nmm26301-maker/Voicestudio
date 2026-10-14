@@ -18,10 +18,12 @@ public class ReferenceSpeechChecksTest {
         StringBuilder paragraph = new StringBuilder(); for (int i=0;i<330;i++) paragraph.append('啊');
         String wrong = paragraph.toString();
         // This ratio actually yielded 1.28s with the shipped native graphs before this fix.
-        reject(() -> new VoicePrompt(wrong, new long[8*157], 157, .1), "参考文字与录音时长明显不匹配");
+        VoicePrompt oldVoice = new VoicePrompt(wrong, new long[8*157], 157, .1);
+        check(OmniDuration.needsTranscript(oldVoice.text, oldVoice.frames), "legacy voice uses automatic transcript repair");
         for (int frames : new int[]{75,150,250,500})
-            reject(() -> OmniDuration.checkReference(wrong, frames), "参考文字与录音时长明显不匹配");
-        reject(() -> OmniDuration.checkReference("……！？", 150), "没有可朗读内容");
+            check(OmniDuration.needsTranscript(wrong, frames), "unusual metadata requests repair instead of blocking synthesis");
+        check(OmniDuration.needsTranscript("……！？", 150), "non-speech metadata requests repair");
+        check(OmniDuration.referenceScale(wrong,157)==25/OmniDuration.total("Nice to meet you."), "fallback estimates arbitrary targets independently");
         reject(() -> OmniDuration.checkOutput(target, 1, 1.28), "明显短于输入文字");
         reject(() -> OmniDuration.checkOutput(target, 1, 1.4), "明显短于输入文字");
         for (float speed : new float[]{.5f,1,1.5f,2}) {
@@ -45,7 +47,7 @@ public class ReferenceSpeechChecksTest {
                 for(int i=0;i<8*157;i++)out.writeShort(0);
             }
             byte[] before=Files.readAllBytes(legacy.toPath());
-            reject(() -> VoicePrompt.load(legacy), "参考文字与录音时长明显不匹配");
+            check(VoicePrompt.load(legacy).text.equals(wrong), "legacy voice remains readable instead of blocking two-character targets");
             check(Arrays.equals(before,Files.readAllBytes(legacy.toPath())),"invalid old profile retained for correction");
             VoicePrompt good=new VoicePrompt(target,new long[8*157],157,.1);File valid=new File(folder,"valid.vpc");good.save(valid);
             check(VoicePrompt.load(valid).text.equals(target),"existing valid VPC1 is still compatible");

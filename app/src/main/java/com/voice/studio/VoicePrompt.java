@@ -18,11 +18,22 @@ final class VoicePrompt {
                 || !Double.isFinite(rms)
                 || rms <= 0) throw new IOException("参考音色无效");
         for (long code : codes) if (code < 0 || code > 1023) throw new IOException("音色编码无效");
-        OmniDuration.checkReference(text, frames);
         this.text = text;
         this.codes = codes;
         this.frames = frames;
         this.rms = rms;
+    }
+
+    String identity() throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeUTF(text);out.writeInt(frames);out.writeDouble(rms);
+            for (long code : codes) out.writeShort((int)code);
+        }
+        byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(bytes.toByteArray());
+        StringBuilder result = new StringBuilder();
+        for (byte value : hash) result.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
+        return result.toString();
     }
 
     void save(File path) throws IOException {

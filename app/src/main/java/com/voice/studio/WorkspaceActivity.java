@@ -334,7 +334,7 @@ public class WorkspaceActivity extends Activity {
                 start = field(box, "开始秒数", previous == null ? "0" : Double.toString(previous.optDouble("referenceStart", 0))),
                 seconds = field(box, "参考秒数（3—10）", previous == null ? "6" : Double.toString(previous.optDouble("referenceSeconds", 6))),
                 text = field(box, "对应文字（留空可自动离线转写）", previous == null ? "" : previous.optString("referenceText"));
-        label(box, "只填写所选录音片段实际说出的文字。文字与录音不一致会导致错读、漏字或截短；留空可重新识别。", 12, false);
+        label(box, "这里是参考录音的内容，可留空自动识别；保存音色后，首页可输入任意新文字进行创作。", 12, false);
         text.setMinLines(3);
         new CosmicDialogBuilder(this).submit("创建", () -> {
             if (!StudioFiles.ready(this, "clone"))
@@ -351,7 +351,6 @@ public class WorkspaceActivity extends Activity {
                 throw new IOException("对应文字最多 2000 字");
             if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper"))
                 throw new IOException("对应文字留空时需要导入识别模型");
-            if (!transcript.isEmpty()) OmniDuration.checkReference(transcript, (int)(b * 25));
             StudioService.enqueue(
                     this,
                     new JSONObject()
@@ -380,7 +379,6 @@ public class WorkspaceActivity extends Activity {
         double seconds;
         try (PcmAudio.Reader reader = new PcmAudio.Reader(audio)) { seconds = reader.seconds(); }
         if (seconds < 3 || seconds > 10.01) throw new IOException("请录制 3—10 秒的清晰单人声音");
-        if (!transcript.isEmpty()) OmniDuration.checkReference(transcript, (int)(seconds * 25));
         // Queue an immutable copy: re-recording the draft cannot change a pending task.
         File copy = new File(StudioFiles.dir(this, "audio"), UUID.randomUUID() + ".wav");
         try (InputStream in = new FileInputStream(audio); OutputStream out = new FileOutputStream(copy)) {
@@ -401,23 +399,25 @@ public class WorkspaceActivity extends Activity {
         LinearLayout box = new LinearLayout(this); box.setOrientation(1); box.setPadding(dp(20), dp(12), dp(20), dp(12));
         label(box, "提取音轨 → 识别对白 → 按声音分组 → 分人物试听与创建音色", 14, true);
         label(box, "需要识别与说话人模型。分组编号不是画面人物身份，请试听命名；背景音乐、多人同时讲话可能影响结果，可在字幕中手动校对。", 12, false);
-        EditText threshold = field(box, "人物分组阈值（0.2—0.95）", "0.55");
+        EditText count = field(box, "人物数量（已知填人数，未知填 0 自动）", "3");
+        count.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         new CosmicDialogBuilder(this).submit("提取人物声音", () -> {
             if (!StudioFiles.ready(this, "whisper") || !StudioFiles.ready(this, "speaker"))
                 throw new IOException("请先安装识别与说话人分组模型");
-            double value = Double.parseDouble(threshold.getText().toString());
-            if (!Double.isFinite(value) || value < .2 || value > .95) throw new IOException("分组阈值无效");
+            int value = Integer.parseInt(count.getText().toString());
+            if (value < 0 || value > 32) throw new IOException("人物数量需为 0—32，0 为自动");
             StudioService.enqueue(this, new JSONObject().put("type", "extractVoices").put("uri", video.toString())
-                    .put("threshold", value).put("title", "人物声音 · " + name(video)));
+                    .put("speakerCount", value).put("threshold", .55).put("title", "人物声音 · " + name(video)));
             toast("视频人物提取已加入任务；完成后点击打开人物提取结果");
         }).setTitle("从视频提取人物声音").setView(box).setNegativeButton("取消", null).show();
     }
 
     void extractFromTranscript(JSONObject source) throws Exception {
         if (!source.has("segments")) throw new IOException("请先完成转写并校对字幕");
-        File input = new File(new File(StudioFiles.dir(this, "jobs"), source.getString("id")), "input.wav");
+        String rawId = source.optString("sourceJob", source.getString("id"));
+        File input = new File(new File(StudioFiles.dir(this, "jobs"), rawId), "input.wav");
         try (PcmAudio.Reader reader = new PcmAudio.Reader(input)) { SpeakerClips.plan(source.getJSONArray("segments"), reader.seconds()); }
-        StudioService.enqueue(this, new JSONObject().put("type", "extractVoices").put("sourceJob", source.getString("id"))
+        StudioService.enqueue(this, new JSONObject().put("type", "extractVoices").put("sourceJob", rawId)
                 .put("segments", new JSONArray(source.getJSONArray("segments").toString()))
                 .put("title", "校对后人物声音 · " + source.optString("title")));
         toast("已按校对后的人物编号提取；请在人物提取结果中查看");
@@ -444,8 +444,10 @@ public class WorkspaceActivity extends Activity {
         JSONArray results = job.optJSONArray("speakerResults");
         if (results == null || results.length() == 0) { toast("没有可用人物声音，请校对字幕与编号"); return; }
         LinearLayout box = new LinearLayout(this); box.setOrientation(1); box.setPadding(dp(16), dp(8), dp(16), dp(16));
-        label(box, "按声音特征分组，请试听后对应人物命名。重叠对白尚不能逐人分离。", 13, false);
+        label(box, job.optInt("speakerCount") > 0 ? "按 " + job.optInt("speakerCount") + " 人统一分组 · 当前 " + results.length() + " 组" : "自动分组 · 当前 " + results.length() + " 组", 13, false);
+        label(box, "同一人物的多段对白已合并，可试听命名。重叠对白需单独处理。", 12, false);
         if (job.optInt("shortSegments") > 0) label(box, "有 " + job.optInt("shortSegments") + " 段过短对白未分组，请在字幕中校对人物编号后重新提取。", 12, false);
+        button(box, "按人物数量重新分组", () -> regroupVoices(job));
         button(box, "试听原始音轨", () -> {
             try {
                 String sourceId = job.optString("sourceJob", job.optString("id"));
@@ -468,13 +470,13 @@ public class WorkspaceActivity extends Activity {
         }
         button(box, "校对字幕 / 修改人物编号", () -> {
             try {
-                JSONObject source = StudioFiles.read(StudioFiles.job(this, job.optString("sourceJob", job.optString("id"))));
+                JSONObject source = StudioFiles.read(StudioFiles.job(this, job.getString("id")));
                 editSegments(source);
             } catch (Exception e) { toast(e.getMessage()); }
         });
         button(box, "按最新校对结果重新提取", () -> {
             try {
-                JSONObject source = StudioFiles.read(StudioFiles.job(this, job.optString("sourceJob", job.optString("id"))));
+                JSONObject source = StudioFiles.read(StudioFiles.job(this, job.getString("id")));
                 extractFromTranscript(source);
             } catch (Exception e) { toast(e.getMessage()); }
         });
@@ -632,7 +634,7 @@ public class WorkspaceActivity extends Activity {
         int savedSteps = p.getInt("voice-steps", 16);
         steps.setSelection(savedSteps == 8 ? 2 : savedSteps == 32 ? 0 : 1);
         box.addView(steps);
-        label(box, "16 步更快；32 步更慢，也可能错读，需试听核对全文。8 步可能漏字。参考文字必须与所选录音片段一致；已排队任务沿用原配置。", 12, false);
+        label(box, "16 步更快；32 步更慢，也可能错读，需试听核对全文。8 步可能漏字。参考录音只用于克隆音色，创作时可输入任意新文字；已排队任务沿用原配置。", 12, false);
         EditText seed = field(box, "随机种子", Long.toString(p.getLong("voice-seed", 42)));
         new CosmicDialogBuilder(this).submit("保存", () -> {
             long value = Long.parseLong(seed.getText().toString());
@@ -1018,7 +1020,7 @@ public class WorkspaceActivity extends Activity {
     }
 
     void previewInput(JSONObject job) {
-        File folder = new File(StudioFiles.dir(this, "jobs"), job.optString("id"));
+        File folder = new File(StudioFiles.dir(this, "jobs"), job.optString("sourceJob", job.optString("id")));
         preview(new File(folder, "input.wav"), "原始音轨试听");
     }
 
@@ -1291,45 +1293,34 @@ public class WorkspaceActivity extends Activity {
                 .show();
     }
 
+    void regroupVoices(JSONObject source) {
+        LinearLayout box = new LinearLayout(this);box.setOrientation(1);box.setPadding(dp(20),dp(12),dp(20),dp(12));
+        EditText count = field(box, "人物数量（未知填 0 自动）", "3");count.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        new CosmicDialogBuilder(this).submit("重新分组", () -> {
+            int people = Integer.parseInt(count.getText().toString());
+            if (people < 0 || people > 32) throw new IOException("人物数量需为 0—32");
+            if (!StudioFiles.ready(this,"speaker")) throw new IOException("请先安装说话人模型");
+            String rawId = source.optString("sourceJob",source.getString("id"));
+            StudioService.enqueue(this,new JSONObject().put("type","extractVoices").put("sourceJob",rawId)
+                .put("segments",new JSONArray(source.getJSONArray("segments").toString())).put("regroup",true)
+                .put("speakerCount",people).put("threshold",.55).put("title","重新分组 · "+source.optString("title")));
+            toast("已使用原音轨重新分组，原结果保留");
+        }).setTitle("重新合并人物声音").setView(box).setNegativeButton("取消",null).show();
+    }
+
     void speakerDialog(JSONObject source) {
-        EditText threshold = new EditText(this);
-        threshold.setText("0.55");
-        threshold.setHint("相似度阈值 0.2—0.95");
-        new CosmicDialogBuilder(this)
-                .setTitle("按字幕片段分组（非重叠语音）")
-                .setView(threshold)
-                .setMessage("先校对并拆分包含多个说话人的长字幕。短于 0.5 秒的字幕需要合并或调整时间。阈值越高，分组越多。")
-                .setPositiveButton(
-                        "分组",
-                        (d, n) -> {
-                            try {
-                                if (!StudioFiles.ready(this, "speaker"))
-                                    throw new IOException("请先导入说话人分组模型");
-                                double score = Double.parseDouble(threshold.getText().toString());
-                                if (!Double.isFinite(score) || score < .2 || score > .95)
-                                    throw new IOException("阈值无效");
-                                StudioService.enqueue(
-                                        this,
-                                        new JSONObject()
-                                                .put("type", "speaker")
-                                                .put(
-                                                        "title",
-                                                        "说话人分组 · " + source.optString("title"))
-                                                .put("sourceJob", source.getString("id"))
-                                                .put("sourceRevision", source.optLong("revision"))
-                                                .put(
-                                                        "segments",
-                                                        new JSONArray(
-                                                                source.getJSONArray("segments")
-                                                                        .toString()))
-                                                .put("threshold", score));
-                                toast("分组已加入队列");
-                            } catch (Exception e) {
-                                toast(e.getMessage());
-                            }
-                        })
-                .setNegativeButton("取消", null)
-                .show();
+        LinearLayout box = new LinearLayout(this);box.setOrientation(1);box.setPadding(dp(20),dp(12),dp(20),dp(12));
+        EditText count = field(box,"人物数量（未知填 0 自动）","3");count.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        label(box,"将全部片段统一分组，同一人物的多段对白合并。混有多人说话的字幕需先拆分。",12,false);
+        new CosmicDialogBuilder(this).submit("分组", () -> {
+            int people = Integer.parseInt(count.getText().toString());
+            if (people < 0 || people > 32) throw new IOException("人物数量需为 0—32");
+            if (!StudioFiles.ready(this,"speaker")) throw new IOException("请先安装说话人模型");
+            StudioService.enqueue(this,new JSONObject().put("type","speaker").put("title","人物分组 · "+source.optString("title"))
+                .put("sourceJob",source.getString("id")).put("sourceRevision",source.optLong("revision"))
+                .put("segments",new JSONArray(source.getJSONArray("segments").toString())).put("speakerCount",people).put("threshold",.55));
+            toast("分组已加入队列");
+        }).setTitle("按人物数量分组").setView(box).setNegativeButton("取消",null).show();
     }
 
     void assignSpeakerVoice(JSONObject job, int index) {
