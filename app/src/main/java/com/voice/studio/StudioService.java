@@ -37,7 +37,14 @@ public class StudioService extends Service {
         return null;
     }
 
+    static void requireApiConsent(Context c, JSONObject job) throws IOException {
+        if (job.optString("type", "tts").equals("tts")
+            && !c.getSharedPreferences("studio", 0).getBoolean("cloud-api-consent", false))
+            throw new IOException("费用保护已开启：应用内云端 API 合成可能计费。请先在音色/设置页面主动授权，或使用免电脑免费 ZeroGPU 网页试听并导入 WAV。");
+    }
+
     static synchronized String enqueue(Context c, JSONObject job) throws Exception {
+        requireApiConsent(c, job);
         if (StudioFiles.modelWork()) throw new IOException("请等待模型导入或检查完成");
         if (job.optString("type", "tts").equals("tts") && job.optBoolean("deduplicate")) {
             JSONArray queued = StudioFiles.list(c);
@@ -71,6 +78,7 @@ public class StudioService extends Service {
     static void resume(Context context, String id,boolean allowResubmit) throws Exception {
         if (StudioFiles.modelWork()) throw new IOException("请等待模型导入或检查完成");
         JSONObject job = StudioFiles.read(StudioFiles.job(context, id));
+        requireApiConsent(context,job);
         requireMicrophonePermission(context, job);
         if(job.optString("engine").equals("accelerated")&&RemoteSpeechSession.needsResubmit(remoteFolder(context,id))) {
             if(!allowResubmit)throw new RemoteSpeechPipeline.ResubmitRequired();
@@ -525,6 +533,7 @@ public class StudioService extends Service {
     }
 
     void execute(JSONObject job) throws Exception {
+        requireApiConsent(this,job);
         String id = job.getString("id");
         String type = job.optString("type", "tts");
         if (!type.equals("tts")) throw new IOException("旧版离线模型任务已停用。历史结果仍可查看；录音克隆请在新版音色页创建。");
