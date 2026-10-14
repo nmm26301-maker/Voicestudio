@@ -21,8 +21,8 @@ jobs:
           python -m pip install -r server/cloud_requirements.txt
       - name: Compile Python and test without provider keys
         run: |
-          python -m compileall -q server/cloud_gateway.py server/test_cloud_gateway.py
-          python -m pytest -q server/test_cloud_gateway.py server/test_open_model_worker.py
+          python -m compileall -q server/cloud_gateway.py server/gptsovits_bridge.py server/test_cloud_gateway.py server/test_eight_engines.py
+          python -m pytest -q server/test_cloud_gateway.py server/test_open_model_worker.py server/test_eight_engines.py
   android-compile:
     runs-on: ubuntu-latest
     steps:
