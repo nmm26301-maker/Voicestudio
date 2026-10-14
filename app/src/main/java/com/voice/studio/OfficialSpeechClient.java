@@ -56,7 +56,21 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             AudioChecks.validate(reference,"wav");
             try(PcmAudio.Reader reader=new PcmAudio.Reader(reference)){reader.validateSamples(cancelled);if(reader.seconds()<3||reader.seconds()>10.01)throw new IOException("参考录音需为 3—10 秒");}
             body=FishInlineMessage.encode(text,wav,transcript,speed);type="application/msgpack";
-        }else body=body(model,voice,text,speed).toString().getBytes("UTF-8");
+        }else{
+            JSONObject request=body(model,voice,text,speed);
+            if(model.equals("cartesia")){
+                String locale=language==null?"auto":language.toLowerCase(Locale.ROOT).replace('_','-');
+                if(locale.equals("auto")||locale.equals("none")||locale.isEmpty()){
+                    boolean hasHan=false;
+                    for(int i=0;i<text.length();i++)if(text.charAt(i)>='\u3400'&&text.charAt(i)<='\u9fff'){hasHan=true;break;}
+                    locale=hasHan?"zh":"en";
+                }else if(locale.contains("-"))locale=locale.substring(0,locale.indexOf("-"));
+                if(!java.util.Arrays.asList("zh","en","ja","ko","fr","de","es","it","pt","ru").contains(locale))
+                    throw new IOException("Cartesia 语言不在当前支持范围内，请选择中文/英文等已支持语言");
+                request.put("language",locale);
+            }
+            body=request.toString().getBytes("UTF-8");
+        }
         String target=model.equals("elevenlabs")?root+"/"+voice+"?output_format=mp3_44100_128":root;
         check(cancelled);HttpURLConnection c=connections.open(new URL(target));active=c;
         File downloaded=new File(output.getPath()+".provider."+(model.equals("cartesia")?"wav":"mp3"));boolean complete=false;
