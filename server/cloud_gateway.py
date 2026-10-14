@@ -85,7 +85,7 @@ def check_wav(audio: bytes, reference: bool = False) -> float:
             if f.getnchannels() != 1 or f.getsampwidth() != 2 or rate < 8000 or rate > 48000:
                 raise ValueError("Expected mono PCM16 WAV")
             samples = f.readframes(frames)
-        if not samples or not any(v for v in samples):
+        if not samples or max(samples)==0 and min(samples)==0:
             raise ValueError("Silent audio")
         seconds = frames / rate
         if seconds < (3 if reference else .12) or (reference and seconds > 10.01):
@@ -109,8 +109,24 @@ def normalized_wav(data: bytes, kind: Literal["wav", "mp3"]) -> bytes:
         raise HTTPException(503, "FFmpeg unavailable or conversion timed out") from e
     if proc.returncode != 0 or not proc.stdout:
         raise HTTPException(502, "Provider did not return decodable audio")
-    check_wav(proc.stdout)
-    return proc.stdout
+    # ffmpeg pipe output carries an unknown-size WAV header (0xffffffff).
+    # Reheader the actual frames; otherwise Android can report hours of silence.
+    try:
+        with wave.open(io.BytesIO(proc.stdout), "rb") as reader:
+            if reader.getnchannels()!=1 or reader.getsampwidth()!=2 or reader.getframerate()!=24000:
+                raise ValueError("Unexpected decoded PCM")
+            samples=reader.readframes(reader.getnframes())
+        out=io.BytesIO()
+        with wave.open(out,"wb") as writer:
+            writer.setnchannels(1)
+            writer.setsampwidth(2)
+            writer.setframerate(24000)
+            writer.writeframes(samples)
+        result=out.getvalue()
+    except (wave.Error,ValueError) as e:
+        raise HTTPException(502,"Audio reheader failed") from e
+    check_wav(result)
+    return result
 
 
 class SpeechRequest(BaseModel):
@@ -124,7 +140,7 @@ class SpeechRequest(BaseModel):
     seed: int = 42
 
 
-def choose(model: str, has_reference: bool) -> str:
+def choose(model: str, has_reference: bool, voice: str = "auto") -> str:
     if model != "auto":
         if model not in PROVIDERS:
             raise HTTPException(422, "Unsupported provider")
@@ -134,7 +150,7 @@ def choose(model: str, has_reference: bool) -> str:
             raise HTTPException(422, "Selected provider needs a registered voice ID; choose an OSS reference-enabled engine")
         return model
     for provider in PREFER:
-        if configured(provider) and (not has_reference or provider in OPEN_MODELS):
+        if configured(provider) and (not has_reference or provider in OPEN_MODELS) and (provider in OPEN_MODELS or voice not in ("", "auto")):
             return provider
     raise HTTPException(503, "No suitable cloud model configured")
 
@@ -194,7 +210,7 @@ async def synthesize(task: SpeechRequest, authorization: str | None = Header(def
     if not task.input.strip():
         raise HTTPException(422, "Text is empty")
     reference_id = task.voice if task.voice.startswith("ref-") else None
-    model = choose(task.model, reference_id is not None)
+    model = choose(task.model, reference_id is not None, task.voice)
     reference_audio, reference_text = read_reference(reference_id) if reference_id else (None, None)
 
     if model in OPEN_MODELS:
