@@ -397,8 +397,8 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(noisyReceiver, noisyFilter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(noisyReceiver, noisyFilter);
         noisyRegistered = true;
-        engine = prefs.getString("engine", "omni");
-        if (!Arrays.asList("fish", "omni", "local", "accelerated").contains(engine)) engine = "omni";
+        engine = prefs.getString("engine", "fish");
+        if (!Arrays.asList("fish", "accelerated").contains(engine)) engine = "fish";
         omniLang = prefs.getString("omniLang", "zh");
         try {
             android.system.Os.setenv("ORT_DISABLE_TELEMETRY", "1", true);
@@ -489,7 +489,7 @@ public class MainActivity extends Activity {
     private void acceptText(Intent i) {
         if ("com.voice.studio.SELECT_ENGINE".equals(i.getAction())) {
             String selected = i.getStringExtra("engine");
-            if (Arrays.asList("fish", "omni", "local", "accelerated").contains(selected)) { engine = selected; saveSettings(); }
+            if (Arrays.asList("fish", "accelerated").contains(selected)) { engine = selected; saveSettings(); }
             String text = i.getStringExtra("retryText");
             if (text != null && !text.trim().isEmpty() && text.length() <= 12000) {
                 if (!draft.equals(text)) undoDraft = draft;
@@ -991,137 +991,18 @@ public class MainActivity extends Activity {
     }
 
     void voicePage() {
-        heading("找到你的声音", "选择本机合成、加速接口或手机语音。");
-        LinearLayout toggle = row();
-        flexible(toggle, button("Fish Audio", "fish".equals(engine), () -> {
-            engine = "fish"; saveSettings(); render();
+        heading("云端声音", "手机不再加载 OmniVoice 等大型合成模型，录音与作品继续保留。");
+        LinearLayout options=row();
+        flexible(options,button("Fish Audio","fish".equals(engine),()->{
+            engine="fish";saveSettings();render();
         }));
-        sideGap(toggle, 6);
-        flexible(
-                toggle,
-                button(
-                        "OmniVoice",
-                        "omni".equals(engine),
-                        () -> {
-                            engine = "omni";
-                            saveSettings();
-                            render();
-                        }));
-        sideGap(toggle, 10);
-        flexible(
-                toggle,
-                button(
-                        "手机语音",
-                        "local".equals(engine),
-                        () -> {
-                            engine = "local";
-                            saveSettings();
-                            render();
-                        }));
-        add(content, toggle);
-        gap(content, 10);
-        add(content, button("GPU 加速接口", "accelerated".equals(engine), () -> {
-            engine = "accelerated"; saveSettings(); render();
+        sideGap(options,8);
+        flexible(options,button("七引擎 / 自动","accelerated".equals(engine),()->{
+            engine="accelerated";saveSettings();render();
         }));
-        gap(content, 20);
-        if ("accelerated".equals(engine)) { acceleratedSettings(); return; }
-        if ("fish".equals(engine)) {
-            fishVoicePage(); return;
-        }
-        if ("omni".equals(engine)) {
-            omniVoicePage();
-            return;
-        }
-        {
-            LinearLayout c = card();
-            info(c, "朗读语言", "选择语言后，将使用已安装的手机语音包。");
-            gap(c, 13);
-            String[] langs = {
-                "zh-CN", "en-US", "ja-JP", "ko-KR", "zh-HK", "yue-HK", "fr-FR", "de-DE", "es-ES"
-            };
-            String[] labels = new String[langs.length];
-            for (int i = 0; i < langs.length; i++) labels[i] = languageName(langs[i]);
-            Spinner spinner = new Spinner(this);
-            spinner.setAdapter(
-                    new ArrayAdapter<String>(
-                            this, android.R.layout.simple_spinner_dropdown_item, labels));
-            for (int i = 0; i < langs.length; i++)
-                if (langs[i].equals(localLang)) spinner.setSelection(i);
-            spinner.setOnItemSelectedListener(
-                    new AdapterView.OnItemSelectedListener() {
-                        public void onNothingSelected(AdapterView<?> p) {}
-
-                        public void onItemSelected(AdapterView<?> p, View v, int i, long id) {
-                            if (!langs[i].equals(localLang)) {
-                                localLang = langs[i];
-                                localVoice = "";
-                                saveSettings();
-                                render();
-                            }
-                        }
-                    });
-            add(c, spinner);
-            gap(c, 8);
-            add(c, text("语言标签用于选择手机语音包，不会翻译文字。", 12, MUTED, false));
-            add(content, c);
-            gap(content, 16);
-            if (!ttsReady) {
-                add(content, text("语音引擎尚未就绪，请检查手机的文字转语音设置。", 14, MUTED, false));
-                return;
-            }
-            Set<Voice> available = tts.getVoices();
-            int n = 0;
-            if (available != null) {
-                List<Voice> sorted = new ArrayList<Voice>(available);
-                Collections.sort(sorted, (a, b) -> a.getName().compareTo(b.getName()));
-                for (Voice v : sorted) {
-                    Locale language = Locale.forLanguageTag(localLang);
-                    if (!AudioChecks.localeMatches(v.getLocale(), language)
-                            || v.isNetworkConnectionRequired()) continue;
-                    n++;
-                    LinearLayout vc = card();
-                    boolean chosen = v.getName().equals(localVoice);
-                    vc.setBackground(border(CosmicUi.SURFACE, chosen ? PURPLE : LINE, 20));
-                    info(
-                            vc,
-                            languageName(localLang) + " · 音色 " + n,
-                            (v.isNetworkConnectionRequired() ? "需要联网" : "可离线使用")
-                                    + " · "
-                                    + v.getName());
-                    gap(vc, 10);
-                    LinearLayout options = row();
-                    flexible(
-                            options,
-                            button(
-                                    chosen ? "已选择" : "选择",
-                                    chosen,
-                                    () -> {
-                                        localVoice = v.getName();
-                                        saveSettings();
-                                        render();
-                                    }));
-                    sideGap(options, 8);
-                    flexible(options, button("试听", false, () -> previewVoice(v)));
-                    add(vc, options);
-                    add(content, vc);
-                    gap(content, 12);
-                }
-            }
-            if (n == 0) add(content, text("没有找到这个语言的音色，请安装对应语音包或更换手机 TTS 引擎。", 14, MUTED, false));
-            gap(content, 12);
-            add(
-                    content,
-                    button(
-                            "手机语音设置",
-                            false,
-                            () -> {
-                                try {
-                                    startActivity(new Intent("com.android.settings.TTS_SETTINGS"));
-                                } catch (Exception e) {
-                                    toast("请到系统设置搜索：文字转语音");
-                                }
-                            }));
-        }
+        add(content,options);gap(content,16);
+        if("fish".equals(engine))fishVoicePage();
+        else cloudSettings();
     }
 
     void stopPreview() {
@@ -2040,90 +1921,69 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
+    static final String[] CLOUD_IDS={"auto","indextts25","cosyvoice3","qwen3tts","chatterboxv3","elevenlabs","minimax","fish"};
+    static final String[] CLOUD_LABELS={"自动选择（已配置网关）","IndexTTS 2.5","CosyVoice 3","Qwen3-TTS","Chatterbox V3","ElevenLabs","MiniMax","Fish Audio"};
+    void cloudSettings() {
+        LinearLayout c=card();
+        info(c,"云端语音引擎","开源模型部署在服务器，手机不下载模型。仅使用你明确配置的 HTTPS 网关；自动切换可能涉及付费服务。");
+        Spinner provider=new Spinner(this);
+        provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
+        String chosen=prefs.getString("cloud-engine","auto");
+        for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
+        add(c,provider);gap(c,12);
+        EditText url=field("HTTPS 网关地址，例如 https://你的域名/v1",prefs.getString("cloud-url",""),false);
+        EditText voice=field("音色 ID（没有参考录音时使用）",prefs.getString("cloud-voice","auto"),false);
+        String saved="";try{saved=new SecretStore(this,"accelerated").read();}catch(Exception ignored){}
+        EditText key=field("网关密钥（手机加密保存）",saved,true);
+        key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        add(c,url);gap(c,10);add(c,voice);gap(c,10);add(c,key);gap(c,10);
+        String[] selected={prefs.getString("cloud-profile","")};
+        CheckBox clone=new CheckBox(this);
+        clone.setText("用已录制的参考声音克隆（须网关支持）");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());add(c,clone);
+        add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));
+        gap(c,10);
+        add(c,text("参考录音会上传到所选的 HTTPS 网关。ElevenLabs、MiniMax、Fish 官方 API 使用已经在对应平台创建的音色 ID。",12,MUTED,false));
+        gap(c,12);
+        add(c,button("保存并使用云端引擎",true,()->{
+            try{
+                String id=CLOUD_IDS[provider.getSelectedItemPosition()];
+                if("fish".equals(id)){engine="fish";saveSettings();change("音色");return;}
+                String endpoint=AcceleratedSpeechClient.endpoint(url.getText().toString().trim());
+                String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();
+                AcceleratedSpeechClient.token(token);
+                if(token.isEmpty())throw new IOException("请配置网关访问密钥");
+                if(voiceId.isEmpty())voiceId="auto";
+                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择已保存的参考录音");
+                AcceleratedSpeechClient.request("网关配置检查",id,voiceId,omniLang,1,16,42);
+                new SecretStore(this,"accelerated").save(token);
+                prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint)
+                    .putString("cloud-voice",voiceId).putString("cloud-profile",clone.isChecked()?selected[0]:"")
+                    .putString("accelerated-url",endpoint).putString("accelerated-model",id)
+                    .putString("accelerated-voice",voiceId).putString("accelerated-provider","custom")
+                    .putString("accelerated-protocol","rest").apply();
+                engine="accelerated";saveSettings();hideKeyboard();toast("云端引擎配置已保存");change("创作");
+            }catch(Exception e){toast(e.getMessage());}
+        }));
+        gap(c,10);
+        add(c,button("云端网关部署与使用说明",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/CLOUD_ENGINES.md")));
+        add(content,c);
+    }
+
     void offlineSettings() {
-        heading("设置", "云端与本机合成，按需选择。");
-        motionSettings(); gap(content,16);
-        acceleratedSettings(); gap(content,16);
-        fishSettings();
-        gap(content, 16);
-        add(content, button("作品回收站", false, this::trashWorks));
-        gap(content, 12);
-        add(content, button("六类模型安装与设备检查", false,
-                () -> startActivity(new Intent(this, WorkspaceActivity.class).putExtra("openModels", true))));
-        gap(content, 12);
-        add(content, button("下载与安装离线模型", true,
-                () -> startActivity(new Intent(this, ModelDownloadsActivity.class))));
-        gap(content, 12);
-        LinearLayout c = card();
-        info(
-                c,
-                "OmniVoice 离线模型",
-                "INT8 原生引擎 · 646 种语言\n模型约 715 MB。安装页会检查分包、剩余空间与文件内容，并显示可取消的安装进度。");
-        gap(c, 14);
-        modelStatus =
-                text(
-                        importingModel
-                                ? "正在导入模型…"
-                                : omniReady() ? "模型已导入 · SHA-256 校验通过" : "尚未导入模型包",
-                        13,
-                        omniReady() ? SUCCESS : MUTED,
-                        true);
-        add(c, modelStatus);
-        gap(c, 12);
-        TextView importButton = button(omniReady() ? "查看基础模型安装状态" : "安装基础模型", !omniReady(),
-                () -> startActivity(new Intent(this, ModelInstallActivity.class).putExtra("module", "omni")));
-        importButton.setEnabled(!busy);
-        add(c, importButton);
-        gap(c, 12);
-        add(c, text("长文本自动按句分段，后台生成。低内存手机可能加载失败；尚未完成 Android 真机测试。", 12, MUTED, false));
-        if (omniModelDir().exists()) {
-            gap(c, 12);
-            TextView remove =
-                    button(
-                            "移除模型，释放空间",
-                            false,
-                            () -> {
-                                if (busy || importingModel || StudioFiles.pending(this)) {
-                                    toast("请先结束当前操作");
-                                    return;
-                                }
-                                new CosmicDialogBuilder(this)
-                                        .setTitle("移除离线模型？")
-                                        .setMessage("作品会保留，下次使用 OmniVoice 需要重新导入模型包。")
-                                        .setNegativeButton("取消", null)
-                                        .setPositiveButton(
-                                                "移除",
-                                                (d, w) -> {
-                                                    if (!StudioFiles.beginModelWork(this)) {
-                                                        toast("请暂停并等待当前队列停止"); return;
-                                                    }
-                                                    fileExecutor.execute(() -> {
-                                                        try { OmniModels.remove(omniModelDir()); }
-                                                        finally { StudioFiles.endModelWork(); }
-                                                        handler.post(() -> { if (!destroyed) {
-                                                            render(); toast(omniModelDir().exists() ? "移除失败，请重试" : "模型已移除");
-                                                        } });
-                                                    });
-                                                })
-                                        .show();
-                            });
-            remove.setEnabled(!busy && !importingModel);
-            add(c, remove);
-        }
-        add(content, c);
-        gap(content, 16);
-        LinearLayout privacy = card();
-        info(privacy, "本机处理", "OmniVoice 与手机离线音色在本机处理。只有选择 Fish Audio 并点击生成，才会向 Fish Audio 发送输入文字与音色 ID。API Key 加密保存在手机中；运行库遥测关闭。");
-        add(content, privacy);
-        gap(content, 16);
-        LinearLayout about = card();
-        info(
-                about,
-                "VoiceStudio 1.5.19 · 云端与离线合成",
-                "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
-                        + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
-                        + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");
-        add(content, about);
+        heading("设置","云端语音与账户。手机端本地模型安装入口已移除。");
+        motionSettings();gap(content,16);
+        cloudSettings();gap(content,16);
+        fishSettings();gap(content,16);
+        add(content,button("清理旧离线模型（不删除录音、音色和作品）",false,()->openWorkspace("任务")));
+        gap(content,12);
+        add(content,button("作品回收站",false,this::trashWorks));
+        gap(content,16);
+        LinearLayout privacy=card();
+        info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
+        add(content,privacy);gap(content,12);
+        LinearLayout about=card();
+        info(about,"VoiceStudio 云端版","不再使用手机本地 OmniVoice 合成。旧版作品和参考录音保持原位置，旧离线模型由你确认后清理。");
+        add(content,about);
     }
 
     String selectedFileName(Uri uri) throws IOException {
@@ -2230,7 +2090,7 @@ public class MainActivity extends Activity {
                         prefs.getString("accelerated-voice","auto"),omniLang,speed,prefs.getInt("accelerated-steps",32),prefs.getLong("voice-seed",42));
                 JSONObject job=new JSONObject().put("type","tts").put("deduplicate",true).put("engine","accelerated")
                         .put("endpoint",address).put("provider",gpuProvider()).put("protocol",gradio?"gradio":"rest")
-                        .put("languageName",omniLanguageEnglish()).put("profile",gradio?prefs.getString("gpu-hf-profile",""):"")
+                        .put("languageName",omniLanguageEnglish()).put("profile",gradio?prefs.getString("gpu-hf-profile",""):prefs.getString("cloud-profile",""))
                         .put("model",prefs.getString("accelerated-model","k2-fsa/OmniVoice"))
                         .put("apiVoice",prefs.getString("accelerated-voice","auto")).put("text",s).put("language",omniLang)
                         .put("speed",speed).put("steps",prefs.getInt("accelerated-steps",32)).put("seed",prefs.getLong("voice-seed",42))
