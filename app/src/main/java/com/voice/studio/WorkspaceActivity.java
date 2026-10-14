@@ -504,7 +504,7 @@ public class WorkspaceActivity extends Activity {
                                                         .edit()
                                                         .putString("selected-profile", id).putString("cloud-profile", id)
                                                         .apply();
-                                                toast("已选择音色，返回首页即可生成");
+                                                toast("已选参考录音，请在云端引擎中选择支持录音克隆的模型");
                                             })
                                     .setNeutralButton(
                                             "删除",
