@@ -1859,85 +1859,94 @@ public class MainActivity extends Activity {
     static final String[] CLOUD_LABELS=CloudEngineCatalog.LABELS;
     void cloudSettings() {
         LinearLayout c=card();
-        info(c,"七颗声音星球","选择你喜欢的声音引擎，或交给自动选择。四款开源引擎和 Fish 支持参考录音；其它平台使用已创建的音色 ID。");
-        Spinner provider=new Spinner(this);
-        provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
-        String chosen=prefs.getString("cloud-engine","auto");
-        for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
-        add(c,provider);gap(c,12);
-        EditText url=field("HTTPS 网关地址，例如 https://你的域名/v1",prefs.getString("cloud-url",""),false);
-        EditText voice=field("音色 ID（没有参考录音时使用）",prefs.getString("cloud-voice","auto"),false);
-        String saved="";try{saved=new SecretStore(this,"accelerated").read();}catch(Exception ignored){}
-        EditText key=field("网关密钥（手机加密保存）",saved,true);
-        key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-        TextView health=text("连接状态 · 尚未检测",13,MUTED,false);add(c,health);gap(c,8);
+        info(c,"七颗声音星球","选择平台，申请密钥，保存后开始创作。三家官方 API 可直连；开源模型使用你部署的云端网关。");
+        Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
+        String chosen=prefs.getString("cloud-engine","auto");for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
+        add(c,provider);gap(c,8);
+        Spinner mode=new Spinner(this);mode.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"我的云端网关 · 七引擎 / 自动","官方 API 直连 · Fish / ElevenLabs / MiniMax"}));
+        boolean wasOfficial=prefs.getString("accelerated-protocol","rest").equals("official");
+        mode.setSelection(wasOfficial||prefs.getString("cloud-url","").isEmpty()&&CloudConnectionPolicy.official(chosen)?1:0);add(c,mode);gap(c,12);
+        TextView routeInfo=text("",12,MUTED,false);add(c,routeInfo);gap(c,10);
+        LinearLayout states=col();states.setVisibility(View.GONE);
         TextView[] stateLabels=new TextView[CLOUD_IDS.length];
         for(int i=1;i<CLOUD_IDS.length;i++){
-            final int pos=i;LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),dp(9),dp(10),dp(9));
-            TextView name=text(CLOUD_LABELS[i],14,INK,true);row.addView(name,new LinearLayout.LayoutParams(0,-2,1));
-            TextView state=text("待检测",11,MUTED,false);stateLabels[i]=state;row.addView(state);row.setOnClickListener(v->provider.setSelection(pos));
-            row.setContentDescription(CLOUD_LABELS[i]+"，点击选择");add(c,row);
+            final int pos=i;LinearLayout row=row();row.setPadding(dp(10),dp(9),dp(10),dp(9));
+            flexible(row,text(CLOUD_LABELS[i],14,INK,true));TextView state=text("待检测",11,MUTED,false);stateLabels[i]=state;row.addView(state);
+            row.setOnClickListener(v->{provider.setSelection(pos);if(CloudConnectionPolicy.official(CLOUD_IDS[pos]))mode.setSelection(1);});row.setContentDescription(CLOUD_LABELS[i]+"，点击选择");add(states,row);
         }
-        gap(c,10);add(c,url);gap(c,10);add(c,voice);gap(c,10);add(c,key);gap(c,10);
-        TextWatcher invalidateHealth=new TextWatcher(){
-            public void beforeTextChanged(CharSequence value,int start,int count,int after){}
-            public void onTextChanged(CharSequence value,int start,int before,int count){health.setText("配置已变更 · 请重新检测");for(int i=1;i<stateLabels.length;i++){stateLabels[i].setText("待检测");stateLabels[i].setTextColor(MUTED);}}
-            public void afterTextChanged(Editable value){}
-        };url.addTextChangedListener(invalidateHealth);key.addTextChangedListener(invalidateHealth);
-        gap(c,10);
-        TextView probe=button("检测云端连接",false,()->{});
-        probe.setOnClickListener(v->{
-            String address=url.getText().toString().trim(),token=key.getText().toString().trim();
-            probe.setEnabled(false);health.setText("正在检测连接…");
-            new Thread(()->{
-                try{Set<String> configured=new CloudHealthClient().check(address,token);
-                    runOnUiThread(()->{if(isFinishing()||isDestroyed())return;
-                        if(!address.equals(url.getText().toString().trim())||!token.equals(key.getText().toString().trim())){health.setText("配置已变更 · 请重新检测");for(int i=1;i<stateLabels.length;i++)stateLabels[i].setText("待检测");}
-                        else{health.setText("连接成功 · "+configured.size()+" 款已配置（合成效果需实测）");for(int i=1;i<stateLabels.length;i++){boolean ok=configured.contains(CLOUD_IDS[i]);stateLabels[i].setText(ok?"已配置":"未配置");stateLabels[i].setTextColor(ok?CosmicUi.SUCCESS:MUTED);}}
-                        probe.setEnabled(true);
-                    });
-                }catch(Exception e){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;health.setText(e.getMessage()==null?"连接失败，请检查配置":e.getMessage());for(int i=1;i<stateLabels.length;i++)stateLabels[i].setText("待检测");probe.setEnabled(true);});}
-            },"cloud-health").start();
-        });add(c,probe);gap(c,12);
-        TextView languageChoice=button("文字语言 · "+omniLanguageName(),false,()->{});
-        languageChoice.setOnClickListener(v->pickCloudLanguage(languageChoice));add(c,languageChoice);gap(c,10);
-        String[] selected={prefs.getString("cloud-profile","")};
-        CheckBox clone=new CheckBox(this);
-        clone.setText("用已录制的参考声音克隆（须网关支持）");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());add(c,clone);
-        add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));
-        gap(c,10);
-        add(c,text("参考录音会上传到所选的 HTTPS 网关。Fish 录音克隆须填写准确的录音原文；ElevenLabs、MiniMax 使用对应平台的音色 ID。",12,MUTED,false));
         gap(c,12);
-        add(c,button("保存并使用云端引擎",true,()->{
+        EditText url=field("你的 HTTPS 网关地址", "",false),voice=field("平台音色 ID / 自建网关音色", "auto",false),key=field("密钥", "",true);
+        key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        add(c,url);gap(c,10);add(c,voice);gap(c,10);add(c,key);gap(c,8);
+        add(c,button("粘贴已领取的密钥",false,()->{
+            android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+            if(clipboard.hasPrimaryClip()){CharSequence value=clipboard.getPrimaryClip().getItemAt(0).coerceToText(this);key.setText(value==null?"":value.toString().trim());toast("已粘贴；保存后密钥会加密存储");}else toast("请先在平台官网复制 API Key");
+        }));gap(c,10);
+        TextView apply=button("注册 / 申请账号",false,()->{}),getKey=button("领取 API Key",false,()->{}),docs=button("打开平台说明",false,()->{});
+        add(c,apply);gap(c,8);add(c,getKey);gap(c,8);add(c,docs);gap(c,10);
+        TextView health=text("连接状态 · 尚未检测",13,MUTED,false);add(c,health);gap(c,8);
+        Map<String,String[]> drafts=new HashMap<>();String[] activeRoute={""};boolean[] applying={false};
+        Runnable updateRoute=()->{
+            String id=CLOUD_IDS[provider.getSelectedItemPosition()];
+            if(mode.getSelectedItemPosition()==1&&!CloudConnectionPolicy.official(id)){mode.setSelection(0);toast("此开源模型使用自建网关，已切换连接方式");}
+            boolean direct=mode.getSelectedItemPosition()==1&&CloudConnectionPolicy.official(id);String route=direct?"official-"+id:"gateway";
+            if(!route.equals(activeRoute[0])){
+                if(!activeRoute[0].isEmpty())drafts.put(activeRoute[0],new String[]{url.getText().toString(),voice.getText().toString(),key.getText().toString()});
+                String[] values=drafts.get(route);
+                if(values==null){
+                    String address=direct?"":prefs.getString("gateway-url",wasOfficial?"":prefs.getString("cloud-url",""));
+                    String voiceValue=prefs.getString(direct?route+"-voice":"gateway-voice",direct?"":prefs.getString("cloud-voice","auto"));String secret="";
+                    try{if(direct){address=CloudConnectionPolicy.endpoint(id);secret=new SecretStore(this,route).read();if(secret.isEmpty()&&id.equals("fish"))secret=new SecretStore(this).read();if(voiceValue.isEmpty()&&id.equals("fish"))voiceValue=prefs.getString("voiceId","");}else secret=new SecretStore(this,"accelerated").read();}catch(Exception e){toast("密钥读取失败，请重新领取并粘贴");}
+                    values=new String[]{address,voiceValue,secret};
+                }
+                applying[0]=true;url.setText(values[0]);voice.setText(values[1]);key.setText(values[2]);applying[0]=false;activeRoute[0]=route;
+            }
+            url.setFocusable(!direct);url.setFocusableInTouchMode(!direct);url.setCursorVisible(!direct);url.setHint(direct?"官方 API 地址（自动填写）":"你部署的 HTTPS 网关地址（会记住并复用）");
+            key.setHint(direct?CloudEngineCatalog.label(id)+" API Key（加密保存）":"自建网关访问密钥（不是平台 API Key）");
+            routeInfo.setText(direct?"官方地址已自动填写。登录平台领取密钥后粘贴即可；生成可能消耗平台额度。":"自动复用你保存的自建网关。四款开源模型没有统一公共网关，申请 GPU / Token 后仍需部署服务。");
+            apply.setText((CloudConnectionPolicy.official(id)?CloudEngineCatalog.label(id):"Hugging Face")+" · 注册 / 申请账号");
+            getKey.setText(CloudConnectionPolicy.official(id)?"打开 "+CloudEngineCatalog.label(id)+" API Key 页面":"领取 Hugging Face 部署 Token");
+            docs.setText(CloudConnectionCatalogTitle(id));
+            apply.setOnClickListener(v->openUrl(CloudConnectionPolicy.account(id)));getKey.setOnClickListener(v->openUrl(CloudConnectionPolicy.keys(id)));docs.setOnClickListener(v->openUrl(CloudConnectionPolicy.documentation(id)));
+            health.setText(direct?"官方地址已填写 · 密钥和额度尚未验证":"自建网关 · 尚未检测");for(int i=1;i<stateLabels.length;i++){stateLabels[i].setText(direct&&CLOUD_IDS[i].equals(id)?"官方直连":"待检测");stateLabels[i].setTextColor(MUTED);}
+        };
+        android.widget.AdapterView.OnItemSelectedListener selection=new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long item){updateRoute.run();}public void onNothingSelected(android.widget.AdapterView<?> parent){}};
+        provider.setOnItemSelectedListener(selection);mode.setOnItemSelectedListener(selection);updateRoute.run();
+        TextWatcher invalidateHealth=new TextWatcher(){public void beforeTextChanged(CharSequence value,int start,int count,int after){}public void onTextChanged(CharSequence value,int start,int before,int count){if(!applying[0]){health.setText("配置已变更 · 请重新检查");for(int i=1;i<stateLabels.length;i++){stateLabels[i].setText("待检测");stateLabels[i].setTextColor(MUTED);}}}public void afterTextChanged(Editable value){}};
+        url.addTextChangedListener(invalidateHealth);key.addTextChangedListener(invalidateHealth);
+        add(c,button("恢复自动填写的地址",false,()->{
+            try{if(mode.getSelectedItemPosition()==1)url.setText(CloudConnectionPolicy.endpoint(CLOUD_IDS[provider.getSelectedItemPosition()]));else{String value=prefs.getString("gateway-url",wasOfficial?"":prefs.getString("cloud-url",""));if(value.isEmpty())toast("还没有保存网关；部署后填写一次即可自动复用");else url.setText(value);}}catch(Exception e){toast(e.getMessage());}
+        }));gap(c,8);
+        TextView probe=button("检查地址 / 检测网关连接",false,()->{});
+        probe.setOnClickListener(v->{
+            String address=url.getText().toString().trim(),token=key.getText().toString().trim(),id=CLOUD_IDS[provider.getSelectedItemPosition()];boolean direct=mode.getSelectedItemPosition()==1;
+            if(direct){try{CloudConnectionPolicy.validate(id,address);AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException("请先领取并粘贴平台 API Key");health.setText("官方地址与密钥格式正确 · 尚未验证权限 / 额度（未提交生成）");}catch(Exception e){health.setText(e.getMessage());}return;}
+            probe.setEnabled(false);health.setText("正在检测网关连接…");new Thread(()->{try{CloudConnectionPolicy.gateway(address);Set<String> configured=new CloudHealthClient().check(address,token);runOnUiThread(()->{if(isFinishing()||isDestroyed())return;if(!activeRoute[0].equals("gateway")||!address.equals(url.getText().toString().trim())||!token.equals(key.getText().toString().trim()))health.setText("配置已变更 · 请重新检测");else{health.setText("网关连接成功 · "+configured.size()+" 款已配置");for(int i=1;i<stateLabels.length;i++){boolean ok=configured.contains(CLOUD_IDS[i]);stateLabels[i].setText(ok?"已配置":"未配置");stateLabels[i].setTextColor(ok?CosmicUi.SUCCESS:MUTED);}}probe.setEnabled(true);});}catch(Exception e){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;health.setText(e.getMessage()==null?"网关连接失败":e.getMessage());probe.setEnabled(true);});}},"cloud-health").start();
+        });add(c,probe);gap(c,8);
+        add(c,button("查看 / 收起七引擎配置状态",false,()->states.setVisibility(states.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE)));add(c,states);gap(c,12);
+        TextView languageChoice=button("文字语言 · "+omniLanguageName(),false,()->{});languageChoice.setOnClickListener(v->pickCloudLanguage(languageChoice));add(c,languageChoice);gap(c,10);
+        String[] selected={prefs.getString("cloud-profile","")};CheckBox clone=new CheckBox(this);clone.setText("使用已录制的参考声音克隆");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());add(c,clone);add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));gap(c,8);
+        add(c,text("Fish 录音克隆须准确填写录音原文；ElevenLabs、MiniMax 请在平台先创建音色 ID。自建网关密钥要与服务器设置一致，部署 Token 不能当网关密钥。",12,MUTED,false));gap(c,12);
+        add(c,button("保存并使用",true,()->{
             try{
-                String id=CLOUD_IDS[provider.getSelectedItemPosition()];
-                String endpoint=AcceleratedSpeechClient.endpoint(url.getText().toString().trim());
-                String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();
-                AcceleratedSpeechClient.token(token);
-                if(token.isEmpty())throw new IOException("请配置网关访问密钥");
-                if(voiceId.isEmpty())voiceId="auto";
-                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择已保存的参考录音");
-                if(clone.isChecked()&&Arrays.asList("minimax","elevenlabs").contains(id))
-                    throw new IOException("此平台需要先创建 Voice ID；原始录音克隆请选择 IndexTTS、CosyVoice、Qwen3-TTS、Chatterbox、Fish 或自动");
-                AcceleratedSpeechClient.request("网关配置检查",id,voiceId,omniLang,1,16,42);
-                new SecretStore(this,"accelerated").save(token);
-                prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint)
-                    .putString("cloud-voice",voiceId).putString("cloud-profile",clone.isChecked()?selected[0]:"")
-                    .putString("accelerated-url",endpoint).putString("accelerated-model",id)
-                    .putString("accelerated-voice",voiceId).putString("accelerated-provider","custom")
-                    .putString("accelerated-protocol","rest").apply();
-                engine="accelerated";saveSettings();hideKeyboard();toast("云端引擎配置已保存");change("创作");
+                String id=CLOUD_IDS[provider.getSelectedItemPosition()];boolean direct=mode.getSelectedItemPosition()==1;
+                String endpoint=direct?CloudConnectionPolicy.validate(id,url.getText().toString().trim()):CloudConnectionPolicy.gateway(url.getText().toString().trim());
+                String token=key.getText().toString().trim(),voiceId=voice.getText().toString().trim();AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException(direct?"请领取并填写平台 API Key":"请填写自建网关访问密钥");if(voiceId.isEmpty())voiceId="auto";
+                if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
+                if(direct&&!clone.isChecked())OfficialSpeechClient.body(id,voiceId,"配置检查",1);
+                new SecretStore(this,direct?"official-"+id:"accelerated").save(token);
+                SharedPreferences.Editor save=prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint).putString("cloud-voice",voiceId).putString("cloud-profile",clone.isChecked()?selected[0]:"")
+                    .putString("accelerated-url",endpoint).putString("accelerated-model",id).putString("accelerated-voice",voiceId).putString("accelerated-provider","custom").putString("accelerated-protocol",direct?"official":"rest");
+                if(direct)save.putString("official-"+id+"-voice",voiceId);else save.putString("gateway-url",endpoint).putString("gateway-voice",voiceId);save.apply();
+                engine="accelerated";saveSettings();hideKeyboard();toast(direct?"官方 API 已保存，地址自动填写":"网关已保存，切换引擎会自动复用");change("创作");
             }catch(Exception e){toast(e.getMessage());}
-        }));
-        gap(c,10);
-        add(c,button("云端网关部署与使用说明",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/main/docs/CLOUD_ENGINES.md")));
-        gap(c,12);add(c,text("部署与账户入口",14,INK,true));gap(c,8);
-        add(c,button("Hugging Face · Spaces",false,()->openUrl("https://huggingface.co/join")));gap(c,8);
-        add(c,button("Modal · 云端 GPU",false,()->openUrl("https://modal.com/signup")));gap(c,8);
-        add(c,button("Kaggle · GPU Notebook",false,()->openUrl("https://www.kaggle.com/account/login")));
-        gap(c,8);add(c,text("GPU 额度、申请资格和模型许可由平台决定。取得 GPU 后仍需部署语音服务。",12,MUTED,false));
+        }));gap(c,12);
+        add(c,button("网关部署与密钥配置说明",false,()->openUrl(CloudConnectionPolicy.documentation("auto"))));gap(c,8);
+        add(c,button("Modal · GPU 申请 / 部署",false,()->openUrl("https://modal.com/signup")));gap(c,8);
+        add(c,button("Kaggle · GPU Notebook 申请",false,()->openUrl("https://www.kaggle.com/account/login")));
         add(content,c);
     }
+    String CloudConnectionCatalogTitle(String id){return CloudConnectionPolicy.official(id)?"官方使用与音色说明":"打开 "+CloudEngineCatalog.label(id)+" 模型 / 部署说明";}
 
     void offlineSettings() {
         heading("你的声音偏好","云端连接、界面动效和作品管理，都在这里。");
@@ -1952,7 +1961,7 @@ public class MainActivity extends Activity {
         info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
         add(content,privacy);gap(content,12);
         LinearLayout about=card();
-        info(about,"VoiceStudio 1.5.21 · 云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
+        info(about,"VoiceStudio 1.5.22 · 云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
         add(content,about);
     }
 
@@ -2055,11 +2064,12 @@ public class MainActivity extends Activity {
             try {
                 String address=prefs.getString("accelerated-url","");
                 boolean gradio=prefs.getString("accelerated-protocol","rest").equals("gradio");
-                if(gradio)GradioSpeechClient.base(address);else AcceleratedSpeechClient.endpoint(address);
+                String protocol=prefs.getString("accelerated-protocol","rest");
+                if(protocol.equals("official"))CloudConnectionPolicy.validate(prefs.getString("accelerated-model","auto"),address);else if(gradio)GradioSpeechClient.base(address);else CloudConnectionPolicy.gateway(address);
                 AcceleratedSpeechClient.request(s,prefs.getString("accelerated-model","auto"),
                         prefs.getString("accelerated-voice","auto"),omniLang,speed,prefs.getInt("accelerated-steps",32),prefs.getLong("voice-seed",42));
                 JSONObject job=new JSONObject().put("type","tts").put("deduplicate",true).put("engine","accelerated")
-                        .put("endpoint",address).put("provider",gpuProvider()).put("protocol",gradio?"gradio":"rest")
+                        .put("endpoint",address).put("provider",gpuProvider()).put("protocol",protocol)
                         .put("languageName",omniLanguageEnglish()).put("profile",gradio?prefs.getString("gpu-hf-profile",""):prefs.getString("cloud-profile",""))
                         .put("model",prefs.getString("accelerated-model","auto"))
                         .put("apiVoice",prefs.getString("accelerated-voice","auto")).put("text",s).put("language",omniLang)

@@ -37,7 +37,7 @@ final class RemoteSpeechPipeline {
             progress.update("上传所选参考片段（本任务仅一次）…");
             uploaded=gradio.uploadReference(job.getString("endpoint"),key,reference,cancelled);session.data.put("reference",uploaded);session.save();
         }
-        if(reference!=null&&!useGradio&&uploaded==null){
+        if(reference!=null&&!useGradio&&!job.optString("protocol").equals("official")&&uploaded==null){
             progress.update("上传参考录音到你配置的 HTTPS 云端网关…");
             uploaded=rest.references.upload(job.getString("endpoint"),key,reference,referenceText,cancelled);
             session.data.put("reference",uploaded);session.save();

@@ -1,0 +1,13 @@
+{
+  "status": "passed",
+  "checks": 31,
+  "package": "com.voice.studio.preview",
+  "label": "VoiceStudio",
+  "version": "1.5.22-cloud",
+  "versionCode": 38,
+  "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
+  "apkSha256": "799f01c1ba44d638995de7473b812f7dca6b37d3e5005e1ea5774f43ce7116e2",
+  "previousApkSha256": "79c1130b423703044253d9972e2f0dfeff2febb089b4943bd2d70ce79708bc08",
+  "previousVersionCode": 37,
+  "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
+}

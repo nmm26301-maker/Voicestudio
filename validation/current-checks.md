@@ -1,16 +1,17 @@
-# VoiceStudio 1.5.21-cloud 当前验证范围
+# VoiceStudio 1.5.22-cloud 当前验证范围
 
 本文件只报告本次云端版。旧验证日志属于其原版本，不能当作当前云端合成验收。
 
-- 原签名非 debug 覆盖兼容检查 31 项通过：包名 `com.voice.studio.preview`、versionCode 37 > 旧 35、分享 authority 不变、v2/v3 签名、zipalign、组件完整性。
+- 原签名非 debug 覆盖兼容检查 31 项通过：包名 `com.voice.studio.preview`、versionCode 38 > 旧 37、分享 authority 不变、v2/v3 签名、zipalign、组件完整性。
 - 允许删除已停用的模型安装/下载 Activity 与离线悬浮服务；无本地推理 `.so`、模型安装清单、mel 滤波或 ONNX 图。只保留 646 语言目录文本元数据，不意味着每个云引擎支持全部语言。
-- 本次 APK SHA256：`79c1130b423703044253d9972e2f0dfeff2febb089b4943bd2d70ce79708bc08`。
+- 本次 APK SHA256：`799f01c1ba44d638995de7473b812f7dca6b37d3e5005e1ea5774f43ce7116e2`。
 - 服务端 22 项测试通过（FastAPI mock 模型/传输 + 真实 FFmpeg PCM 转换）：参考录音身份/时长/截断、过期、鉴权、四开源与三商业路由、Fish MessagePack 参考录音、新文本末句、CosyVoice 全输出段、Chatterbox 无损内部分段、自动跳过未就绪服务、拒绝静音/假音频、并发忙时无模型提交。
+- 新增官方直连 70 项 host/mock 检查通过：固定官方地址、认证头、完整文本、十六进制音频、下载边界、参考录音、续传不重复 POST 与取消；Fish MessagePack 另经独立 Python 解析，核对 UTF-8 新文本、准确原文与完整 WAV。Android MediaCodec 使用注入式模拟解码器验证交接，没有实际手机 codec/平台音质测试。
 - Java 云端健康 16 项 mock 检查：只读 GET、同 HTTPS origin、Bearer token、拒绝跳转、响应边界及未知引擎过滤。
 - Java 远程管线 10841 项、下载恢复 123 项、音频检查 42 项、请求 67 项、进度持久化 1023 项、旧 GPU 协议 52 项检查通过。均为 host/mock 验证，没有真实 GPU 的速度或音质结论。
 - 界面共享文本对比/源码集成 137 项通过，最低共享文本对比 7.14:1；动效曲线 host 检查 8003 项通过。
 - Figma Starter 调用额度耗尽，未完成 Figma 画布。实际改动为原生 Android UI；`docs/design/voicestudio-cloud.svg` 是可编辑设计示意。
-- Android API29 软件模拟器已安装 APK 并渲染创作页；持续出现模拟器 System UI ANR，未能完成页面导航检查，不能据此称真机或全部页面验收通过。
+- 前一版 1.5.21 在 Android API29 软件模拟器安装并渲染创作页，但持续出现模拟器 System UI ANR，导航验证未完成。1.5.22 本次未重跑该故障模拟器；不称真机或页面导航验收通过。
 - GitHub CI 对源码提交 `8eccf502ac3bc696eeba863d9f669c4ef272a33f` 的云端网关、Java 回归和 Android unsigned 编译均通过：[工作流结果](https://github.com/nmm26301-maker/Voicestudio/actions/runs/38553669069)。
 
 ## 未验收项目

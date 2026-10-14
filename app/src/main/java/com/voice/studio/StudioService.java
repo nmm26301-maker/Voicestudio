@@ -21,6 +21,7 @@ public class StudioService extends Service {
     final OmniEngine engine = new OmniEngine();
     final FishClient fish = new FishClient();
     final AcceleratedSpeechClient accelerated = new AcceleratedSpeechClient();
+    volatile OfficialSpeechClient official;
     final GradioSpeechClient gradio = new GradioSpeechClient();
     volatile WhisperEngine whisper;
     volatile NllbEngine translator;
@@ -380,16 +381,24 @@ public class StudioService extends Service {
                     ref=reference;referenceText=meta.optString("referenceText","");
                 }
             } else if(!provider.equals("custom")&&!provider.equals("modal"))throw new IOException("GPU 平台配置无效");
-            String scope=useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
+            boolean direct=job.optString("protocol").equals("official");
+            if(direct){
+                CloudConnectionPolicy.validate(job.getString("model"),endpoint);
+                if(ref==null)OfficialSpeechClient.body(job.getString("model"),job.optString("apiVoice","auto"),"配置检查",(float)job.optDouble("speed",1));
+                else if(!job.getString("model").equals("fish")||referenceText==null||referenceText.trim().isEmpty())throw new IOException("Fish 录音克隆需要准确录音原文；其它官方平台请用已有 Voice ID");
+            }
+            String scope=direct?"official-"+job.getString("model"):useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
+            AcceleratedSpeechClient transport=accelerated;
+            if(direct){official=new OfficialSpeechClient((input,target,token,progress)->MediaFiles.decode(this,android.net.Uri.fromFile(input),target,token,progress::update),ref,referenceText);transport=official;}
             long millis=RemoteSpeechPipeline.generate(job,new SecretStore(this,scope).read(),ref,referenceText,remoteFolder(this,job.getString("id")),
                 pending,cancel,m->{
                     if(m.contains("音频已校验")||m.contains("复用已完成音频"))try{if(SynthesisPreview.remote(new File(new File(StudioFiles.dir(this,"jobs"),job.getString("id")),"gpu"))!=null)job.put("previewReady",true);}catch(Exception ignored){}
                     state(job,"running",m);
-                },gradio,accelerated);
+                },gradio,transport);
             OmniEngine.check(cancel);
             job.put("duration",millis).put("generationMillis",(System.nanoTime()-start)/1000000);
             if(!pending.renameTo(out))throw new IOException("接口音频保存失败");
-        } finally {pending.delete();reference.delete();}
+        } finally {official=null;pending.delete();reference.delete();}
     }
 
     VoicePrompt voiceForSpeech(JSONObject job) throws Exception {
@@ -1090,6 +1099,7 @@ public class StudioService extends Service {
         fish.cancel();
         accelerated.cancel();
         gradio.cancel();
+        if(official!=null)official.cancel();
         if (whisper != null) whisper.cancel();
         if (translator != null) translator.cancel();
         if (speaker != null) speaker.cancel();
@@ -1103,6 +1113,7 @@ public class StudioService extends Service {
         fish.cancel();
         accelerated.cancel();
         gradio.cancel();
+        if(official!=null)official.cancel();
         if (whisper != null) whisper.cancel();
         if (translator != null) translator.cancel();
         if (speaker != null) speaker.cancel();

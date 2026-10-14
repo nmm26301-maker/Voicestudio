@@ -137,7 +137,8 @@ public class WorkspaceActivity extends Activity {
         String url=p.getString("accelerated-url","");
         if(url.isEmpty())throw new IOException("请先填写云端网关地址");
         boolean gradio="gradio".equals(p.getString("accelerated-protocol","rest"));
-        if(gradio)GradioSpeechClient.base(url);else AcceleratedSpeechClient.endpoint(url);
+        String protocol=p.getString("accelerated-protocol","rest");
+        if(protocol.equals("official"))CloudConnectionPolicy.validate(p.getString("accelerated-model","auto"),url);else if(gradio)GradioSpeechClient.base(url);else CloudConnectionPolicy.gateway(url);
         String model=p.getString("accelerated-model","auto");
         String voice=p.getString("accelerated-voice","auto");
         AcceleratedSpeechClient.request(text,model,voice,p.getString("omniLang","zh"),
@@ -145,7 +146,7 @@ public class WorkspaceActivity extends Activity {
         return new JSONObject().put("type","tts").put("engine","accelerated")
             .put("text",text).put("endpoint",url)
             .put("provider",p.getString("accelerated-provider","custom"))
-            .put("protocol",gradio?"gradio":"rest")
+            .put("protocol",protocol)
             .put("profile",gradio?p.getString("gpu-hf-profile",""):p.getString("cloud-profile",""))
             .put("language",p.getString("omniLang","zh"))
             .put("languageName","Auto")

@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONObject;
 
 /** Explicit HTTPS cloud gateway; no automatic retry of a possibly billed POST. */
-final class AcceleratedSpeechClient {
+class AcceleratedSpeechClient {
     interface Connections { HttpURLConnection open(URL url) throws IOException; }
     interface Progress { void update(String message); }
     private final Connections connections;
