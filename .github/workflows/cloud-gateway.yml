@@ -45,8 +45,8 @@ jobs:
           export ANDROID_SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           export ECJ_JAR=/tmp/ecj.jar
           VOICE_UNSIGNED=1 bash tools/build.sh
-          unzip -l build-manual/VoiceStudio-1.5.22-Cloud-unsigned.apk | grep -E 'classes.dex|AndroidManifest.xml'
-          if unzip -Z1 build-manual/VoiceStudio-1.5.22-Cloud-unsigned.apk | grep -q 'libonnxruntime'; then
+          unzip -l build-manual/VoiceStudio-1.5.23-Cloud-unsigned.apk | grep -E 'classes.dex|AndroidManifest.xml'
+          if unzip -Z1 build-manual/VoiceStudio-1.5.23-Cloud-unsigned.apk | grep -q 'libonnxruntime'; then
             echo "Unexpected local ONNX runtime in cloud-only APK" >&2; exit 1
           fi
       - name: Run Java remote speech regressions
@@ -55,7 +55,7 @@ jobs:
           ECJ_JAR=/tmp/ecj.jar JSON_JAR=/tmp/json.jar bash tests/run_accelerated.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: VoiceStudio-1.5.22-cloud-unsigned-compile-check
-          path: build-manual/VoiceStudio-1.5.22-Cloud-unsigned.apk
+          name: VoiceStudio-1.5.23-cloud-unsigned-compile-check
+          path: build-manual/VoiceStudio-1.5.23-Cloud-unsigned.apk
           if-no-files-found: error
           retention-days: 7
