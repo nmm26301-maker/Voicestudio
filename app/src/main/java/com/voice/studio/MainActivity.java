@@ -895,14 +895,14 @@ public class MainActivity extends Activity {
             int steps=prefs.getInt(stepKey,remoteMode?32:16);
             info(mode,"生成步数",steps==8 ? "8 步（实验），需检查语音完整性" : steps==16 ? "快速 · 16 步" : "质量优先 · 32 步");
             gap(mode,10);
-            TextView toggle=button("选择生成速度",false,()->new CosmicDialogBuilder(this)
+            TextView toggle=button("选择生成模式",false,()->new CosmicDialogBuilder(this)
                     .setTitle(remoteMode?"加速服务生成步数":"本地生成步数")
                     .setItems(new String[]{"8 步（实验，需检查完整性）","16 步（快速）","32 步（质量优先）"},(d,n)->{
                         prefs.edit().putInt(stepKey,new int[]{8,16,32}[n]).apply();
                         render();
                     }).setNegativeButton("取消",null).show());
             add(mode,toggle); gap(mode,7);
-            add(mode,text("8 步减少运算，音质与音色相似度需试听确认。语速调整说话节奏；已提交的任务沿用原配置。",11,MUTED,false));
+            add(mode,text("16 步更快；32 步更慢，也可能错读，需试听核对全文。8 步为实验模式，可能漏字。参考文字应与录音一致；已提交任务沿用原配置。",11,MUTED,false));
             add(content,mode); gap(content,14);
         }
         LinearLayout speedRow = row();
@@ -2119,7 +2119,7 @@ public class MainActivity extends Activity {
         LinearLayout about = card();
         info(
                 about,
-                "VoiceStudio 1.5.16 · 云端与离线合成",
+                "VoiceStudio 1.5.17 · 云端与离线合成",
                 "恢复原版 OmniVoice 引擎。646 是原模型的语言覆盖数，不代表每种语言都已通过实测。\n\n"
                         + "模型来源：k2-fsa/OmniVoice；ONNX 转换：gluschenko 与 onnx-community。预训练权重遵循原模型"
                         + " CC-BY-NC 条款。应用与第三方代码许可见源码 LICENSE 和 NOTICE。");

@@ -27,6 +27,7 @@ final class OmniCodec {
         if (rms < .001) throw new IOException("参考音频没有足够的人声");
         if (rms < .1) for (int i = 0; i < samples.length; i++) samples[i] *= .1 / rms;
         int frames = samples.length / 960;
+        OmniDuration.checkReference(text, frames);
         samples = Arrays.copyOf(samples, frames * 960);
         float[][][] acoustic = features(models, "acoustic_encoder.onnx", samples, cancel, progress);
         float[][][] semantic =
@@ -37,6 +38,9 @@ final class OmniCodec {
                         cancel,
                         progress);
         int count = Math.min(acoustic[0][0].length, semantic[0][0].length);
+        if (Math.abs(count - frames) > 1
+                || Math.abs(acoustic[0][0].length - semantic[0][0].length) > 1)
+            throw new IOException("参考声音编码时长不一致，已停止创建音色，请检查克隆模型");
         acoustic = trim(acoustic, count);
         semantic = trim(semantic, count);
         OmniEngine.check(cancel);
@@ -58,6 +62,8 @@ final class OmniCodec {
                 OnnxTensor output = (OnnxTensor) result.get(0);
                 long[] shape = output.getInfo().getShape();
                 int n = (int) shape[shape.length - 1];
+                if (shape.length != 3 || shape[0] != 8 || shape[1] != 1 || n != count)
+                    throw new IOException("参考声音编码形状无效，已停止创建音色");
                 LongBuffer b = output.getLongBuffer();
                 long[] codes = new long[8 * n];
                 b.get(codes);

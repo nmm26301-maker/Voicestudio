@@ -323,13 +323,18 @@ public class WorkspaceActivity extends Activity {
     }
 
     void cloneDialog(Uri uri) {
+        cloneDialog(uri, null);
+    }
+
+    void cloneDialog(Uri uri, JSONObject previous) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(1);
         box.setPadding(dp(20), dp(10), dp(20), 0);
-        EditText name = field(box, "音色名称", "我的声音"),
-                start = field(box, "开始秒数", "0"),
-                seconds = field(box, "参考秒数（3—10）", "6"),
-                text = field(box, "对应文字（留空可自动离线转写）", "");
+        EditText name = field(box, "音色名称", previous == null ? "我的声音" : previous.optString("name", "我的声音") + " · 修正版"),
+                start = field(box, "开始秒数", previous == null ? "0" : Double.toString(previous.optDouble("referenceStart", 0))),
+                seconds = field(box, "参考秒数（3—10）", previous == null ? "6" : Double.toString(previous.optDouble("referenceSeconds", 6))),
+                text = field(box, "对应文字（留空可自动离线转写）", previous == null ? "" : previous.optString("referenceText"));
+        label(box, "只填写所选录音片段实际说出的文字。文字与录音不一致会导致错读、漏字或截短；留空可重新识别。", 12, false);
         text.setMinLines(3);
         new CosmicDialogBuilder(this).submit("创建", () -> {
             if (!StudioFiles.ready(this, "clone"))
@@ -346,6 +351,7 @@ public class WorkspaceActivity extends Activity {
                 throw new IOException("对应文字最多 2000 字");
             if (transcript.isEmpty() && !StudioFiles.ready(this, "whisper"))
                 throw new IOException("对应文字留空时需要导入识别模型");
+            if (!transcript.isEmpty()) OmniDuration.checkReference(transcript, (int)(b * 25));
             StudioService.enqueue(
                     this,
                     new JSONObject()
@@ -374,6 +380,7 @@ public class WorkspaceActivity extends Activity {
         double seconds;
         try (PcmAudio.Reader reader = new PcmAudio.Reader(audio)) { seconds = reader.seconds(); }
         if (seconds < 3 || seconds > 10.01) throw new IOException("请录制 3—10 秒的清晰单人声音");
+        if (!transcript.isEmpty()) OmniDuration.checkReference(transcript, (int)(seconds * 25));
         // Queue an immutable copy: re-recording the draft cannot change a pending task.
         File copy = new File(StudioFiles.dir(this, "audio"), UUID.randomUUID() + ".wav");
         try (InputStream in = new FileInputStream(audio); OutputStream out = new FileOutputStream(copy)) {
@@ -534,8 +541,21 @@ public class WorkspaceActivity extends Activity {
                         (d, n) -> {
                             JSONObject j = all.get(n);
                             String id = j.optString("id");
+                            LinearLayout details = new LinearLayout(this); details.setOrientation(1);
+                            details.setPadding(dp(20), dp(12), dp(20), dp(12));
+                            label(details, String.format(Locale.CHINA, "参考片段 %.1f 秒", j.optDouble("referenceSeconds", 6)), 13, true);
+                            String referenceText = j.optString("referenceText", "旧音色没有记录对应文字");
+                            int characters = referenceText.codePointCount(0, referenceText.length());
+                            String excerpt = characters > 90 ? referenceText.substring(0, referenceText.offsetByCodePoints(0, 90)) + "…" : referenceText;
+                            label(details, "参考文字（" + characters + " 字）：" + excerpt, 12, false);
+                            button(details, "修正文字并重建音色", () -> {
+                                File audio = new File(StudioFiles.dir(this, "profiles"), id + ".reference.wav");
+                                if (audio.isFile()) cloneDialog(Uri.fromFile(audio), j);
+                                else toast("此旧音色没有保留原声，请在当前音色页面重新录音");
+                            });
                             new CosmicDialogBuilder(this)
                                     .setTitle(j.optString("name"))
+                                    .setView(details)
                                     .setPositiveButton(
                                             "使用",
                                             (x, y) -> {
@@ -612,7 +632,7 @@ public class WorkspaceActivity extends Activity {
         int savedSteps = p.getInt("voice-steps", 16);
         steps.setSelection(savedSteps == 8 ? 2 : savedSteps == 32 ? 0 : 1);
         box.addView(steps);
-        label(box, "8 步减少模型运算，音质与音色相似度需试听确认；已排队任务沿用提交时的配置。", 12, false);
+        label(box, "16 步更快；32 步更慢，也可能错读，需试听核对全文。8 步可能漏字。参考文字必须与所选录音片段一致；已排队任务沿用原配置。", 12, false);
         EditText seed = field(box, "随机种子", Long.toString(p.getLong("voice-seed", 42)));
         new CosmicDialogBuilder(this).submit("保存", () -> {
             long value = Long.parseLong(seed.getText().toString());

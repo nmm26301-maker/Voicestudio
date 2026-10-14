@@ -28,7 +28,9 @@ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$ou
  "$project_dir/tests/ChunkPipelineTest.java" \
  "$project_dir/tests/AccelerationTest.java" \
  "$project_dir/tests/TokenizerProgressTest.java" \
- "$project_dir/tests/SynthesisFlowTest.java" "$project_dir/tests/FishClientTest.java"
+ "$project_dir/tests/SynthesisFlowTest.java" "$project_dir/tests/FishClientTest.java" \
+ "$project_dir/tests/ReferenceSpeechChecksTest.java"
+java -cp "$out_dir:$JSON_JAR" com.voice.studio.ReferenceSpeechChecksTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.PcmWriterTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.SynthesisFlowTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.FishClientTest

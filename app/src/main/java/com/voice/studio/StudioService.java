@@ -475,6 +475,14 @@ public class StudioService extends Service {
             boolean api = "accelerated".equals(job.optString("engine"));
             File audio = StudioFiles.output(this, id, cloud ? "mp3" : "wav");
             long existing = SynthesisOutput.existing(audio, cloud ? "mp3" : "wav", StudioService::audioDuration);
+            if (existing > 0 && !cloud && !api) {
+                try { OmniDuration.checkOutput(job.getString("text"), (float)job.optDouble("speed", 1), existing / 1000.0); }
+                catch (IOException incomplete) {
+                    // Keep the original file until a valid replacement is ready.
+                    existing = 0;
+                    state(job, "running", "旧结果明显截短，正在重新生成完整音频…");
+                }
+            }
             if (existing > 0) {
                 state(job, "running", "复用已生成音频，恢复保存记录…");
                 job.put("duration", existing);

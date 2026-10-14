@@ -46,6 +46,7 @@ final class OmniEngine {
         if (text == null || text.trim().isEmpty() || text.length() > 12000)
             throw new IOException("文本需为 1—12000 字");
         if (!Float.isFinite(speed) || speed < .5 || speed > 2) throw new IOException("语速无效");
+        if (!OmniDuration.hasSpeech(text)) throw new IOException("文本中没有可朗读的文字");
         if (steps != 8 && steps != 16 && steps != 32) throw new IOException("请选择 8、16 或 32 步");
         long generationStart = System.nanoTime();
         lastGenerationMillis = tokenizerNanos = loadNanos = inferenceNanos = decodeNanos = 0;
@@ -157,6 +158,9 @@ final class OmniEngine {
             parallelSamplingRounds = workers.parallelRounds;
         } finally { running = null; }
         check(cancelled);
+        try (PcmAudio.Reader complete = new PcmAudio.Reader(output)) {
+            OmniDuration.checkOutput(text, speed, complete.seconds());
+        }
         PcmAudio.markSynthetic(output);
         lastGenerationMillis = (System.nanoTime() - generationStart) / 1000000;
     }

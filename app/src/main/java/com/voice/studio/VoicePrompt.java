@@ -18,6 +18,7 @@ final class VoicePrompt {
                 || !Double.isFinite(rms)
                 || rms <= 0) throw new IOException("参考音色无效");
         for (long code : codes) if (code < 0 || code > 1023) throw new IOException("音色编码无效");
+        OmniDuration.checkReference(text, frames);
         this.text = text;
         this.codes = codes;
         this.frames = frames;

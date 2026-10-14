@@ -1,0 +1,189 @@
+{
+  "scope": "Shipped synthesis and clone ONNX weights, host CPU. User reference and audio unavailable. No phone speed or semantic acceptance claim.",
+  "models": [
+    {
+      "name": "tokenizer.json",
+      "size": 11423986,
+      "sha256": "408f669b7e2b045fdf54201d815bd364e6667dbd845115da81239c40bc6dcfd1"
+    },
+    {
+      "name": "higgs_decoder.onnx",
+      "size": 86500102,
+      "sha256": "b28b3317a6cbf0d0f4a71b476ecb5c767612a31702da6561154783c94b6fa806"
+    },
+    {
+      "name": "omnivoice.qint8_per_channel.onnx",
+      "size": 3951539,
+      "sha256": "f5751767fce63afa5fab6ba61daacab4f55cf57cfb98f007621873be00bde705"
+    },
+    {
+      "name": "omnivoice.qint8_per_channel.onnx_data",
+      "size": 612773952,
+      "sha256": "983fbe174700f9537ca52dc0b49ea12a8e51c5cf56f01d127cf26d9fa990c365"
+    },
+    {
+      "name": "acoustic_encoder.onnx",
+      "size": 205546480,
+      "sha256": "431a5e58528f33c1f001baa64f979572667ff69f26bc727701e3529932065401"
+    },
+    {
+      "name": "quantizer_encoder.onnx",
+      "size": 12131293,
+      "sha256": "e4f0b707b06c24f7343d0d2d9bd977c1a4560d64b84bd19f30cdde54da1731a9"
+    },
+    {
+      "name": "semantic_encoder.onnx",
+      "size": 436736856,
+      "sha256": "db5751893fb44487658e8de1a88096b5421c590ac203c8d124b6972a990c79d3"
+    }
+  ],
+  "target": "愿你今天遇见的，都是温柔的小事。放慢脚步，也别忘了听听自己的声音。",
+  "targetNote": "Screenshot text completed for control; user full text not available.",
+  "referenceSource": "synthetic auto-32 control, re-encoded by shipped clone models; not user audio",
+  "referenceFrames": 157,
+  "invalidReferenceText": "330 repetitions of 啊; deliberately unrelated to recording",
+  "oldInvalidReferenceSeconds": 1.28,
+  "newInvalidReference": "VPC1 load rejected before model inference, original profile retained",
+  "validReferenceAfterSeconds": 6.28,
+  "audio": [
+    {
+      "file": "auto-16.wav",
+      "sha256": "b87a1e81052af4eb578d4638d27690da4d77e3008267d2bd166fb49f0e6ac85a",
+      "seconds": 6.28,
+      "rate": 24000,
+      "bytes": 301536
+    },
+    {
+      "file": "auto-32.wav",
+      "sha256": "df367077a20844df42621a588aadd79b6a22a1efaf38772a4fd6ecd60e7e8cc6",
+      "seconds": 6.28,
+      "rate": 24000,
+      "bytes": 301536
+    },
+    {
+      "file": "clone-32.wav",
+      "sha256": "e34cb0e0bedf4fea58ee5b00c15b847bea6959cdad308bbf9382c833b3f7d39e",
+      "seconds": 5.6,
+      "rate": 24000,
+      "bytes": 268896
+    },
+    {
+      "file": "bad-reference-before.wav",
+      "sha256": "c6752fbe313af696724a8fcf15e4cbf2c1bac9bed1b934cb9b3059f271762d67",
+      "seconds": 1.28,
+      "rate": 24000,
+      "bytes": 61536
+    },
+    {
+      "file": "valid-reference-after.wav",
+      "sha256": "ea84a84861f438eac035d4d81c53eecef5532a9b0fad112a3ebed5f70bb3e8be",
+      "seconds": 6.28,
+      "rate": 24000,
+      "bytes": 301536
+    }
+  ],
+  "semanticQuality": "NOT PASSED. ASR outputs still differ from target; ASR is not definitive listening.",
+  "asrModel": "Systran/faster-whisper-small, CPU INT8, beam_size=5, language=zh, vad_filter=False, condition_on_previous_text=False, no target prompt",
+  "asrBaseline": [
+    {
+      "file": "auto-16.wav",
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 3.12,
+          "text": "願意今天遇見的都是溫柔的小事",
+          "avg_logprob": -0.26836714236175313
+        },
+        {
+          "start": 3.12,
+          "end": 6.22,
+          "text": "放慢角度也別忘了聽聽自己的聲音",
+          "avg_logprob": -0.26836714236175313
+        }
+      ],
+      "seconds": 6.28
+    },
+    {
+      "file": "auto-32.wav",
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 3.0,
+          "text": "愿你今天遇见的都是温柔的小事",
+          "avg_logprob": -0.24191613299281975
+        },
+        {
+          "start": 3.0,
+          "end": 4.16,
+          "text": "放慢脚步",
+          "avg_logprob": -0.24191613299281975
+        },
+        {
+          "start": 4.16,
+          "end": 6.26,
+          "text": "也别忘了亲身自己的声音",
+          "avg_logprob": -0.24191613299281975
+        }
+      ],
+      "seconds": 6.28
+    },
+    {
+      "file": "clone-32.wav",
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 2.5,
+          "text": "您好 歡迎來到聲音工作室",
+          "avg_logprob": -0.35151174561730747
+        },
+        {
+          "start": 2.5,
+          "end": 5.6000000000000005,
+          "text": "今天我們測試完整的中文演音合成",
+          "avg_logprob": -0.35151174561730747
+        }
+      ],
+      "seconds": 5.6
+    }
+  ],
+  "asrAfter": [
+    {
+      "file": "bad-reference-before.wav",
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 1.28,
+          "text": "我死定了",
+          "avg_logprob": -1.6340040819985526
+        }
+      ],
+      "seconds": 1.28
+    },
+    {
+      "file": "valid-reference-after.wav",
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 3.12,
+          "text": "這地心前遇見的都是溫柔的小事",
+          "avg_logprob": -0.41282189214551773
+        },
+        {
+          "start": 3.12,
+          "end": 4.16,
+          "text": "放慢腳步",
+          "avg_logprob": -0.41282189214551773
+        },
+        {
+          "start": 4.16,
+          "end": 6.32,
+          "text": "也別忘了清理自己的聲音",
+          "avg_logprob": -0.41282189214551773
+        }
+      ],
+      "seconds": 6.28
+    }
+  ],
+  "nativeRegression": "Authored graphs passed; not speech quality evidence",
+  "durationGuard": "40% of unboosted upstream default estimate, with speed and one-frame tolerance. Plausibility only, not verification of exact transcript."
+}

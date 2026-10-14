@@ -30,3 +30,16 @@ assert state.index('job.put("state", state).put("progress", message)') < state.i
 assert state.index('StudioFiles.save') < state.index('progressGate.written') < state.index('sendBroadcast')
 assert 'stop.setVisibility(active&&!cancelRequested?View.VISIBLE:View.GONE)' in body('void updateGenerationPanel()')
 print('Progress persistence integration: live detail updates before coalescing; successful disk save precedes gate acknowledgement; terminal preview controls hidden. Source guard only.')
+
+engine=(Path(__file__).resolve().parents[1]/'app/src/main/java/com/voice/studio/OmniEngine.java').read_text()
+assert engine.index('OmniDuration.checkOutput') < engine.index('PcmAudio.markSynthetic(output)')
+execute=service[service.index('void execute(JSONObject job)'):service.index('void extractVoices')]
+assert execute.index('OmniDuration.checkOutput') < execute.index('if (existing > 0)') < execute.index('StudioFiles.history')
+codec=(Path(__file__).resolve().parents[1]/'app/src/main/java/com/voice/studio/OmniCodec.java').read_text()
+assert codec.index('OmniDuration.checkReference') < codec.index('features(models, "acoustic_encoder.onnx"')
+workspace=(Path(__file__).resolve().parents[1]/'app/src/main/java/com/voice/studio/WorkspaceActivity.java').read_text()
+assert 'cloneDialog(Uri.fromFile(audio), j)' in workspace
+assert 'previous.optDouble("referenceStart", 0)' in workspace
+assert 'previous.optDouble("referenceSeconds", 6)' in workspace
+assert '修正文字并重建音色' in workspace
+print('Local quality guards: output checks precede publication/reuse; reference check precedes encoding; rebuild reuses original crop metadata. Source guard only.')

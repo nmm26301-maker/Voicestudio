@@ -2,6 +2,37 @@ package com.voice.studio;
 
 /** Port of k2-fsa OmniVoice RuleDurationEstimator, Apache-2.0, Han Zhu/Xiaomi 2026. */
 final class OmniDuration {
+  // A conservative plausibility floor, not a transcript or intelligibility test.
+  // Avoid calibrating a whole paragraph against a few seconds of reference audio.
+  static final double MIN_REFERENCE_SCALE = .4;
+  static boolean hasSpeech(String text) {
+    for (int at = 0; at < text.length();) {
+      int cp = text.codePointAt(at);
+      if (Character.isLetterOrDigit(cp)) return true;
+      at += Character.charCount(cp);
+    }
+    return false;
+  }
+
+  static void checkReference(String text, int frames) throws java.io.IOException {
+    if (text == null || !hasSpeech(text))
+      throw new java.io.IOException("参考文字没有可朗读内容，请填写录音实际说出的文字");
+    double ordinary = total(text) * 25 / total("Nice to meet you.");
+    if (frames < ordinary * MIN_REFERENCE_SCALE)
+      throw new java.io.IOException("参考文字与录音时长明显不匹配，会导致漏字或截短；请仅填写所选片段实际说出的文字，再重新创建音色");
+  }
+
+  static void checkOutput(String text, float speed, double seconds) throws java.io.IOException {
+    if (text == null || !hasSpeech(text))
+      throw new java.io.IOException("文本中没有可朗读的文字");
+    if (!Float.isFinite(speed) || speed < .5 || speed > 2
+        || !Double.isFinite(seconds) || seconds <= 0)
+      throw new java.io.IOException("本地音频时长或语速无效");
+    // Use unboosted weight and allow one codec frame for flooring; pauses only add time.
+    double minimumFrames = total(text) * 25 / total("Nice to meet you.") * MIN_REFERENCE_SCALE / speed;
+    if (seconds * 25 + 1 < minimumFrames)
+      throw new java.io.IOException("本地合成音频明显短于输入文字，已停止保存不完整作品；请检查参考录音与对应文字，重新创建音色后生成");
+  }
   static final int[] LIMITS = {
     687, 1023, 1327, 1423, 1535, 1919, 2207, 2303, 2431, 2559, 2687, 2815, 2943, 3071, 3199, 3327,
     3455, 3583, 3839, 4095, 4255, 4351, 4607, 4991, 5023, 5119, 5759, 5791, 5887, 5919, 5951, 5983,
