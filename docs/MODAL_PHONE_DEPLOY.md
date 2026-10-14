@@ -35,15 +35,15 @@ Modal Web Function 由 VoiceStudio 自带的 Bearer 网关密钥鉴权。这个�
 
 ### 第三步：在 GitHub 手机网页手动部署
 
-1. 打开 https://github.com/nmm26301-maker/Voicestudio ，在浏览器切换到分支 `feature/cloud-voice-20261014`，确认该分支包含 `.github/workflows/deploy-modal-qwen.yml`。
+1. 打开 https://github.com/nmm26301-maker/Voicestudio 。手动部署工作流已经加入默认 `main` 分支，GitHub Actions 列表可以直接找到；它会在运行时自动检出 `feature/cloud-voice-20261014` 的部署代码。
 2. 打开仓库 **Settings → Secrets and variables → Actions → New repository secret**，分别添加：
    - `MODAL_TOKEN_ID` = 上一步创建的 Modal Token ID。
    - `MODAL_TOKEN_SECRET` = 对应 Modal Token Secret。
-3. 在仓库 **Actions** 标签选择 **Deploy VoiceStudio Qwen3-TTS to Modal**，点击 **Run workflow**，并在下拉菜单中指定 `feature/cloud-voice-20261014` 分支后确认。
+3. 在仓库 **Actions** 标签选择 **Deploy VoiceStudio Qwen3-TTS to Modal**，点击 **Run workflow**，保持默认 `main` 分支后确认（实际部署代码会从开发分支读取）。
 4. 等待工作流部署完成。执行时 GitHub Actions 只安装 Modal 部署客户端，真正的 qwen-tts 和模型下载、推理发生在 Modal 云端。
 5. 打开 Modal Dashboard → Apps → `voicestudio-qwen3tts` → `voice_api`，复制平台显示的 HTTPS **Web Endpoint URL**。以 Modal 页面实际生成的地址为准，不要自行编造。
 
-找不到部署工作流通常是因为 GitHub 的 **workflow_dispatch** 新工作流尚未出现在默认分支 Actions 列表；需要先把工作流文件纳入默认分支（但不要上传密钥），然后从 Actions 下拉列表选择正确的开发分支。首次部署也可能失败，因为 Modal Secret 尚未创建、账户权限或付费设置限制、GPU 不可用、模型依赖安装失败。
+找不到部署工作流时，请在浏览器切到完整桌面版网站并检查仓库 Actions 是否启用。首次部署也可能失败，因为 Modal Secret 尚未创建、账户权限或付费设置限制、GPU 不可用、模型依赖安装失败。
 
 ### 第四步：回到 VoiceStudio 填入云端地址
 
