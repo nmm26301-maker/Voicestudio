@@ -867,11 +867,11 @@ public class MainActivity extends Activity {
         gap(content, 12);
         generate =
                 button(
-                        isGenerating() ? "取消生成" : prefs.getBoolean("cloud-api-consent",false) ? "生成声音" : "✦ 免费云端试听",
+                        isGenerating() ? "取消生成" : "♫ 开始合成",
                         true,
                         () -> {
                             if (isGenerating()) cancelJob();
-                            else if(!prefs.getBoolean("cloud-api-consent",false))freeCloudStarter();
+                            
                             else generate();
                         });
 
@@ -2060,7 +2060,16 @@ public class MainActivity extends Activity {
         add(c,states);gap(c,14);
         EditText url=field("你的 HTTPS 网关地址", "",false),voice=field("平台音色 ID / 自建网关音色", "auto",false),key=field("密钥", "",true);
         key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-        add(c,url);gap(c,10);add(c,voice);gap(c,10);add(c,key);gap(c,8);
+        add(c,url);gap(c,10);add(c,voice);gap(c,8);
+        TextView miniPicker=button("♫ 选择 MiniMax 预置音色 ID",false,()->{
+            final String[] ids={"male-qn-qingse","male-qn-jingying","female-shaonv","female-yujie","female-tianmei"};
+            final String[] labels={"青涩青年男声","精英青年男声","少女女声","御姐女声","甜美女声"};
+            new CosmicDialogBuilder(this).setTitle("MiniMax 音色库 · 预置 ID")
+                .setItems(labels,(dialog,index)->{voice.setText(ids[index]);toast("已填入 "+ids[index]);})
+                .setNegativeButton("取消",null).show();
+        });
+        miniPicker.setVisibility("minimax".equals(chosen)?View.VISIBLE:View.GONE);
+        add(c,miniPicker);gap(c,10);add(c,key);gap(c,8);
         add(c,button("粘贴已领取的密钥",false,()->{
             android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
             if(clipboard.hasPrimaryClip()){CharSequence value=clipboard.getPrimaryClip().getItemAt(0).coerceToText(this);key.setText(value==null?"":value.toString().trim());toast("已粘贴；保存后密钥会加密存储");}else toast("请先在平台官网复制 API Key");
@@ -2071,6 +2080,7 @@ public class MainActivity extends Activity {
         Map<String,String[]> drafts=new HashMap<>();String[] activeRoute={""};boolean[] applying={false};
         Runnable updateRoute=()->{
             String id=CLOUD_IDS[provider.getSelectedItemPosition()];
+            miniPicker.setVisibility("minimax".equals(id)?View.VISIBLE:View.GONE);
             if(mode.getSelectedItemPosition()==1&&!CloudConnectionPolicy.official(id)){mode.setSelection(0);toast("此开源模型使用自建网关，已切换连接方式");}
             boolean direct=mode.getSelectedItemPosition()==1&&CloudConnectionPolicy.official(id);String route=direct?"official-"+id:"gateway";
             if(!route.equals(activeRoute[0])){
