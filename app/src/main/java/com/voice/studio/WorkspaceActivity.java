@@ -98,6 +98,7 @@ public class WorkspaceActivity extends Activity {
         voice.addView(CosmicUi.hero(this,"声音小宇宙","录音保存在手机，生成时才上传。","VOICE LAB",CosmicUi.PINK));
         voiceCapture=new VoiceCapturePanel(this,voice);
         button(voice,"选择 / 删除已保存音色",this::profiles);
+        button(voice,"✦ 免电脑免费克隆 · 官方 Qwen / IndexTTS",this::openFreeDemo);
         button(voice,"配置云端合成引擎",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
         LinearLayout bulk=sectionCard("批量","云端批量朗读","每行一个任务；自动分段保存完整声音。批量可能消耗第三方 API 额度，请先确认配置和费用。");
         button(bulk,"输入批量文字并提交",this::batch);
@@ -462,6 +463,18 @@ public class WorkspaceActivity extends Activity {
         } catch (Exception ignored) {
         }
         return u.toString();
+    }
+
+    void openFreeDemo() {
+        new CosmicDialogBuilder(this).setTitle("✦ 免费云端声音星球")
+            .setMessage("不需要电脑！先在本页录音并点“导出 WAV”，然后在官方 ZeroGPU 网页上传声音、输入新文字；完成后下载音频。免费额度有限，浏览器演示不等于已连接后台 API。")
+            .setNegativeButton("取消",null)
+            .setNeutralButton("Qwen3-TTS",(d,n)->{
+                startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://huggingface.co/spaces/Qwen/Qwen3-TTS")));
+            })
+            .setPositiveButton("IndexTTS 2.5",(d,n)->{
+                startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse("https://huggingface.co/spaces/IndexTeam/IndexTTS-2.5-Demo")));
+            }).show();
     }
 
     void profiles() {
