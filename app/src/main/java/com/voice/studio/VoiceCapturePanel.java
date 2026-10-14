@@ -14,7 +14,7 @@ final class VoiceCapturePanel {
     final WorkspaceActivity owner;
     final LinearLayout body;
     final EditText name, transcript;
-    final TextView status, record, listen, save;
+    final TextView status, record, listen, save, exportReference;
     final Meter meter;
     volatile boolean capturing, stop;
     volatile long frames;
@@ -35,6 +35,10 @@ final class VoiceCapturePanel {
         record = action("● 开始录音", this::request);
         listen = action("▷ 试听录音", () -> { if (draft != null) owner.preview(draft, "人物声音试听"); });
         save = action("保存为人物音色", this::submit);
+        exportReference = action("导出 WAV 到手机 · 供免费网页克隆", () -> {
+            if (!capturing && draft != null && draft.isFile()) owner.saveOutput(draft);
+            else owner.toast("请先完成录音");
+        });
         String path = owner.getSharedPreferences("studio", 0).getString("voice-draft-file", "");
         if (path.matches("[a-f0-9-]+\\.wav")) {
             File candidate = new File(StudioFiles.dir(owner, "audio"), path);
@@ -125,6 +129,7 @@ final class VoiceCapturePanel {
         record.setEnabled(true); record.setText(capturing ? "■ 结束录音" : "● " + (draft == null ? "开始录音" : "重新录音"));
         listen.setEnabled(!capturing && seconds > 0); listen.setAlpha(listen.isEnabled() ? 1 : .45f);
         save.setEnabled(!capturing && usable); save.setAlpha(save.isEnabled() ? 1 : .45f);
+        exportReference.setEnabled(!capturing && usable); exportReference.setAlpha(exportReference.isEnabled() ? 1 : .45f);
         if (!capturing) {
             meter.active = false; meter.invalidate();
             status.setText(seconds > 0 ? String.format(Locale.CHINA, "录音已保留 · %.1f 秒%s", seconds, usable ? " · 可试听与保存" : " · 少于 3 秒，请重录") : "点击录音，清晰说话 3—10 秒");
