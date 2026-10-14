@@ -12,7 +12,7 @@
 | 作品 | 搜索、收藏、排序、播放、波形、重命名、导出和回收站 |
 | 设置 | 云端连接、动效、平台申请入口与作品管理 |
 
-[免电脑免费试用](docs/FREE_MOBILE_CLOUD.md) · [平台申请与自动地址](docs/PLATFORM_ACCESS.md) · [九引擎部署和使用](docs/CLOUD_ENGINES.md) · [本次变更](CHANGELOG-1.5.24.md) · [验证范围](validation/current-checks.md) · [历史版本说明](docs/HISTORY-1.5.19.md)
+[免电脑免费试用](docs/FREE_MOBILE_CLOUD.md) · [平台申请与自动地址](docs/PLATFORM_ACCESS.md) · [九引擎部署和使用](docs/CLOUD_ENGINES.md) · [八引擎接口与合成步骤](docs/EIGHT_ENGINES_SYNTHESIS.md) · [本次变更](CHANGELOG-1.5.24.md) · [验证范围](validation/current-checks.md) · [历史版本说明](docs/HISTORY-1.5.19.md)
 
 包含你指定的 IndexTTS 2.5、CosyVoice 3、Qwen3-TTS、ElevenLabs、MiniMax Speech、Chatterbox V3、GPT-SoVITS、Cartesia Sonic，以及保留的 Fish Audio（总计九个）。前四款开源模型通过 Python worker，GPT-SoVITS 通过独立安全桥接，Fish、ElevenLabs、MiniMax、Cartesia 提供官方 API 直连。开源模型必须有自己的可用 GPU/权重和部署网关，商业直连需 API Key/Voice ID 才能真实合成，此安装包不会自动提供免费服务器。模拟回归不代表已通过九模型真实音质验收。
 
