@@ -49,6 +49,10 @@ jobs:
           if unzip -Z1 build-manual/VoiceStudio-1.5.20-Cloud-unsigned.apk | grep -q 'libonnxruntime'; then
             echo "Unexpected local ONNX runtime in cloud-only APK" >&2; exit 1
           fi
+      - name: Run Java remote speech regressions
+        run: |
+          curl --fail --location --retry 3 --output /tmp/json.jar https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar
+          ECJ_JAR=/tmp/ecj.jar JSON_JAR=/tmp/json.jar bash tests/run_accelerated.sh
       - uses: actions/upload-artifact@v4
         with:
           name: VoiceStudio-1.5.20-cloud-unsigned-compile-check
