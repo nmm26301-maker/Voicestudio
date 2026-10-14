@@ -104,6 +104,7 @@ public class WorkspaceActivity extends Activity {
         button(voice,"选择 / 删除已保存音色",this::profiles);
         button(voice,"✦ 免电脑免费克隆 · 官方 Qwen / IndexTTS",this::openFreeDemo);
         button(voice,"配置云端合成引擎",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
+        button(voice,"♫ 进入文字合成工作台",()->startActivity(new Intent(this,MainActivity.class).setAction("com.voice.studio.SELECT_ENGINE").putExtra("engine","accelerated")));
         LinearLayout bulk=sectionCard("批量","云端批量朗读","每行一个任务；自动分段保存完整声音。批量可能消耗第三方 API 额度，请先确认配置和费用。");
         button(bulk,"输入批量文字并提交",this::batch);
         tasks=sectionCard("任务","生成任务与结果","查看任务状态、失败详情与旧版作品。后台不会加载已停用的本地语音模型。");
