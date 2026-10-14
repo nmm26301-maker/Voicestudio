@@ -22,4 +22,4 @@ jobs:
       - name: Compile Python and test without provider keys
         run: |
           python -m compileall -q server/cloud_gateway.py server/test_cloud_gateway.py
-          pytest -q server/test_cloud_gateway.py
+          python -m pytest -q server/test_cloud_gateway.py
