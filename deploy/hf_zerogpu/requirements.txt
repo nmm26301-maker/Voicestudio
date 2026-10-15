@@ -1,0 +1,7 @@
+gradio>=5.49,<7
+spaces
+qwen-tts
+soundfile
+numpy
+torch
+torchaudio
