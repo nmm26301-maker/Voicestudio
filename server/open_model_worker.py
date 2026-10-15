@@ -52,8 +52,11 @@ def load_model(engine):
     if engine == "qwen3tts":
         import torch
         from qwen_tts import Qwen3TTSModel
-        return Qwen3TTSModel.from_pretrained(directory or "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
-                                            device_map=device, dtype=torch.bfloat16)
+        model_name = directory or os.getenv("VOICE_QWEN_MODEL_ID", "Qwen/Qwen3-TTS-12Hz-1.7B-Base")
+        # T4/P100-class free GPUs often cannot perform native BF16 operations.
+        # Prefer BF16 on modern GPUs, FP16 elsewhere; still infer remotely.
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+        return Qwen3TTSModel.from_pretrained(model_name, device_map=device, dtype=dtype)
     if engine == "cosyvoice3":
         from cosyvoice.cli.cosyvoice import AutoModel
         if not directory:
