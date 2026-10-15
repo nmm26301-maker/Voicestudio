@@ -1778,7 +1778,7 @@ public class MainActivity extends Activity {
                 new SecretStore(this,"gpu-hf").save(value);
                 prefs.edit().putString("gpu-hf-url",address).putString("gpu-hf-profile",upload.isChecked()?profile[0]:"")
                     .putString("accelerated-url",address).putString("accelerated-provider","hf").putString("accelerated-protocol","gradio")
-                    .putString("accelerated-model","qwen3tts").putString("accelerated-voice",upload.isChecked()?"参考人物音色":"未选择参考音色").apply();
+                    .putString("accelerated-model","qwen3tts").putString("cloud-engine","qwen3tts").putString("accelerated-voice","参考人物音色").apply();
                 engine="accelerated";saveSettings();dialog.dismiss();change("创作");
             }catch(Exception e){toast(e.getMessage());}
         }));dialog.show();
