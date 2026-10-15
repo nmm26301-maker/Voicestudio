@@ -1,0 +1,49 @@
+name: Deploy VoiceStudio selected engine to Modal
+on:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: One isolated GPU app per engine (GPU/storage may be billed)
+        required: true
+        default: qwen3tts
+        type: choice
+        options:
+          - qwen3tts
+          - indextts25
+          - cosyvoice3
+          - chatterboxv3
+          - gptsovits
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      VOICE_DEPLOY_ENGINE: ${{ inputs.engine }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/cloud-voice-20261014
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify deployment credentials
+        shell: bash
+        run: |
+          if [[ -z "$MODAL_TOKEN_ID" || -z "$MODAL_TOKEN_SECRET" ]]; then
+            echo "::error::Configure MODAL_TOKEN_ID and MODAL_TOKEN_SECRET repository secrets."
+            exit 1
+          fi
+      - run: python -m pip install "modal>=1.1,<2"
+      - name: Build and deploy the selected remote image (manual only)
+        run: modal deploy -m server.modal_engine_deploy
+      - name: Report actual endpoint without submitting GPU synthesis
+        run: python tools/report_modal_endpoint.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceStudio-Modal-connection
+          path: deployment-output/VoiceStudio-Modal-Connection.json
+          if-no-files-found: error
+          retention-days: 7
