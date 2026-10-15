@@ -1768,6 +1768,8 @@ public class MainActivity extends Activity {
         EditText url=field("https://作者-空间名.hf.space",prefs.getString("gpu-hf-url",""),false);
         String token="";try{token=new SecretStore(this,"gpu-hf").read();}catch(Exception ignored){}
         EditText key=field("可选 HF Token；匿名可留空",token,true);key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+        add(form,button("① 打开 ZeroGPU 一键发布入口",false,()->openUrl(CloudDeploymentConfig.HF_WORKFLOW)));gap(form,8);
+        add(form,text("Run workflow 只上传代码；请先配置自己的 HF_TOKEN、HF_SPACE_ID 和 Space 的 ZeroGPU 硬件资格。运行后粘贴实际 *.hf.space 地址。",12,MUTED,false));gap(form,10);
         add(form,url);add(form,key);
         String[] profile={prefs.getString("gpu-hf-profile","")};
         CheckBox upload=new CheckBox(this);upload.setText("合成时上传所选参考录音（3—10 秒）");upload.setTextColor(INK);upload.setChecked(!profile[0].isEmpty());add(form,upload);
@@ -1798,20 +1800,71 @@ public class MainActivity extends Activity {
         new CosmicDialogBuilder(this).setTitle("选择会上传的参考人物录音").setItems(names.toArray(new String[0]),(d,n)->{selected[0]=ids.get(n);toast("已选："+names.get(n));}).show();
     }
 
-    void modalConfig() {
-        LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(20),dp(12),dp(20),dp(12));
-        EditText url=field("https://你的服务.modal.run",prefs.getString("gpu-modal-url",""),false);
-        String token="";try{token=new SecretStore(this,"gpu-modal").read();}catch(Exception ignored){}
-        EditText key=field("服务 VOICE_API_TOKEN（不是 Modal 账号密钥）",token,true);key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
-        add(form,url);add(form,key);add(form,text("部署项目 server/modal_app.py 后粘贴地址与自己设置的服务密钥。默认每天 10 次、每段最多 2000 字；长文自动分段，每段计一次调用，使用自动音色。",12,MUTED,false));
-        AlertDialog dialog=new CosmicDialogBuilder(this).setTitle("Modal GPU 合成设置").setView(form).setNegativeButton("取消",null).setPositiveButton("保存并使用",null).create();
+    void modalConfig() {gpuGatewayConfig("modal");}
+    void copyPrivateValue(String label,String value) {
+        ClipData clip=ClipData.newPlainText(label,value);
+        android.os.PersistableBundle extras=new android.os.PersistableBundle();extras.putBoolean("android.content.extra.IS_SENSITIVE",true);
+        clip.getDescription().setExtras(extras);
+        ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(clip);
+        toast("已复制，请粘贴到对应平台；不要发到公开聊天或仓库");
+    }
+    void gpuGatewayConfig(String platform) {
+        boolean modal=platform.equals("modal");String brand=modal?"Modal":"Lightning";
+        LinearLayout form=col();form.setPadding(dp(16),dp(12),dp(16),dp(16));
+        info(form,brand+" · 云端 Qwen3-TTS","先部署，再填写真实服务地址。模型在远程 GPU 运行；创建账户、授权和 GPU 费用由你在平台确认。");gap(form,12);
+        if(modal){
+            add(form,text("部署前：Modal 创建 voicestudio-cloud Secret；GitHub Actions Secrets 添加 MODAL_TOKEN_ID 和 MODAL_TOKEN_SECRET。下面的网关密钥与账号部署 Token 是两套凭据。",12,MUTED,false));gap(form,8);
+            add(form,button("打开 GitHub Actions Secrets 设置",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/settings/secrets/actions")));gap(form,8);
+            add(form,button("Modal Secret 创建步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md")));gap(form,8);
+            add(form,button("① 打开 GitHub 部署入口 · Run workflow",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(form,8);
+            add(form,button("查看部署运行结果 / Summary",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(form,8);
+            add(form,button("打开 Modal Apps · 查看实际 Web Endpoint",false,()->openUrl("https://modal.com/apps")));gap(form,10);
+            add(form,text("GitHub 选择 main → Run workflow。成功后展开本次运行的 Summary，即可复制真实地址；也可在 Modal Apps → voicestudio-qwen3tts → voice_api 查看 Web Endpoint。",12,MUTED,false));gap(form,10);
+            add(form,button("复制 Modal Secret 名称：voicestudio-cloud",false,()->copyPrivateValue("Secret 名称","voicestudio-cloud")));gap(form,8);
+            add(form,button("复制变量名：VOICE_GATEWAY_TOKEN",false,()->copyPrivateValue("变量名","VOICE_GATEWAY_TOKEN")));gap(form,8);
+        }else{
+            add(form,button("① 打开 Lightning 云端部署步骤",false,()->gpuGatewayConfig("lightning")));gap(form,8);
+        }
+        EditText address=field("② 实际 HTTPS 运行地址（或部署 JSON）",prefs.getString("gpu-"+platform+"-url",""),false);
+        String existing="";try{existing=new SecretStore(this,modal?"gpu-modal":"gpu-lightning").read();}catch(Exception ignored){}
+        EditText token=field("③ VOICE_GATEWAY_TOKEN · 至少 24 位",existing,true);
+        token.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);add(form,address);gap(form,10);add(form,token);gap(form,8);
+        add(form,button("生成新网关密钥（仅在本机生成）",false,()->{
+            if(!token.getText().toString().isEmpty()){toast("已有密钥；更换部署密钥时请先清空，避免与服务器不一致");return;}
+            byte[] bytes=new byte[32];new java.security.SecureRandom().nextBytes(bytes);
+            token.setText(java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));toast("已生成；请复制到服务器的 VOICE_GATEWAY_TOKEN，尚未自动部署");
+        }));gap(form,8);
+        add(form,button("复制当前网关密钥 → 粘贴到平台 Secret",false,()->{
+            if(token.getText().length()<24){toast("请先填写或生成至少 24 位网关密钥");return;}
+            copyPrivateValue("VOICE_GATEWAY_TOKEN",token.getText().toString());
+        }));gap(form,10);
+        add(form,text("这里填写自建网关密钥，不是 MODAL_TOKEN_SECRET 或 HF Token。更换本机密钥不会自动修改服务器 Secret；两边必须完全一致。",12,MUTED,false));gap(form,10);
+        final String[] profile={prefs.getString("cloud-profile","")};
+        add(form,button("④ 选择已录好的参考音色（3—10 秒）",false,()->pickGpuProfile(profile)));gap(form,8);
+        TextView result=text("连接尚未检测",12,MUTED,false);add(form,result);gap(form,8);
+        TextView probe=button("⑤ 检测连接 · 不提交合成",false,()->{});
+        probe.setOnClickListener(v->{
+            final String url,key;
+            try{url=CloudDeploymentConfig.endpoint(platform,address.getText().toString());key=token.getText().toString().trim();AcceleratedSpeechClient.token(key);if(key.length()<24)throw new IOException("请填写至少 24 位网关访问密钥");}
+            catch(Exception e){result.setText(e.getMessage());return;}
+            probe.setEnabled(false);result.setText("正在连接；GPU 冷启动可能较慢…");
+            new Thread(()->{String message;try{Set<String> configured=new CloudHealthClient().check(url,key);if(!configured.contains("qwen3tts"))throw new IOException("服务未配置 Qwen3-TTS");message="连接成功 · Qwen3-TTS 已配置（音质尚未验证）";}catch(Exception e){message=e.getMessage();}final String detail=message;
+                runOnUiThread(()->{if(isFinishing()||isDestroyed())return;probe.setEnabled(true);try{result.setText(!url.equals(CloudDeploymentConfig.endpoint(platform,address.getText().toString()))||!key.equals(token.getText().toString().trim())?"配置已变更，请重新检测":detail);}catch(Exception e){result.setText("配置已变更，请重新检测");}});
+            },"gpu-connection-check").start();
+        });add(form,probe);
+        ScrollView scroll=new ScrollView(this);scroll.addView(form);
+        AlertDialog dialog=new CosmicDialogBuilder(this).setTitle(brand+" 手机部署与连接")
+            .setView(scroll).setNegativeButton("取消",null).setPositiveButton("保存连接 → 合成",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{
-            String address=AcceleratedSpeechClient.endpoint(url.getText().toString()),value=key.getText().toString().trim();AcceleratedSpeechClient.token(value);
-            if(value.isEmpty())throw new IOException("请填写部署时设置的服务密钥");
-            new SecretStore(this,"gpu-modal").save(value);
-            prefs.edit().putString("gpu-modal-url",address).putString("accelerated-url",address).putString("accelerated-provider","modal")
-                .putString("accelerated-protocol","rest").putString("accelerated-model","k2-fsa/OmniVoice").putString("accelerated-voice","auto").apply();
-            engine="accelerated";saveSettings();dialog.dismiss();change("创作");
+            String url=CloudDeploymentConfig.endpoint(platform,address.getText().toString()),key=token.getText().toString().trim();
+            AcceleratedSpeechClient.token(key);if(key.length()<24)throw new IOException("请使用至少 24 位的 VOICE_GATEWAY_TOKEN，不是平台登录 Token");
+            if(profile[0].isEmpty()||!new File(StudioFiles.dir(this,"profiles"),profile[0]+".reference.wav").isFile())throw new IOException("Qwen3-TTS 需要先录制并选择参考音色");
+            new SecretStore(this,"accelerated").save(key);new SecretStore(this,modal?"gpu-modal":"gpu-lightning").save(key);
+            prefs.edit().putString("gpu-"+platform+"-url",url).putString("gateway-url",url).putString("cloud-url",url)
+                .putString("cloud-engine","qwen3tts").putString("cloud-profile",profile[0]).putString("cloud-voice","auto")
+                .putString("accelerated-url",url).putString("accelerated-provider","custom").putString("accelerated-protocol","rest")
+                .putString("accelerated-model","qwen3tts").putString("accelerated-voice","auto").apply();
+            engine="accelerated";saveSettings();dialog.dismiss();change("创作");toast("已保存云端连接；输入文字后直接点击开始合成");
         }catch(Exception e){toast(e.getMessage());}}));dialog.show();
     }
 
@@ -2043,9 +2096,9 @@ public class MainActivity extends Activity {
         final String[] gpuDetails={"免费配额 · 直接合成","计算赠额 · HTTPS","Notebook · 导出 WAV","GPU Studio · HTTPS"};
         final Runnable[] gpuActions={
             this::gradioConfig,
-            ()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md"),
+            this::modalConfig,
             ()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/kaggle/VoiceStudio-Qwen3-TTS.ipynb"),
-            ()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/lightning/README.md")
+            ()->gpuGatewayConfig("lightning")
         };
         for(int start=0;start<4;start+=2){
             LinearLayout gpuRow=row();
@@ -2100,6 +2153,13 @@ public class MainActivity extends Activity {
                 .setItems(labels,(dialog,index)->{voice.setText(ids[index]);toast("已填入 "+ids[index]);})
                 .setNegativeButton("取消",null).show();
         });
+        TextView onlineVoices=button("读取平台音色 ID · 不合成",false,()->{
+            String id=CLOUD_IDS[provider.getSelectedItemPosition()];String credential=key.getText().toString().trim();
+            if(!id.equals("elevenlabs")&&!id.equals("cartesia")){toast("此平台请使用预置 ID 或官方音色说明");return;}
+            pickOfficialVoice(id,credential,"",voice,()->id.equals(CLOUD_IDS[provider.getSelectedItemPosition()])&&credential.equals(key.getText().toString().trim()));
+        });
+        onlineVoices.setVisibility(chosen.equals("elevenlabs")||chosen.equals("cartesia")?View.VISIBLE:View.GONE);
+        add(c,onlineVoices);gap(c,8);
         miniPicker.setVisibility("minimax".equals(chosen)?View.VISIBLE:View.GONE);
         add(c,miniPicker);gap(c,10);add(c,key);gap(c,8);
         add(c,button("粘贴已领取的密钥",false,()->{
@@ -2109,9 +2169,12 @@ public class MainActivity extends Activity {
         TextView apply=button("注册 / 申请账号",false,()->{}),getKey=button("领取 API Key",false,()->{}),docs=button("打开平台说明",false,()->{});
         add(c,apply);gap(c,8);add(c,getKey);gap(c,8);add(c,docs);gap(c,10);
         TextView health=text("连接状态 · 尚未检测",13,MUTED,false);add(c,health);gap(c,8);
+        String[] selected={prefs.getString("cloud-profile","")};CheckBox clone=new CheckBox(this);clone.setText("使用已录制的参考声音克隆");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());
         Map<String,String[]> drafts=new HashMap<>();String[] activeRoute={""};boolean[] applying={false};
         Runnable updateRoute=()->{
             String id=CLOUD_IDS[provider.getSelectedItemPosition()];
+            if(id.equals("elevenlabs")||id.equals("cartesia")||id.equals("minimax"))clone.setChecked(false);
+            onlineVoices.setVisibility(id.equals("elevenlabs")||id.equals("cartesia")?View.VISIBLE:View.GONE);
             miniPicker.setVisibility("minimax".equals(id)?View.VISIBLE:View.GONE);
             if(mode.getSelectedItemPosition()==1&&!CloudConnectionPolicy.official(id)){mode.setSelection(0);toast("此开源模型使用自建网关，已切换连接方式");}
             boolean direct=mode.getSelectedItemPosition()==1&&CloudConnectionPolicy.official(id);String route=direct?"official-"+id:"gateway";
@@ -2150,7 +2213,7 @@ public class MainActivity extends Activity {
         });add(c,probe);gap(c,8);
         gap(c,12);
         TextView languageChoice=button("文字语言 · "+omniLanguageName(),false,()->{});languageChoice.setOnClickListener(v->pickCloudLanguage(languageChoice));add(c,languageChoice);gap(c,10);
-        String[] selected={prefs.getString("cloud-profile","")};CheckBox clone=new CheckBox(this);clone.setText("使用已录制的参考声音克隆");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());add(c,clone);add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));gap(c,8);
+        add(c,clone);add(c,button("选择已保存的人物录音",false,()->pickGpuProfile(selected)));gap(c,8);
         add(c,text("GPT-SoVITS 与 Fish 参考录音需准确原文；ElevenLabs、MiniMax、Cartesia 需使用平台注册的 Voice ID。免费试用入口与付费 API 分开。",12,MUTED,false));gap(c,12);
         add(c,button("保存并使用",true,()->{
             try{
@@ -2179,6 +2242,19 @@ public class MainActivity extends Activity {
         add(c,button("Kaggle · GPU Notebook 申请",false,()->openUrl("https://www.kaggle.com/account/login")));
         add(content,c);
     }
+    void pickOfficialVoice(String id,String key,String cursor,EditText target,java.util.function.BooleanSupplier current) {
+        toast("正在只读获取音色列表…");
+        new Thread(()->{try{
+            OfficialVoiceCatalog.Page page=new OfficialVoiceCatalog().list(id,key,cursor);
+            runOnUiThread(()->{if(isFinishing()||isDestroyed()||!target.isAttachedToWindow()||!current.getAsBoolean())return;
+                String[] names=page.names.toArray(new String[0]);
+                AlertDialog.Builder picker=new CosmicDialogBuilder(this).setTitle(CloudEngineCatalog.label(id)+" · 平台音色 ID")
+                    .setItems(names,(d,n)->{if(current.getAsBoolean()){target.setText(page.ids.get(n));toast("已填入平台返回的音色 ID");}}).setNegativeButton("关闭",null);
+                if(!page.next.isEmpty())picker.setPositiveButton("下一页",(d,n)->pickOfficialVoice(id,key,page.next,target,current));
+                picker.show();if(names.length==0)toast("此页没有可用音色，请检查账号或继续下一页");
+            });
+        }catch(Exception e){runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())toast(e.getMessage());});}},"official-voice-list").start();
+    }
     String CloudConnectionCatalogTitle(String id){return CloudConnectionPolicy.official(id)?"官方使用与音色说明":"打开 "+CloudEngineCatalog.label(id)+" 模型 / 部署说明";}
 
     void offlineSettings() {
@@ -2194,7 +2270,7 @@ public class MainActivity extends Activity {
         info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
         add(content,privacy);gap(content,12);
         LinearLayout about=card();
-        info(about,"VoiceStudio 1.5.25 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
+        info(about,"VoiceStudio 1.5.26 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
         add(content,about);
     }
 

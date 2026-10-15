@@ -6,10 +6,10 @@ project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 out_dir="$(mktemp -d)"
 trap 'rm -rf "$out_dir"' EXIT
 sources=()
-for name in JobProgressGate SynthesisPreview AcceleratedSpeechClient GradioSpeechClient CloudReferenceClient CloudWavMerge CloudHealthClient CloudEngineCatalog CloudConnectionPolicy OfficialSpeechClient FishInlineMessage FishClient RemoteSpeechSession RemoteSpeechPipeline KaggleTask SynthesisRequests AudioChecks PcmAudio OmniDuration OmniSegments OmniPrompt VoicePrompt;do
+for name in JobProgressGate SynthesisPreview AcceleratedSpeechClient GradioSpeechClient CloudReferenceClient CloudWavMerge CloudHealthClient CloudDeploymentConfig OfficialVoiceCatalog CloudEngineCatalog CloudConnectionPolicy OfficialSpeechClient FishInlineMessage FishClient RemoteSpeechSession RemoteSpeechPipeline KaggleTask SynthesisRequests AudioChecks PcmAudio OmniDuration OmniSegments OmniPrompt VoicePrompt;do
  sources+=("$project_dir/app/src/main/java/com/voice/studio/$name.java")
 done
-java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$out_dir" "${sources[@]}" "$project_dir/tests/OfficialSpeechTest.java" "$project_dir/tests/CloudHealthTest.java" "$project_dir/tests/AcceleratedSpeechTest.java" "$project_dir/tests/OmniPromptTest.java" "$project_dir/tests/GradioSpeechTest.java" "$project_dir/tests/LiveGradioSpeech.java" "$project_dir/tests/RemoteSpeechPipelineTest.java" "$project_dir/tests/LiveGradioPipeline.java" "$project_dir/tests/AudioValidationTest.java" "$project_dir/tests/CloudWavMergeTest.java" "$project_dir/tests/DownloadRecoveryTest.java" "$project_dir/tests/ProgressPersistenceTest.java"
+java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$out_dir" "${sources[@]}" "$project_dir/tests/OfficialVoiceCatalogTest.java" "$project_dir/tests/OfficialSpeechTest.java" "$project_dir/tests/CloudHealthTest.java" "$project_dir/tests/AcceleratedSpeechTest.java" "$project_dir/tests/OmniPromptTest.java" "$project_dir/tests/GradioSpeechTest.java" "$project_dir/tests/LiveGradioSpeech.java" "$project_dir/tests/RemoteSpeechPipelineTest.java" "$project_dir/tests/LiveGradioPipeline.java" "$project_dir/tests/AudioValidationTest.java" "$project_dir/tests/CloudWavMergeTest.java" "$project_dir/tests/DownloadRecoveryTest.java" "$project_dir/tests/ProgressPersistenceTest.java"
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.OfficialSpeechTest "$out_dir/fish-reference.msgpack"
 python3 - "$out_dir/fish-reference.msgpack" <<'MSG'
 import sys, struct
@@ -39,6 +39,7 @@ assert len(body['references'][0]['audio'])==240044
 assert body['prosody']['speed']==1 and body['format']=='mp3'
 print('Fish MessagePack independently decoded: full UTF-8 text + exact WAV reference.')
 MSG
+java -cp "$out_dir:$JSON_JAR" com.voice.studio.OfficialVoiceCatalogTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.CloudHealthTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.ProgressPersistenceTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.AudioValidationTest

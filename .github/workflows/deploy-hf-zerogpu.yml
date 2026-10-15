@@ -1,0 +1,43 @@
+name: Publish VoiceStudio ZeroGPU Space
+# Only runs after an explicit manual click; uploads code to an existing Space.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE_ID: ${{ vars.HF_SPACE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/cloud-voice-20261014
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate HF credentials
+        shell: bash
+        run: |
+          [[ -n "$HF_TOKEN" ]] || { echo "::error::Add HF_TOKEN to GitHub repository Actions secrets"; exit 1; }
+          [[ "$HF_SPACE_ID" == */* ]] || { echo "::error::Add HF_SPACE_ID repository variable, e.g. owner/SpaceName"; exit 1; }
+      - name: Static compile of Space
+        run: python -m py_compile deploy/hf_zerogpu/app.py
+      - name: Upload approved ZeroGPU Space code
+        run: |
+          python -m pip install "huggingface_hub>=0.30,<2"
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          result = HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              folder_path="deploy/hf_zerogpu",
+              path_in_repo="",
+              repo_id=os.environ["HF_SPACE_ID"],
+              repo_type="space",
+              commit_message="Update VoiceStudio Qwen3-TTS ZeroGPU app",
+          )
+          print("Uploaded Space code successfully:", result)
+          print("Select ZeroGPU hardware in Space Settings if not already configured.")
+          PY
+

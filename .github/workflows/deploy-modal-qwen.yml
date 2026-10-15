@@ -1,33 +1,42 @@
 name: Deploy VoiceStudio Qwen3-TTS to Modal
-# Manual only: each deploy may create or update billable cloud GPU resources.
+# This entrypoint is visible in GitHub Actions on the default branch.
+# It deploys the draft cloud feature branch only after a user's manual click.
 on:
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   deploy-qwen:
-    name: Publish authenticated Qwen3-TTS cloud API
     runs-on: ubuntu-latest
     env:
       MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
       MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
     steps:
-      - name: Checkout source
+      - name: Checkout tested cloud feature branch
         uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+        with:
+          ref: feature/cloud-voice-20261014
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate required deployment credentials
+      - name: Verify Modal credentials are configured
         shell: bash
         run: |
           if [[ -z "$MODAL_TOKEN_ID" || -z "$MODAL_TOKEN_SECRET" ]]; then
-            echo "::error::First add MODAL_TOKEN_ID and MODAL_TOKEN_SECRET to GitHub Actions repository secrets."
+            echo "::error::Configure MODAL_TOKEN_ID and MODAL_TOKEN_SECRET as GitHub Actions repository secrets first."
             exit 1
           fi
-      - name: Install Modal deploy client
+      - name: Install deploy client
         run: python -m pip install "modal>=1.1,<2"
-      - name: Static syntax verification
+      - name: Validate Python syntax
         run: python -m compileall -q server/modal_qwen_deploy.py server/cloud_gateway.py server/open_model_worker.py
-      - name: Deploy to GPU web endpoint
+      - name: Publish remote L4 GPU app (manual only)
         run: modal deploy -m server.modal_qwen_deploy
+      - name: Show actual endpoint in Summary
+        run: python tools/report_modal_endpoint.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceStudio-Modal-connection
+          path: deployment-output/VoiceStudio-Modal-Connection.json
+          if-no-files-found: error
+          retention-days: 7

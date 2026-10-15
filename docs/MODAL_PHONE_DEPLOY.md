@@ -41,7 +41,8 @@ Modal Web Function 由 VoiceStudio 自带的 Bearer 网关密钥鉴权。这个�
    - `MODAL_TOKEN_SECRET` = 对应 Modal Token Secret。
 3. 在仓库 **Actions** 标签选择 **Deploy VoiceStudio Qwen3-TTS to Modal**，点击 **Run workflow**，保持默认 `main` 分支后确认（实际部署代码会从开发分支读取）。
 4. 等待工作流部署完成。执行时 GitHub Actions 只安装 Modal 部署客户端，真正的 qwen-tts 和模型下载、推理发生在 Modal 云端。
-5. 打开 Modal Dashboard → Apps → `voicestudio-qwen3tts` → `voice_api`，复制平台显示的 HTTPS **Web Endpoint URL**。以 Modal 页面实际生成的地址为准，不要自行编造。
+5. 部署成功后，在本次 GitHub 运行的 **Summary / 摘要** 查看“VoiceStudio · 实际部署地址”，直接复制 URL。它由 Modal SDK 查询已经部署的 `voice_api` 得到，不是根据账号拼接的假地址。Artifacts 提供不含密钥的 `VoiceStudio-Modal-connection` JSON，App 地址框也接受该 JSON。
+6. 也可打开 Modal Dashboard → Apps → `voicestudio-qwen3tts` → `voice_api`，复制平台显示的 HTTPS **Web Endpoint URL**。
 
 找不到部署工作流时，请在浏览器切到完整桌面版网站并检查仓库 Actions 是否启用。首次部署也可能失败，因为 Modal Secret 尚未创建、账户权限或付费设置限制、GPU 不可用、模型依赖安装失败。
 
@@ -59,7 +60,7 @@ Modal Web Function 由 VoiceStudio 自带的 Bearer 网关密钥鉴权。这个�
 
 ## 验证边界、费用、已知约束
 
-- GitHub 静态语法检查和 Modal `Deploy succeeded` 只能说明软件已发布，不代表实际 GPU 加载或录音克隆成功。**首次实际生成**会下载模型，可能有较长的冷启动；Android 现在的超时和禁止自动跟随重定向行为仍可能造成超时，需要端到端实测和后续适配。
+- GitHub 静态语法检查和 Modal `Deploy succeeded` 只能说明软件已发布，不代表实际 GPU 加载或录音克隆成功。**首次实际生成**会下载模型，可能有较长的冷启动；长时间模型下载可能触发 Android 超时，未知提交状态不会自动重试；仍需真实 GPU 端到端验证。
 - 为了降低静置成本，后台允许自动缩容至 0；下一次请求会有冷启动。部署时 L4 GPU 可否申请成功由 Modal 区域/账户限制决定。
 - `/v1/health` 只验证服务和密钥、并显示模型路由，**不**触发可能计费的语音生成，`model_loaded` 可帮助诊断是否已经加载过模型。
 - 云端参考录音按网关 3 天过期设置管理，持久 Volume 可能单独产生存储费用。未经授权不要上传他人声音。停止 App 不一定自动清除 Volume；可以在 Modal Dashboard 管理云端资源。
@@ -67,3 +68,9 @@ Modal Web Function 由 VoiceStudio 自带的 Bearer 网关密钥鉴权。这个�
 - 不会在 GitHub 保存任何 Modal Token 或 VoiceStudio 私有网关密钥。提交到 GitHub 的仅是部署代码、工作流和说明文档。
 
 参考： [Modal Pricing](https://modal.com/pricing) / [Modal GitHub Actions deployment](https://modal.com/docs/guide/useful-snippets) / [Modal Secret](https://modal.com/docs/sdk/py/latest/Secret) / [GitHub Actions repository secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)。
+
+## 1.5.26 手机连接向导
+
+音色页的 Modal 卡片现在直接提供部署入口、Actions Secrets 设置、密钥名称复制、生成 / 复制 256 位随机网关密钥、检测连接及参考音色选择。生成密钥只发生在本机，不会自动修改 Modal Secret；平台和 App 必须使用同一值。Lightning 有独立连接表单和密钥存储。
+
+HF ZeroGPU 卡片提供默认分支可见的一键发布入口及自己的 Space 连接表单。Kaggle 保持 Notebook 导出 / WAV 导入路径，不宣称常驻 API。
