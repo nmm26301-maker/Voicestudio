@@ -1774,7 +1774,7 @@ public class MainActivity extends Activity {
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
             try {
                 String address=GradioSpeechClient.base(url.getText().toString()),value=key.getText().toString().trim();AcceleratedSpeechClient.token(value);
-                if(upload.isChecked()&&profile[0].isEmpty())throw new IOException("请先选择参考录音，或关闭上传选项");
+                if(!upload.isChecked()||profile[0].isEmpty())throw new IOException("Qwen3-TTS ZeroGPU 需要选择 3—10 秒参考录音并勾选上传");
                 new SecretStore(this,"gpu-hf").save(value);
                 prefs.edit().putString("gpu-hf-url",address).putString("gpu-hf-profile",upload.isChecked()?profile[0]:"")
                     .putString("accelerated-url",address).putString("accelerated-provider","hf").putString("accelerated-protocol","gradio")
