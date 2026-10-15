@@ -45,17 +45,21 @@ jobs:
           export ANDROID_SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           export ECJ_JAR=/tmp/ecj.jar
           VOICE_UNSIGNED=1 bash tools/build.sh
-          unzip -l build-manual/VoiceStudio-1.5.27-Cloud-unsigned.apk | grep -E 'classes.dex|AndroidManifest.xml'
-          if unzip -Z1 build-manual/VoiceStudio-1.5.27-Cloud-unsigned.apk | grep -q 'libonnxruntime'; then
+          unzip -l build-manual/VoiceStudio-1.5.28-Cloud-unsigned.apk | grep -E 'classes.dex|AndroidManifest.xml'
+          if unzip -Z1 build-manual/VoiceStudio-1.5.28-Cloud-unsigned.apk | grep -q 'libonnxruntime'; then
             echo "Unexpected local ONNX runtime in cloud-only APK" >&2; exit 1
           fi
       - name: Run Java remote speech regressions
         run: |
           curl --fail --location --retry 3 --output /tmp/json.jar https://repo.maven.apache.org/maven2/org/json/json/20240303/json-20240303.jar
           ECJ_JAR=/tmp/ecj.jar JSON_JAR=/tmp/json.jar bash tests/run_accelerated.sh
+      - name: Check UI contrast and motion curve
+        run: |
+          python tests/check_cosmic_ui.py
+          ANDROID_SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}" ECJ_JAR=/tmp/ecj.jar bash tests/run_motion.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: VoiceStudio-1.5.27-cloud-unsigned-compile-check
-          path: build-manual/VoiceStudio-1.5.27-Cloud-unsigned.apk
+          name: VoiceStudio-1.5.28-cloud-unsigned-compile-check
+          path: build-manual/VoiceStudio-1.5.28-Cloud-unsigned.apk
           if-no-files-found: error
           retention-days: 7

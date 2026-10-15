@@ -1,30 +1,32 @@
 {
-  "version": "1.5.27-cloud",
-  "versionCode": 43,
+  "version": "1.5.28-cloud",
+  "versionCode": 44,
   "checkedOn": "2026-10-15",
-  "baseCommit": "4af2807b6d4e58e65e11a0821bddd8fcc03181f8",
+  "baseCommit": "820cdcc170519bacbe43ae4b412d06ca0a1b90a1",
   "androidCompilation": "passed ECJ/resources/D8/zipalign and original v2/v3 signature",
   "upgrade": {
     "status": "passed",
     "checks": 31,
     "package": "com.voice.studio.preview",
     "label": "VoiceStudio",
-    "version": "1.5.27-cloud",
-    "versionCode": 43,
+    "version": "1.5.28-cloud",
+    "versionCode": 44,
     "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
-    "apkSha256": "c3275b3c09ab5071e0619e52cbd61ccb428eda560badca96556e948185039c02",
-    "previousApkSha256": "b1f73c0879716e709a34acb930c03e9ce9970e550d4fcd53f7725b7866d1f2a6",
-    "previousVersionCode": 42,
+    "apkSha256": "7c9e4ea21f053caf5afddf657c6775b3c5cb12d7b1811f6266b5d51f1cb3382a",
+    "previousApkSha256": "c3275b3c09ab5071e0619e52cbd61ccb428eda560badca96556e948185039c02",
+    "previousVersionCode": 43,
     "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
   },
-  "serverTests": 51,
-  "javaVoiceAndDeploymentChecks": 44,
-  "hostRegression": "passed official APIs, remote pipeline, persistence, audio validation, recovery, WAV merge and legacy Gradio/Kaggle protocols",
+  "uiSourceContrastChecks": 137,
+  "minimumSharedTextContrast": 6.35,
+  "hostMotionCurveChecks": 8003,
+  "hostRequestRegression": "passed official APIs, remote pipeline, persistence, audio, recovery and existing cloud protocols",
+  "serverRegression": "unchanged since 1.5.27; previous 51 tests recorded separately",
   "unverified": [
-    "New remote dependency image builds",
-    "Actual Modal/Lightning/HF/Kaggle GPU inference",
-    "Phone install/record/playback/data retention",
-    "Real voice similarity and full-text speech acceptance",
-    "Live platform permissions, quotas and costs"
+    "Native visual and touch acceptance",
+    "Android animation lifecycle and frame rate",
+    "Browser return and keyboard/device viewport acceptance",
+    "Actual phone upgrade/data retention",
+    "Real remote GPU build, synthesis and voice quality"
   ]
 }

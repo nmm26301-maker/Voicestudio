@@ -45,10 +45,10 @@ artifact_dir="$project_dir/build-manual"
 mkdir -p "$artifact_dir"
 out_dir="$(mktemp -d "$artifact_dir/compile.XXXXXX")"
 aapt_flags=()
-apk_name="VoiceStudio-1.5.27-Cloud.apk"
+apk_name="VoiceStudio-1.5.28-Cloud.apk"
 if [ "${VOICE_DEBUG:-0}" = "1" ]; then
     aapt_flags+=(--debug-mode)
-    apk_name="VoiceStudio-1.5.27-Cloud-debug.apk"
+    apk_name="VoiceStudio-1.5.28-Cloud-debug.apk"
 fi
 manifest_flags=()
 if [ "${VOICE_PREVIEW:-0}" = "1" ]; then

@@ -23,15 +23,14 @@ final class VoiceCapturePanel {
     VoiceCapturePanel(WorkspaceActivity owner, LinearLayout parent) {
         this.owner = owner;
         body = new LinearLayout(owner); body.setOrientation(1);
-        body.setPadding(owner.dp(16), owner.dp(16), owner.dp(16), owner.dp(16));
-        body.setBackground(CosmicUi.panel(owner, CosmicUi.CYAN)); parent.addView(body);
-        owner.label(body, "我的声音 · 参考录音", 13, true);
+        body.setPadding(0, owner.dp(8), 0, owner.dp(8));
+        body.setBackgroundColor(Color.TRANSPARENT); parent.addView(body);
         status = owner.label(body, "点击录音，清晰说话 3—10 秒", 14, true);
-        meter = new Meter(owner); body.addView(meter, new LinearLayout.LayoutParams(-1, owner.dp(92)));
+        meter = new Meter(owner); body.addView(meter, new LinearLayout.LayoutParams(-1, owner.dp(64)));
         name = owner.field(body, "人物 / 音色名称", owner.getSharedPreferences("studio", 0).getString("voice-draft-name", "我的声音"));
         transcript = owner.field(body, "参考录音对应文字（可留空）", owner.getSharedPreferences("studio", 0).getString("voice-draft-text", ""));
         transcript.setMinLines(2);
-        owner.label(body, "手机只录制和保存声音，不运行本地克隆模型。生成时将参考录音发送到你明确选择的云端服务，支持的引擎可朗读任意新文字。", 12, false);
+        owner.label(body, "录音保存在手机；仅在生成时上传到所选服务。", 12, false);
         record = action("● 开始录音", this::request);
         listen = action("▷ 试听录音", () -> { if (draft != null) owner.preview(draft, "人物声音试听"); });
         save = action("保存为人物音色", this::submit);
