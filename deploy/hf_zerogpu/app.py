@@ -70,7 +70,10 @@ def _clone_fn(text, language, reference, reference_text, unused_prompt,
     )
     if len(sample) != 1:
         raise gr.Error("模型未返回完整语音")
-    x = np.asarray(sample[0], dtype=np.float32).reshape(-1)
+    waveform = sample[0]
+    if hasattr(waveform, "detach"):
+        waveform = waveform.detach().float().cpu().numpy()
+    x = np.asarray(waveform, dtype=np.float32).reshape(-1)
     if not len(x) or not np.all(np.isfinite(x)):
         raise gr.Error("模型音频无效")
     x = np.clip(x, -1, 1)
