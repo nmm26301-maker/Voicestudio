@@ -32,3 +32,11 @@ jobs:
         run: python -m compileall -q server/modal_qwen_deploy.py server/cloud_gateway.py server/open_model_worker.py
       - name: Publish remote L4 GPU app (manual only)
         run: modal deploy -m server.modal_qwen_deploy
+      - name: Show actual endpoint in Summary
+        run: python tools/report_modal_endpoint.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceStudio-Modal-connection
+          path: deployment-output/VoiceStudio-Modal-Connection.json
+          if-no-files-found: error
+          retention-days: 7
