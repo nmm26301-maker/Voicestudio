@@ -21,6 +21,7 @@ class AcceleratedSpeechClient {
         private static final long serialVersionUID=1L;
         final int status;
         RequestRejected(int status){super("云端接口 HTTP "+status+"："+(status==401||status==403?"请检查接口密钥":status==410?"参考录音已过期，继续任务时会重新上传":status==429?"额度不足或服务繁忙，请稍后重试":"请检查服务状态、模型与音色配置"));this.status=status;}
+        RequestRejected(int status,String message){super(message);this.status=status;}
         boolean definitelyRejected(){return status==400||status==401||status==403||status==404||status==410||status==413||status==422||status==429;}
     }
     static String endpoint(String configured) throws IOException {

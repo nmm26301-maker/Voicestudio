@@ -1,32 +1,44 @@
 {
-  "version": "1.5.28-cloud",
-  "versionCode": 44,
+  "version": "1.5.27.1-cloud",
+  "versionCode": 45,
   "checkedOn": "2026-10-15",
-  "baseCommit": "820cdcc170519bacbe43ae4b412d06ca0a1b90a1",
+  "uiBaseCommit": "820cdcc170519bacbe43ae4b412d06ca0a1b90a1",
+  "uiBase": "1.5.27",
+  "discardedUiVersion": "1.5.28",
   "androidCompilation": "passed ECJ/resources/D8/zipalign and original v2/v3 signature",
-  "upgrade": {
+  "upgradeFrom1527": {
     "status": "passed",
     "checks": 31,
     "package": "com.voice.studio.preview",
     "label": "VoiceStudio",
-    "version": "1.5.28-cloud",
-    "versionCode": 44,
+    "version": "1.5.27.1-cloud",
+    "versionCode": 45,
     "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
-    "apkSha256": "7c9e4ea21f053caf5afddf657c6775b3c5cb12d7b1811f6266b5d51f1cb3382a",
+    "apkSha256": "22563de8ee4fe229cfb8f4aa0df539fadff77ed1aa1bf60ec3d02b14d154c108",
     "previousApkSha256": "c3275b3c09ab5071e0619e52cbd61ccb428eda560badca96556e948185039c02",
     "previousVersionCode": 43,
     "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
   },
-  "uiSourceContrastChecks": 137,
-  "minimumSharedTextContrast": 6.35,
-  "hostMotionCurveChecks": 8003,
-  "hostRequestRegression": "passed official APIs, remote pipeline, persistence, audio, recovery and existing cloud protocols",
-  "serverRegression": "unchanged since 1.5.27; previous 51 tests recorded separately",
+  "upgradeFrom1528": {
+    "status": "passed",
+    "checks": 31,
+    "package": "com.voice.studio.preview",
+    "label": "VoiceStudio",
+    "version": "1.5.27.1-cloud",
+    "versionCode": 45,
+    "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
+    "apkSha256": "22563de8ee4fe229cfb8f4aa0df539fadff77ed1aa1bf60ec3d02b14d154c108",
+    "previousApkSha256": "7c9e4ea21f053caf5afddf657c6775b3c5cb12d7b1811f6266b5d51f1cb3382a",
+    "previousVersionCode": 44,
+    "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
+  },
+  "apiRepairHostChecks": 76,
+  "secretScopeConstructorChecks": 10,
+  "existingHostRequestRegression": "passed official APIs, remote speech, recovery, persistence, reference and WAV merging",
   "unverified": [
-    "Native visual and touch acceptance",
-    "Android animation lifecycle and frame rate",
-    "Browser return and keyboard/device viewport acceptance",
-    "Actual phone upgrade/data retention",
-    "Real remote GPU build, synthesis and voice quality"
+    "User account authentication and actual TTS success",
+    "User device install and recording/playback",
+    "Actual GPU deployment and model output",
+    "Live provider balance, TTS permissions and quotas"
   ]
 }

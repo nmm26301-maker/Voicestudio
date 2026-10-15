@@ -49,8 +49,6 @@ public class MainActivity extends Activity {
     final Map<String,float[]> waveformCache=new LinkedHashMap<String,float[]>(64,.75f,true) {
         protected boolean removeEldestEntry(Map.Entry<String,float[]> e) { return size()>80; }
     };
-    TextView creationVoiceLabel;
-    LinearLayout creationVoiceCard;
     EditText keyEditor;
     Spinner modelPicker;
     ScrollView pageScroll;
@@ -189,7 +187,7 @@ public class MainActivity extends Activity {
         boolean running = isGenerating();
         if(headerOrb!=null) headerOrb.busy(running || !StudioService.active.isEmpty());
         if (generate != null) {
-            generate.setText(cancelRequested ? "正在取消…" : running ? "取消生成" : "开始合成");
+            generate.setText(cancelRequested ? "正在取消…" : running ? "取消生成" : "♫ 开始合成");
             generate.setEnabled(!cancelRequested);
         }
         if (status != null)
@@ -220,12 +218,12 @@ public class MainActivity extends Activity {
     void generationPanel() {
         generationPanel = card();
         generationPanel.setBackground(CosmicUi.panel(this,PURPLE));
-        if("作品".equals(page)) generationPanel.setBackground(CosmicUi.panel(this,PURPLE));
+        if("作品".equals(page)) generationPanel.setBackground(border(SPACE_CARD,0xff42426D,20));
         generationTitle = text("正在酝酿你的声音", 17, PURPLE, true);
         if("作品".equals(page)) generationTitle.setTextColor(CYAN);
         add(generationPanel, generationTitle);
         dreamProgress = new DreamProgressView(this);
-        generationPanel.addView(dreamProgress, new LinearLayout.LayoutParams(-1, dp(24)));
+        generationPanel.addView(dreamProgress, new LinearLayout.LayoutParams(-1, dp(67)));
         generationStage = text("", 13, INK, false);
         if("作品".equals(page)) generationStage.setTextColor(SPACE_INK);
         add(generationPanel, generationStage);
@@ -294,7 +292,7 @@ public class MainActivity extends Activity {
         }
         generationAction.setText(active ? cancelRequested ? "正在取消…" : "取消生成" : done ? "播放这段声音" : trackedJob != null ? "继续此任务" : "重新生成");
         generationAction.setEnabled(!cancelRequested);
-        generationAction.setVisibility(active && "创作".equals(page) ? View.GONE : active || done || trackedJob != null || "创作".equals(page) ? View.VISIBLE : View.GONE);
+        generationAction.setVisibility(active || done || trackedJob != null || "创作".equals(page) ? View.VISIBLE : View.GONE);
     }
 
     void trackJob(String id, JSONObject request) throws Exception {
@@ -656,7 +654,6 @@ public class MainActivity extends Activity {
         if (keyEditor != null) keyDraft = keyEditor.getText().toString();
         if (modelPicker != null) modelDraft = modelPicker.getSelectedItem().toString();
         editor = null;
-        creationVoiceLabel=null;creationVoiceCard=null;
         progress = null;
         timeLabel = null;
         playButton = null;
@@ -672,23 +669,24 @@ public class MainActivity extends Activity {
         archiveCount = null; archiveDuration = null; archiveFavorites = null;
         playbackViews.clear();
         renderedPage = page;
-        if(root!=null)CosmicUi.lifecycle(root,false);
         root = col();
+        boolean cosmic=true;
         root.setBackground(new DreamBackdropDrawable(getResources().getDisplayMetrics().density));
         CosmicUi.install(this);
         setContentView(root);
         LinearLayout header = row();
-        header.setPadding(dp(20), dp(10), dp(16), dp(10));
+        header.setPadding(dp(22), dp(18), dp(22), dp(17));
         LinearLayout word = col();
-        add(word, text("创作".equals(page)?"合成":page, 22, INK, true));
-        gap(word, 4);add(word,text("VoiceStudio",11,MUTED,false));
+        add(word, text("VoiceStudio", 23, cosmic ? SPACE_INK : INK, true));
+        gap(word, 5);
+        add(word, text(cosmic ? "你的云端声音小宇宙" : "让文字，拥有声音", 12, cosmic ? SPACE_MUTED : MUTED, false));
+        TextView badge=text("设置".equals(page)?"偏好与连接":"音色".equals(page)?"云端音色":"作品".equals(page)?"声音收藏":"云端创作",10,CYAN,true); badge.setLetterSpacing(.12f); gap(word,7); add(word,badge);
         flexible(header, word);
-        headerOrb=new SignalOrbView(this,PURPLE,false);
-        header.addView(headerOrb,new LinearLayout.LayoutParams(dp(38),dp(38)));
-        sideGap(header,8);
-        TextView preferences=button("⚙",false,()->change("设置"));preferences.setTextSize(20);
+        headerOrb=new SignalOrbView(this,"设置".equals(page)?CosmicUi.SUCCESS:"音色".equals(page)?PURPLE:CYAN,true);
+        header.addView(headerOrb,new LinearLayout.LayoutParams(dp(60),dp(60)));
+        TextView preferences=button("⚙",false,()->change("设置"));preferences.setTextSize(21);
         preferences.setContentDescription("设置与云端连接");preferences.setPadding(0,0,0,0);
-        header.addView(preferences,new LinearLayout.LayoutParams(dp(48),dp(48)));
+        header.addView(preferences,new LinearLayout.LayoutParams(dp(44),dp(44)));
         add(root, header);
         ScrollView scroll = new ScrollView(this);
         pageScroll = scroll;
@@ -704,10 +702,10 @@ public class MainActivity extends Activity {
         else settings();
         if (!"创作".equals(page)) generationPanel();
         if("创作".equals(page) && generate!=null) {
-            LinearLayout dock=col(); dock.setPadding(dp(20),dp(6),dp(20),dp(6)); dock.setBackgroundColor(BG);
+            LinearLayout dock=col(); dock.setPadding(dp(20),dp(10),dp(20),dp(8)); dock.setBackground(border(BG,LINE,0));
             if(dreamProgress.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup)dreamProgress.getParent()).removeView(dreamProgress);
-            dock.addView(dreamProgress,new LinearLayout.LayoutParams(-1,dp(18))); add(dock,generate); gap(dock,7);
-            status.setMaxLines(1); status.setEllipsize(android.text.TextUtils.TruncateAt.END);add(dock,status);add(root,dock);
+            dock.addView(dreamProgress,new LinearLayout.LayoutParams(-1,dp(48))); add(dock,generate); gap(dock,7);
+            status.setMaxLines(2); status.setEllipsize(android.text.TextUtils.TruncateAt.END);add(dock,status);add(root,dock);
         }
         nav=CosmicUi.navigation(this,"创作".equals(page)?"合成":page,this::change);
         add(root,nav);
@@ -715,7 +713,6 @@ public class MainActivity extends Activity {
         scroll.post(() -> scroll.scrollTo(0, y));
         updatePlayback();
         updateJobUI();
-        CosmicUi.lifecycle(root,foreground);
         if(!same)CosmicUi.enter(content,1);
     }
 
@@ -727,13 +724,18 @@ public class MainActivity extends Activity {
     }
 
     void creation() {
-        add(content,text("输入文字，生成你的声音。",14,MUTED,false));gap(content,16);
+        add(content,CosmicUi.hero(this,"让文字，拥有声音","录音、选引擎、输入文字，开启你的云端声音创作。","✦ CLOUD VOICE STUDIO",CYAN));
+        add(content,CosmicUi.workflow(this,2));
+        LinearLayout shortcuts=row();
+        flexible(shortcuts,button("① 录音 / 音色",false,()->openWorkspace("音色")));
+        sideGap(shortcuts,8);
+        flexible(shortcuts,button("② 选择引擎",false,()->change("音色")));
+        add(content,shortcuts);gap(content,12);
         LinearLayout draftCard = card();
         LinearLayout label = row();
         flexible(label, text("配音文本", 15, INK, true));
         TextView paste = text("粘贴", 13, PURPLE, true);
-        paste.setPadding(dp(12), dp(8), dp(4), dp(8));
-        CosmicUi.press(paste);paste.setGravity(Gravity.CENTER);
+        paste.setPadding(dp(12), dp(8), 0, dp(8));
         paste.setOnClickListener(
                 v -> {
                     android.content.ClipboardManager c =
@@ -759,7 +761,7 @@ public class MainActivity extends Activity {
                 InputType.TYPE_CLASS_TEXT
                         | InputType.TYPE_TEXT_FLAG_MULTI_LINE
                         | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        editor.setMinHeight(dp(176));
+        editor.setMinHeight(dp(150));
         editor.setText(draft);
         add(draftCard, editor);
         LinearLayout foot = row();
@@ -819,7 +821,7 @@ public class MainActivity extends Activity {
         vr.addView(vi, new LinearLayout.LayoutParams(dp(46), dp(46)));
         sideGap(vr, 13);
         LinearLayout desc = col();
-        TextView voiceLabel=text(selectedVoiceName(),15,INK,true);creationVoiceLabel=voiceLabel;creationVoiceCard=voice;voiceLabel.setMaxLines(2);voiceLabel.setEllipsize(TextUtils.TruncateAt.END);add(desc,voiceLabel);
+        add(desc, text(selectedVoiceName(), 16, INK, true));
         gap(desc, 6);
         add(
                 desc,
@@ -831,15 +833,23 @@ public class MainActivity extends Activity {
         flexible(vr, desc);
         vr.addView(text("›", 25, MUTED, false));
         add(voice, vr);
-        voice.setOnClickListener(v -> change("音色"));CosmicUi.press(voice);
-        voice.setContentDescription("当前音色："+selectedVoiceName()+"，点击更换音色与引擎");
-        add(content,voice);gap(content,10);
-        LinearLayout readingOptions=col();
+        voice.setOnClickListener(v -> change("音色"));
+        gap(voice, 12);
+        add(
+                voice,
+                button(
+                        "选择音色与引擎",
+                        false,
+                        () -> { if("accelerated".equals(engine))change("音色");else openWorkspace("音色"); }));
+        add(content, voice);
+        gap(content, 12);
+        add(content,button("✦ 免费网页试听 · Qwen / IndexTTS",false,this::freeCloudStarter));
+        gap(content, 14);
         LinearLayout speedRow = row();
         flexible(speedRow, text("语速", 14, INK, true));
         TextView speedText = text(String.format(Locale.US, "%.2f×", speed), 14, PURPLE, true);
         speedRow.addView(speedText);
-        add(readingOptions, speedRow);
+        add(content, speedRow);
         SeekBar slider = new SeekBar(this);
         slider.setMax(150);
         slider.setProgress(Math.round((speed - 0.5f) * 100));
@@ -857,15 +867,11 @@ public class MainActivity extends Activity {
 
                     public void onStopTrackingTouch(SeekBar s) {}
                 });
-        add(readingOptions, slider);
-        gap(readingOptions, 8);
-        TextView language=button("文字语言 · "+omniLanguageName(),false,()->{});
-        language.setOnClickListener(v->pickCloudLanguage(language));add(readingOptions,language);
-        CosmicUi.disclosure(this,content,"朗读设置","语速与文字语言",readingOptions,false);
-        gap(content,8);
+        add(content, slider);
+        gap(content, 12);
         generate =
                 button(
-                        isGenerating() ? "取消生成" : "开始合成",
+                        isGenerating() ? "取消生成" : "♫ 开始合成",
                         true,
                         () -> {
                             if (isGenerating()) cancelJob();
@@ -926,7 +932,9 @@ public class MainActivity extends Activity {
     }
 
     void voicePage() {
-        add(content,button("录制 / 管理我的音色",true,()->openWorkspace("音色")));gap(content,14);
+        add(content,CosmicUi.hero(this,"把声音，装进云朵里","录制你的声音，或选择平台音色。","✦ VOICE & ENGINES",CosmicUi.PINK));
+        add(content,CosmicUi.workflow(this,0));
+        add(content,button("进入录音音色实验室",true,()->openWorkspace("音色")));gap(content,14);
         LinearLayout options=row();
         flexible(options,button("Fish Audio","fish".equals(engine),()->{
             engine="fish";saveSettings();render();
@@ -936,7 +944,8 @@ public class MainActivity extends Activity {
             engine="accelerated";saveSettings();render();
         }));
         add(content,options);gap(content,12);
-
+        add(content,button("♫ 打开文字合成工作台",true,()->change("创作")));gap(content,12);
+        add(content,button("✦ 无需电脑 · 免费云端语音克隆体验",false,this::freeCloudStarter));gap(content,12);
         if("fish".equals(engine))fishVoicePage();
         else cloudSettings();
     }
@@ -1127,15 +1136,17 @@ public class MainActivity extends Activity {
     void works() {
         LinearLayout hero=card();
         hero.setBackground(new ArchivePanelDrawable(getResources().getDisplayMetrics().density));
-        LinearLayout stats=row();
+        TextView eyebrow=text("VOICE / ARCHIVE",10,CYAN,true); eyebrow.setLetterSpacing(.18f); eyebrow.setTypeface(Typeface.MONOSPACE); add(hero,eyebrow);
+        gap(hero,10); add(hero,text("声音星库",28,SPACE_INK,true));
+        gap(hero,14); LinearLayout stats=row();
         int favorites=0; for(int i=0;i<history.length();i++)if(history.optJSONObject(i).optBoolean("favorite"))favorites++;
         archiveCount=archiveStat(stats,Integer.toString(history.length()),"段声音");
         archiveDuration=archiveStat(stats,WorksCatalog.duration(WorksCatalog.totalDuration(history)),"累计时长");
         archiveFavorites=archiveStat(stats,Integer.toString(favorites),"已收藏"); add(hero,stats); gap(hero,16);
-        TextView local=text("保存在手机，随时播放与分享",11,MUTED,false); add(hero,local);
+        TextView local=text("●  本机保存  /  随时播放与分享",10,0xffA3C6EB,false); add(hero,local);
         add(content,hero); gap(content,20);
         EditText query=field("搜索标题、文字或音色",search,false);
-        CosmicUi.field(query); query.setTextColor(SPACE_INK); query.setHintTextColor(SPACE_MUTED);
+        query.setBackground(border(0xff111B30,0xff2B3954,16)); query.setTextColor(SPACE_INK); query.setHintTextColor(SPACE_MUTED);
         query.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH); add(content,query); gap(content,12);
         LinearLayout filter=row();
         flexible(filter,archiveButton("全部",!favoritesOnly,()->{ favoritesOnly=false; render(); })); sideGap(filter,8);
@@ -1164,14 +1175,17 @@ public class MainActivity extends Activity {
 
     TextView archiveButton(String label,boolean primary,Runnable action) {
         TextView view=button(label,false,action); view.setTextSize(12);
-        view.setTextColor(primary ? INK : MUTED);
-        view.setBackground(shape(primary?PALE:BG,13));
+        view.setTextColor(primary ? SPACE_BG : SPACE_INK);
+        if(primary) {
+            GradientDrawable gradient=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{0xff67E8F9,0xffA5B4FC});
+            gradient.setCornerRadius(dp(13)); view.setBackground(gradient);
+        } else view.setBackground(border(0xff1B263F,0xff35415E,13));
         view.setForeground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3367E8F9),null,shape(Color.WHITE,13)));
         return view;
     }
 
     LinearLayout archiveCard(JSONObject item) {
-        LinearLayout card=card(); card.setBackground(CosmicUi.panel(this,PURPLE));
+        LinearLayout card=card(); card.setBackground(border(SPACE_CARD,0xff2E3A59,21));
         String file=item.optString("file"), format=file.endsWith("wav") ? "WAV" : "MP3";
         String source="cloud-demo".equals(item.optString("engine")) ? "网页云端作品" : "cloud-demo-merged".equals(item.optString("engine")) ? "云端片段合并" : "kaggle".equals(item.optString("engine")) ? "KAGGLE GPU" : "accelerated".equals(item.optString("engine")) ? "GPU API" : "fish".equals(item.optString("engine")) ? "FISH AUDIO" : "local".equals(item.optString("engine")) ? "ANDROID TTS" : "OMNIVOICE";
         LinearLayout top=row(); TextView badge=text(source+" / "+format,10,CYAN,true); badge.setLetterSpacing(.07f); flexible(top,badge);
@@ -1244,7 +1258,7 @@ public class MainActivity extends Activity {
         if(archiveResults!=null)archiveResults.setText((favoritesOnly?"收藏轨道":"声音档案")+" · "+selected.size()+" 段");
         for(int i=0;i<Math.min(selected.size(),visibleWorks);i++) { add(worksList,playerCard(selected.get(i))); gap(worksList,14); }
         if(selected.isEmpty()) {
-            LinearLayout empty=card(); empty.setBackground(CosmicUi.panel(this,PURPLE));
+            LinearLayout empty=card(); empty.setBackground(border(SPACE_CARD,0xff2E3A59,21));
             add(empty,text(history.length()==0?"你的第一段声音，正在等待诞生":favoritesOnly?"收藏轨道还是空的":"没有找到匹配的声音",17,SPACE_INK,true)); gap(empty,10);
             add(empty,text(history.length()==0?"生成后会自动进入星库。播放、收藏、导出和分享，都在这里。":"尝试其他关键词，或切换全部作品。",12,SPACE_MUTED,false)); gap(empty,15);
             if(history.length()==0)add(empty,archiveButton("开始创作",true,()->change("创作"))); add(worksList,empty);
@@ -1729,9 +1743,13 @@ public class MainActivity extends Activity {
     void cloudApiProtection(LinearLayout parent) {
         boolean allowed=prefs.getBoolean("cloud-api-consent",false);
         LinearLayout safety=card();
-        LinearLayout line=row();flexible(line,text(allowed?"API 已授权 · 可能计费":"费用保护已开启",13,MUTED,false));
-        TextView manage=button("管理",false,this::cloudApiPermission);manage.setTextSize(12);
-        line.addView(manage,new LinearLayout.LayoutParams(dp(64),dp(48)));add(safety,line);
+        info(safety,allowed?"费用保护已解除 · API 可能计费":"费用保护已开启 · 不自动付费",
+             allowed?"已允许调用云端接口。请留意所选服务的官方免费额度或付费余额。":
+               "商业 API 默认需要费用授权；HF ZeroGPU 可以按账号免费配额在应用内合成，Kaggle 可离线生成 WAV 导入。");
+        gap(safety,10);
+        add(safety,button("✦ 免电脑免费试用",false,this::freeCloudStarter));
+        gap(safety,8);
+        add(safety,button(allowed?"重新开启费用保护":"解锁可能计费的云端 API",false,this::cloudApiPermission));
         add(parent,safety);
         gap(parent,12);
     }
@@ -1798,39 +1816,37 @@ public class MainActivity extends Activity {
         String savedEngine=prefs.getString("gpu-"+platform+"-engine","qwen3tts");
         for(int i=0;i<CloudDeploymentConfig.ENGINES.length;i++)if(savedEngine.equals(CloudDeploymentConfig.ENGINES[i]))deployed.setSelection(i);
         add(form,text("部署的引擎（与 Run workflow 或云端命令保持一致）",12,MUTED,false));add(form,deployed);gap(form,10);
-        LinearLayout deploymentHelp=col();
         if(modal){
-            add(deploymentHelp,text("部署前：Modal 创建 voicestudio-cloud Secret；GitHub Actions Secrets 添加 MODAL_TOKEN_ID 和 MODAL_TOKEN_SECRET。下面的网关密钥与账号部署 Token 是两套凭据。",12,MUTED,false));gap(deploymentHelp,8);
-            add(deploymentHelp,button("打开 GitHub Actions Secrets 设置",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/settings/secrets/actions")));gap(deploymentHelp,8);
-            add(deploymentHelp,button("Modal Secret 创建步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md")));gap(deploymentHelp,8);
-            add(deploymentHelp,button("① 打开 GitHub 部署入口 · Run workflow",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(deploymentHelp,8);
-            add(deploymentHelp,button("查看部署运行结果 / Summary",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(deploymentHelp,8);
-            add(deploymentHelp,button("打开 Modal Apps · 查看实际 Web Endpoint",false,()->openUrl("https://modal.com/apps")));gap(deploymentHelp,10);
-            add(deploymentHelp,text("GitHub 选择 main → Run workflow → engine。每个引擎部署独立服务；成功后在 Summary 复制真实地址。Modal App 名为 voicestudio-引擎ID，函数为 voice_api。",12,MUTED,false));gap(deploymentHelp,10);
-            add(deploymentHelp,button("复制 Modal Secret 名称：voicestudio-cloud",false,()->copyPrivateValue("Secret 名称","voicestudio-cloud")));gap(deploymentHelp,8);
-            add(deploymentHelp,button("复制变量名：VOICE_GATEWAY_TOKEN",false,()->copyPrivateValue("变量名","VOICE_GATEWAY_TOKEN")));gap(deploymentHelp,8);
+            add(form,text("部署前：Modal 创建 voicestudio-cloud Secret；GitHub Actions Secrets 添加 MODAL_TOKEN_ID 和 MODAL_TOKEN_SECRET。下面的网关密钥与账号部署 Token 是两套凭据。",12,MUTED,false));gap(form,8);
+            add(form,button("打开 GitHub Actions Secrets 设置",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/settings/secrets/actions")));gap(form,8);
+            add(form,button("Modal Secret 创建步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md")));gap(form,8);
+            add(form,button("① 打开 GitHub 部署入口 · Run workflow",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(form,8);
+            add(form,button("查看部署运行结果 / Summary",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(form,8);
+            add(form,button("打开 Modal Apps · 查看实际 Web Endpoint",false,()->openUrl("https://modal.com/apps")));gap(form,10);
+            add(form,text("GitHub 选择 main → Run workflow → engine。每个引擎部署独立服务；成功后在 Summary 复制真实地址。Modal App 名为 voicestudio-引擎ID，函数为 voice_api。",12,MUTED,false));gap(form,10);
+            add(form,button("复制 Modal Secret 名称：voicestudio-cloud",false,()->copyPrivateValue("Secret 名称","voicestudio-cloud")));gap(form,8);
+            add(form,button("复制变量名：VOICE_GATEWAY_TOKEN",false,()->copyPrivateValue("变量名","VOICE_GATEWAY_TOKEN")));gap(form,8);
         }else{
-            add(deploymentHelp,button("① 打开 Lightning 云端部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/OPEN_MODEL_DEPLOY.md")));gap(deploymentHelp,8);
+            add(form,button("① 打开 Lightning 云端部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/OPEN_MODEL_DEPLOY.md")));gap(form,8);
         }
-        CosmicUi.disclosure(this,form,"部署步骤与平台入口","创建密钥、部署、查找实际地址",deploymentHelp,false);gap(form,12);
-        EditText address=field("实际 HTTPS 地址或部署 JSON",prefs.getString("gpu-"+platform+"-url",""),false);
+        EditText address=field("② 实际 HTTPS 运行地址（或部署 JSON）",prefs.getString("gpu-"+platform+"-url",""),false);
         String existing="";try{existing=new SecretStore(this,modal?"gpu-modal":"gpu-lightning").read();}catch(Exception ignored){}
-        EditText token=field("VOICE_GATEWAY_TOKEN · 至少 24 位",existing,true);
+        EditText token=field("③ VOICE_GATEWAY_TOKEN · 至少 24 位",existing,true);
         token.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);add(form,address);gap(form,10);add(form,token);gap(form,8);
-        add(form,button("生成新网关密钥",false,()->{
+        add(form,button("生成新网关密钥（仅在本机生成）",false,()->{
             if(!token.getText().toString().isEmpty()){toast("已有密钥；更换部署密钥时请先清空，避免与服务器不一致");return;}
             byte[] bytes=new byte[32];new java.security.SecureRandom().nextBytes(bytes);
             token.setText(java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));toast("已生成；请复制到服务器的 VOICE_GATEWAY_TOKEN，尚未自动部署");
         }));gap(form,8);
-        add(form,button("复制网关密钥",false,()->{
+        add(form,button("复制当前网关密钥 → 粘贴到平台 Secret",false,()->{
             if(token.getText().length()<24){toast("请先填写或生成至少 24 位网关密钥");return;}
             copyPrivateValue("VOICE_GATEWAY_TOKEN",token.getText().toString());
         }));gap(form,10);
         add(form,text("这里填写自建网关密钥，不是 MODAL_TOKEN_SECRET 或 HF Token。更换本机密钥不会自动修改服务器 Secret；两边必须完全一致。",12,MUTED,false));gap(form,10);
         final String[] profile={prefs.getString("cloud-profile","")};
-        add(form,button("选择参考音色 · 3—10 秒",false,()->pickGpuProfile(profile)));gap(form,8);
+        add(form,button("④ 选择已录好的参考音色（3—10 秒）",false,()->pickGpuProfile(profile)));gap(form,8);
         TextView result=text("连接尚未检测",12,MUTED,false);add(form,result);gap(form,8);
-        TextView probe=button("检测连接 · 不提交合成",false,()->{});
+        TextView probe=button("⑤ 检测连接 · 不提交合成",false,()->{});
         probe.setOnClickListener(v->{
             final String url,key,selected=CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()];
             try{url=CloudDeploymentConfig.endpoint(platform,CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()],address.getText().toString());key=token.getText().toString().trim();AcceleratedSpeechClient.token(key);if(key.length()<24)throw new IOException("请填写至少 24 位网关访问密钥");}
@@ -1933,7 +1949,7 @@ public class MainActivity extends Activity {
     }
 
     void motionSettings() {
-        LinearLayout c=card(); info(c,"界面动效","轻微按压与短淡入。跟随系统动画设置，可随时关闭。");gap(c,12);
+        LinearLayout c=card(); info(c,"界面与动效","深空配色、轨道光环与柔和转场。合成与省电模式下暂停装饰动效。");gap(c,12);
         boolean enabled=prefs.getBoolean("ui-motion",true);
         add(c,button(enabled?"动效已开启 · 点击关闭":"动效已关闭 · 点击开启",false,()->{prefs.edit().putBoolean("ui-motion",!enabled).apply();render();}));add(content,c);
     }
@@ -1972,7 +1988,7 @@ public class MainActivity extends Activity {
     String selectedVoiceName() {
         if ("fish".equals(engine)) return "Fish Audio · " + voiceName;
         String id=prefs.getString("accelerated-model","auto"),name=CloudEngineCatalog.label(id);
-        String profile=prefs.getString("cloud-profile","");
+        String profile=CloudConnectionPolicy.referenceProfile(prefs.getString("accelerated-protocol","rest"),id,prefs.getString("cloud-profile",""));
         if(!profile.isEmpty())try{return StudioFiles.read(new File(StudioFiles.dir(this,"profiles"),profile+".json")).optString("name","我的声音")+" · "+name;}catch(Exception ignored){}
         return name+" · "+omniLanguageName();
     }
@@ -2078,9 +2094,9 @@ public class MainActivity extends Activity {
     void cloudSettings() {
         cloudApiProtection(content);
         LinearLayout c=card();
-        info(c,"音色与引擎","选择服务，保存连接后即可合成。");gap(c,12);
+        info(c,"九颗声音星球","选择远程 GPU 或官方 API；手机不安装模型权重。");
         LinearLayout gpuPaths=card();
-        info(gpuPaths,"云端 GPU","Modal / Lightning 可选择五种引擎；ZeroGPU / Kaggle 当前使用 Qwen。");
+        info(gpuPaths,"☁ 四座 GPU 云端基地","手机不运行模型。先配置 Qwen3-TTS；试用资源有限，Kaggle 不提供常驻 API。");
         final String[] gpuNames={"✦ ZeroGPU","Modal","Kaggle","Lightning"};
         final String[] gpuDetails={"免费配额 · 直接合成","计算赠额 · HTTPS","Notebook · 导出 WAV","GPU Studio · HTTPS"};
         final Runnable[] gpuActions={
@@ -2106,12 +2122,15 @@ public class MainActivity extends Activity {
             }
             add(gpuPaths,gpuRow);gap(gpuPaths,9);
         }
+        add(c,gpuPaths);gap(c,15);
         Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
         String chosen=prefs.getString("cloud-engine","auto");for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
-        provider.setContentDescription("选择语音引擎");add(c,provider);gap(c,8);
+        add(c,provider);gap(c,8);
         Spinner mode=new Spinner(this);mode.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"我的云端网关 · 开源 / 自动","官方 API 直连 · Fish / ElevenLabs / MiniMax / Cartesia"}));
         boolean wasOfficial=prefs.getString("accelerated-protocol","rest").equals("official");
-        mode.setSelection(wasOfficial||prefs.getString("cloud-url","").isEmpty()&&CloudConnectionPolicy.official(chosen)?1:0);mode.setContentDescription("选择连接方式");add(c,mode);gap(c,12);
+        mode.setSelection(wasOfficial||CloudConnectionPolicy.official(chosen)?1:0);add(c,mode);gap(c,12);
+        final boolean[] miniChina={prefs.getBoolean("official-minimax-china",prefs.getString("cloud-url","").contains("api.minimax.cn/"))};
+        TextView miniRegion=button("",false,()->{});add(c,miniRegion);gap(c,8);
         TextView routeInfo=text("",12,MUTED,false);add(c,routeInfo);gap(c,10);
         LinearLayout states=col();
         TextView[] stateLabels=new TextView[CLOUD_IDS.length];
@@ -2130,6 +2149,7 @@ public class MainActivity extends Activity {
             }
             if(count%2==1)flexible(engineRow,new View(this));gap(states,7);
         }
+        add(c,states);gap(c,14);
         EditText url=field("你的 HTTPS 网关地址", "",false),voice=field("平台音色 ID / 自建网关音色", "auto",false),key=field("密钥", "",true);
         key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
         add(c,url);gap(c,10);add(c,voice);gap(c,8);
@@ -2142,10 +2162,11 @@ public class MainActivity extends Activity {
         });
         TextView onlineVoices=button("读取平台音色 ID · 不合成",false,()->{
             String id=CLOUD_IDS[provider.getSelectedItemPosition()];String credential=key.getText().toString().trim();
-            if(!id.equals("elevenlabs")&&!id.equals("cartesia")){toast("此平台请使用预置 ID 或官方音色说明");return;}
-            pickOfficialVoice(id,credential,"",voice,()->id.equals(CLOUD_IDS[provider.getSelectedItemPosition()])&&credential.equals(key.getText().toString().trim()));
+            if(!id.equals("elevenlabs")&&!id.equals("cartesia")&&!id.equals("minimax")){toast("此平台请使用预置 ID 或官方音色说明");return;}
+            String selectedAddress=url.getText().toString().trim();
+            pickOfficialVoice(id,credential,selectedAddress,"",voice,()->id.equals(CLOUD_IDS[provider.getSelectedItemPosition()])&&credential.equals(key.getText().toString().trim())&&selectedAddress.equals(url.getText().toString().trim()));
         });
-        onlineVoices.setVisibility(chosen.equals("elevenlabs")||chosen.equals("cartesia")?View.VISIBLE:View.GONE);
+        onlineVoices.setVisibility(chosen.equals("elevenlabs")||chosen.equals("cartesia")||chosen.equals("minimax")?View.VISIBLE:View.GONE);
         add(c,onlineVoices);gap(c,8);
         miniPicker.setVisibility("minimax".equals(chosen)?View.VISIBLE:View.GONE);
         add(c,miniPicker);gap(c,10);add(c,key);gap(c,8);
@@ -2154,50 +2175,71 @@ public class MainActivity extends Activity {
             if(clipboard.hasPrimaryClip()){CharSequence value=clipboard.getPrimaryClip().getItemAt(0).coerceToText(this);key.setText(value==null?"":value.toString().trim());toast("已粘贴；保存后密钥会加密存储");}else toast("请先在平台官网复制 API Key");
         }));gap(c,10);
         TextView apply=button("注册 / 申请账号",false,()->{}),getKey=button("领取 API Key",false,()->{}),docs=button("打开平台说明",false,()->{});
-        LinearLayout accountHelp=col();add(accountHelp,apply);gap(accountHelp,8);add(accountHelp,getKey);gap(accountHelp,8);add(accountHelp,docs);
-        CosmicUi.disclosure(this,c,"账号、密钥与音色帮助","打开对应平台的官方说明",accountHelp,false);gap(c,10);
+        add(c,apply);gap(c,8);add(c,getKey);gap(c,8);add(c,docs);gap(c,10);
         TextView health=text("连接状态 · 尚未检测",13,MUTED,false);add(c,health);gap(c,8);
         String[] selected={prefs.getString("cloud-profile","")};CheckBox clone=new CheckBox(this);clone.setText("使用已录制的参考声音克隆");clone.setTextColor(INK);clone.setChecked(!selected[0].isEmpty());
         Map<String,String[]> drafts=new HashMap<>();String[] activeRoute={""};boolean[] applying={false};
         Runnable updateRoute=()->{
             String id=CLOUD_IDS[provider.getSelectedItemPosition()];
             if(id.equals("elevenlabs")||id.equals("cartesia")||id.equals("minimax"))clone.setChecked(false);
-            onlineVoices.setVisibility(id.equals("elevenlabs")||id.equals("cartesia")?View.VISIBLE:View.GONE);
             miniPicker.setVisibility("minimax".equals(id)?View.VISIBLE:View.GONE);
             if(mode.getSelectedItemPosition()==1&&!CloudConnectionPolicy.official(id)){mode.setSelection(0);toast("此开源模型使用自建网关，已切换连接方式");}
-            boolean direct=mode.getSelectedItemPosition()==1&&CloudConnectionPolicy.official(id);String route=direct?"official-"+id:"gateway";
+            boolean direct=mode.getSelectedItemPosition()==1&&CloudConnectionPolicy.official(id);String route=direct?CloudConnectionPolicy.official(id)&&id.equals("minimax")&&miniChina[0]?"official-minimax-cn":"official-"+id:"gateway";
             if(!route.equals(activeRoute[0])){
                 if(!activeRoute[0].isEmpty())drafts.put(activeRoute[0],new String[]{url.getText().toString(),voice.getText().toString(),key.getText().toString()});
                 String[] values=drafts.get(route);
                 if(values==null){
                     String address=direct?"":prefs.getString("gateway-url",wasOfficial?"":prefs.getString("cloud-url",""));
                     String voiceValue=prefs.getString(direct?route+"-voice":"gateway-voice",direct?"":prefs.getString("cloud-voice","auto"));String secret="";
-                    try{if(direct){address=CloudConnectionPolicy.endpoint(id);secret=new SecretStore(this,route).read();if(secret.isEmpty()&&id.equals("fish"))secret=new SecretStore(this).read();if(voiceValue.isEmpty()&&id.equals("fish"))voiceValue=prefs.getString("voiceId","");}else secret=new SecretStore(this,"accelerated").read();}catch(Exception e){toast("密钥读取失败，请重新领取并粘贴");}
+                    try{if(direct){address=CloudConnectionPolicy.endpoint(id,miniChina[0]);secret=new SecretStore(this,route).read();if(secret.isEmpty()&&id.equals("fish"))secret=new SecretStore(this).read();if(voiceValue.isEmpty()&&id.equals("fish"))voiceValue=prefs.getString("voiceId","");}else secret=new SecretStore(this,"accelerated").read();}catch(Exception e){toast("密钥读取失败，请重新领取并粘贴");}
                     values=new String[]{address,voiceValue,secret};
                 }
                 applying[0]=true;url.setText(values[0]);voice.setText(values[1]);key.setText(values[2]);applying[0]=false;activeRoute[0]=route;
             }
+            onlineVoices.setVisibility(direct&&(id.equals("elevenlabs")||id.equals("cartesia")||id.equals("minimax"))?View.VISIBLE:View.GONE);
+            miniRegion.setVisibility(id.equals("minimax")&&direct?View.VISIBLE:View.GONE);
+            miniRegion.setText(miniChina[0]?"MiniMax 中国站 · 点击切换国际站":"MiniMax 国际站 · 点击切换中国站");
             url.setFocusable(!direct);url.setFocusableInTouchMode(!direct);url.setCursorVisible(!direct);url.setHint(direct?"官方 API 地址（自动填写）":"你部署的 HTTPS 网关地址（会记住并复用）");
             key.setHint(direct?CloudEngineCatalog.label(id)+" API Key（加密保存）":"自建网关访问密钥（不是平台 API Key）");
             routeInfo.setText(direct?"官方地址已自动填写。需要本平台 API Key、音色 ID；可能消耗免费额度或产生费用。":"自动复用你保存的自建网关。五款开源模型（含 GPT-SoVITS）需要远端 GPU 及实际运行的网关。");
             apply.setText((CloudConnectionPolicy.official(id)?CloudEngineCatalog.label(id):"Hugging Face")+" · 注册 / 申请账号");
             getKey.setText(CloudConnectionPolicy.official(id)?"打开 "+CloudEngineCatalog.label(id)+" API Key 页面":"领取 Hugging Face 部署 Token");
             docs.setText(CloudConnectionCatalogTitle(id));
-            apply.setOnClickListener(v->openUrl(CloudConnectionPolicy.account(id)));getKey.setOnClickListener(v->openUrl(CloudConnectionPolicy.keys(id)));docs.setOnClickListener(v->openUrl(CloudConnectionPolicy.documentation(id)));
+            apply.setOnClickListener(v->openUrl(id.equals("minimax")&&miniChina[0]?"https://platform.minimax.cn/login":CloudConnectionPolicy.account(id)));getKey.setOnClickListener(v->openUrl(id.equals("minimax")&&miniChina[0]?"https://platform.minimax.cn/console/access?tab=api-keys":CloudConnectionPolicy.keys(id)));docs.setOnClickListener(v->openUrl(id.equals("minimax")&&miniChina[0]?"https://platform.minimax.cn/docs/api-reference/speech-t2a-http":CloudConnectionPolicy.documentation(id)));
             health.setText(direct?"官方地址已填写 · 密钥和额度尚未验证":"自建网关 · 尚未检测");for(int i=1;i<stateLabels.length;i++){boolean current=CLOUD_IDS[i].equals(id);stateLabels[i].setText(current?"✓ 已选择":CloudConnectionPolicy.official(CLOUD_IDS[i])?"官方 API":"云端模型");stateLabels[i].setTextColor(current?CYAN:MUTED);}
         };
         android.widget.AdapterView.OnItemSelectedListener selection=new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long item){updateRoute.run();}public void onNothingSelected(android.widget.AdapterView<?> parent){}};
-        provider.setOnItemSelectedListener(selection);mode.setOnItemSelectedListener(selection);updateRoute.run();
+        final String[] previousEngine={chosen};
+        provider.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long item){
+                String id=CLOUD_IDS[position];boolean official=CloudConnectionPolicy.selectOfficial(previousEngine[0],id,mode.getSelectedItemPosition()==1);
+                previousEngine[0]=id;mode.setSelection(official?1:0);updateRoute.run();
+            }
+            public void onNothingSelected(android.widget.AdapterView<?> parent){}
+        });
+        mode.setOnItemSelectedListener(selection);
+        miniRegion.setOnClickListener(v->{miniChina[0]=!miniChina[0];updateRoute.run();});updateRoute.run();
         TextWatcher invalidateHealth=new TextWatcher(){public void beforeTextChanged(CharSequence value,int start,int count,int after){}public void onTextChanged(CharSequence value,int start,int before,int count){if(!applying[0]){health.setText("配置已变更 · 请重新检查");for(int i=1;i<stateLabels.length;i++){stateLabels[i].setText("待检测");stateLabels[i].setTextColor(MUTED);}}}public void afterTextChanged(Editable value){}};
         url.addTextChangedListener(invalidateHealth);key.addTextChangedListener(invalidateHealth);
         add(c,button("恢复自动填写的地址",false,()->{
-            try{if(mode.getSelectedItemPosition()==1)url.setText(CloudConnectionPolicy.endpoint(CLOUD_IDS[provider.getSelectedItemPosition()]));else{String value=prefs.getString("gateway-url",wasOfficial?"":prefs.getString("cloud-url",""));if(value.isEmpty())toast("还没有保存网关；部署后填写一次即可自动复用");else url.setText(value);}}catch(Exception e){toast(e.getMessage());}
+            try{if(mode.getSelectedItemPosition()==1)url.setText(CloudConnectionPolicy.endpoint(CLOUD_IDS[provider.getSelectedItemPosition()],miniChina[0]));else{String value=prefs.getString("gateway-url",wasOfficial?"":prefs.getString("cloud-url",""));if(value.isEmpty())toast("还没有保存网关；部署后填写一次即可自动复用");else url.setText(value);}}catch(Exception e){toast(e.getMessage());}
         }));gap(c,8);
         TextView probe=button("检查地址 / 检测网关连接",false,()->{});
         probe.setOnClickListener(v->{
             String address=url.getText().toString().trim(),token=key.getText().toString().trim(),id=CLOUD_IDS[provider.getSelectedItemPosition()];boolean direct=mode.getSelectedItemPosition()==1;
-            if(direct){try{CloudConnectionPolicy.validate(id,address);AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException("请先领取并粘贴平台 API Key");health.setText("官方地址与密钥格式正确 · 尚未验证权限 / 额度（未提交生成）");}catch(Exception e){health.setText(e.getMessage());}return;}
-            probe.setEnabled(false);health.setText("正在检测网关连接…");new Thread(()->{try{CloudConnectionPolicy.gateway(address);Set<String> configured=new CloudHealthClient().check(address,token);runOnUiThread(()->{if(isFinishing()||isDestroyed())return;if(!activeRoute[0].equals("gateway")||!address.equals(url.getText().toString().trim())||!token.equals(key.getText().toString().trim()))health.setText("配置已变更 · 请重新检测");else{health.setText("网关连接成功 · "+configured.size()+" 款已配置");for(int i=1;i<stateLabels.length;i++){boolean ok=configured.contains(CLOUD_IDS[i]);stateLabels[i].setText(ok?"已配置":"未配置");stateLabels[i].setTextColor(ok?CosmicUi.SUCCESS:MUTED);}}probe.setEnabled(true);});}catch(Exception e){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;health.setText(e.getMessage()==null?"网关连接失败":e.getMessage());probe.setEnabled(true);});}},"cloud-health").start();
+            if(direct){
+                final String selectedVoice=voice.getText().toString().trim();
+                try{CloudConnectionPolicy.validate(id,address);AcceleratedSpeechClient.token(token);if(token.isEmpty())throw new IOException("请先领取并粘贴平台 API Key");OfficialSpeechClient.body(id,selectedVoice,"检查",speed);}
+                catch(Exception e){health.setText(e.getMessage());return;}
+                probe.setEnabled(false);health.setText("正在认证并查询所选音色；不提交合成…");
+                new Thread(()->{String result;try{result=new OfficialVoiceCatalog().verify(id,address,token,selectedVoice);}catch(Exception e){result=e.getMessage();}final String detail=result;
+                    runOnUiThread(()->{if(isFinishing()||isDestroyed())return;probe.setEnabled(true);
+                        boolean same=mode.getSelectedItemPosition()==1&&id.equals(CLOUD_IDS[provider.getSelectedItemPosition()])&&address.equals(url.getText().toString().trim())&&token.equals(key.getText().toString().trim())&&selectedVoice.equals(voice.getText().toString().trim());
+                        health.setText(same?detail:"配置已变更 · 请重新检测");
+                    });
+                },"official-auth-check").start();return;
+            }
+            probe.setEnabled(false);health.setText("正在检测网关连接…");new Thread(()->{try{CloudConnectionPolicy.gateway(address);Set<String> configured=new CloudHealthClient().check(address,token);runOnUiThread(()->{if(isFinishing()||isDestroyed())return;if(!activeRoute[0].equals("gateway")||!address.equals(url.getText().toString().trim())||!token.equals(key.getText().toString().trim()))health.setText("配置已变更 · 请重新检测");else{health.setText(!id.equals("auto")&&!configured.contains(id)?"网关可连接，但未部署 "+CloudEngineCatalog.label(id):"网关连接成功 · "+configured.size()+" 款已配置（未验证合成）");for(int i=1;i<stateLabels.length;i++){boolean ok=configured.contains(CLOUD_IDS[i]);stateLabels[i].setText(ok?"已配置":"未配置");stateLabels[i].setTextColor(ok?CosmicUi.SUCCESS:MUTED);}}probe.setEnabled(true);});}catch(Exception e){runOnUiThread(()->{if(isFinishing()||isDestroyed())return;health.setText(e.getMessage()==null?"网关连接失败":e.getMessage());probe.setEnabled(true);});}},"cloud-health").start();
         });add(c,probe);gap(c,8);
         gap(c,12);
         TextView languageChoice=button("文字语言 · "+omniLanguageName(),false,()->{});languageChoice.setOnClickListener(v->pickCloudLanguage(languageChoice));add(c,languageChoice);gap(c,10);
@@ -2216,27 +2258,30 @@ public class MainActivity extends Activity {
                         throw new IOException("GPT-SoVITS 需要准确参考原文；请重新保存包含原文的录音");
                 }
                 if(clone.isChecked()&&selected[0].isEmpty())throw new IOException("请先选择参考录音");if(clone.isChecked()&&(id.equals("minimax")||id.equals("elevenlabs")||id.equals("cartesia")))throw new IOException("此平台请先在官网创建音色 ID，再关闭原始录音选项");
-                if(direct&&!clone.isChecked())OfficialSpeechClient.body(id,voiceId,"配置检查",1);
-                new SecretStore(this,direct?"official-"+id:"accelerated").save(token);
+                if(direct&&!clone.isChecked())OfficialSpeechClient.body(id,voiceId,"配置检查",speed);
+                String secretScope=direct?CloudConnectionPolicy.secretScope(id,endpoint):"accelerated";
+                new SecretStore(this,secretScope).save(token);
                 SharedPreferences.Editor save=prefs.edit().putString("cloud-engine",id).putString("cloud-url",endpoint).putString("cloud-voice",voiceId).putString("cloud-profile",clone.isChecked()?selected[0]:"")
                     .putString("accelerated-url",endpoint).putString("accelerated-model",id).putString("accelerated-voice",voiceId).putString("accelerated-provider","custom").putString("accelerated-protocol",direct?"official":"rest");
-                if(direct)save.putString("official-"+id+"-voice",voiceId);else save.putString("gateway-url",endpoint).putString("gateway-voice",voiceId);save.apply();
+                if(direct){save.putString(secretScope+"-voice",voiceId);if(id.equals("minimax"))save.putBoolean("official-minimax-china",miniChina[0]);}else save.putString("gateway-url",endpoint).putString("gateway-voice",voiceId);save.apply();
                 engine="accelerated";saveSettings();hideKeyboard();toast("已保存 "+CloudEngineCatalog.label(id)+"，进入创作页点击“开始合成”");change("创作");
             }catch(Exception e){toast(e.getMessage());}
         }));gap(c,12);
-        CosmicUi.disclosure(this,c,"浏览全部引擎","官方 API 与开源模型",states,false);
-        CosmicUi.disclosure(this,c,"部署自己的云端服务","ZeroGPU · Modal · Kaggle · Lightning",gpuPaths,false);
+        add(c,button("♫ 前往合成入口 · 文字 / 试听 / 保存",false,()->change("创作")));gap(c,12);
+        add(c,button("网关部署与密钥配置说明",false,()->openUrl(CloudConnectionPolicy.documentation("auto"))));gap(c,8);
+        add(c,button("Modal · GPU 申请 / 部署",false,()->openUrl("https://modal.com/signup")));gap(c,8);
+        add(c,button("Kaggle · GPU Notebook 申请",false,()->openUrl("https://www.kaggle.com/account/login")));
         add(content,c);
     }
-    void pickOfficialVoice(String id,String key,String cursor,EditText target,java.util.function.BooleanSupplier current) {
+    void pickOfficialVoice(String id,String key,String address,String cursor,EditText target,java.util.function.BooleanSupplier current) {
         toast("正在只读获取音色列表…");
         new Thread(()->{try{
-            OfficialVoiceCatalog.Page page=new OfficialVoiceCatalog().list(id,key,cursor);
+            OfficialVoiceCatalog.Page page=id.equals("minimax")?new OfficialVoiceCatalog().minimax(address,key):new OfficialVoiceCatalog().list(id,key,cursor);
             runOnUiThread(()->{if(isFinishing()||isDestroyed()||!target.isAttachedToWindow()||!current.getAsBoolean())return;
                 String[] names=page.names.toArray(new String[0]);
                 AlertDialog.Builder picker=new CosmicDialogBuilder(this).setTitle(CloudEngineCatalog.label(id)+" · 平台音色 ID")
                     .setItems(names,(d,n)->{if(current.getAsBoolean()){target.setText(page.ids.get(n));toast("已填入平台返回的音色 ID");}}).setNegativeButton("关闭",null);
-                if(!page.next.isEmpty())picker.setPositiveButton("下一页",(d,n)->pickOfficialVoice(id,key,page.next,target,current));
+                if(!page.next.isEmpty())picker.setPositiveButton("下一页",(d,n)->pickOfficialVoice(id,key,address,page.next,target,current));
                 picker.show();if(names.length==0)toast("此页没有可用音色，请检查账号或继续下一页");
             });
         }catch(Exception e){runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())toast(e.getMessage());});}},"official-voice-list").start();
@@ -2244,10 +2289,10 @@ public class MainActivity extends Activity {
     String CloudConnectionCatalogTitle(String id){return CloudConnectionPolicy.official(id)?"官方使用与音色说明":"打开 "+CloudEngineCatalog.label(id)+" 模型 / 部署说明";}
 
     void offlineSettings() {
-        motionSettings();gap(content,12);
-        add(content,button("管理音色与云端连接",false,()->change("音色")));gap(content,12);
-        LinearLayout original=content,fish=col();content=fish;fishSettings();content=original;
-        CosmicUi.disclosure(this,content,"Fish Audio 账户","原有 API Key 与模型设置",fish,false);gap(content,12);
+        heading("你的声音偏好","云端连接、界面动效和作品管理，都在这里。");
+        motionSettings();gap(content,16);
+        cloudSettings();gap(content,16);
+        fishSettings();gap(content,16);
         add(content,button("清理旧离线模型（不删除录音、音色和作品）",false,()->openWorkspace("任务")));
         gap(content,12);
         add(content,button("作品回收站",false,this::trashWorks));
@@ -2256,7 +2301,7 @@ public class MainActivity extends Activity {
         info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
         add(content,privacy);gap(content,12);
         LinearLayout about=card();
-        info(about,"VoiceStudio 1.5.28 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
+        info(about,"VoiceStudio 1.5.27.1 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
         add(content,about);
     }
 
@@ -2376,7 +2421,7 @@ public class MainActivity extends Activity {
                         prefs.getString("accelerated-voice","auto"),omniLang,speed,prefs.getInt("accelerated-steps",32),prefs.getLong("voice-seed",42));
                 JSONObject job=new JSONObject().put("type","tts").put("deduplicate",true).put("engine","accelerated")
                         .put("endpoint",address).put("provider",gpuProvider()).put("protocol",protocol)
-                        .put("languageName",omniLanguageEnglish()).put("profile",gradio?prefs.getString("gpu-hf-profile",""):prefs.getString("cloud-profile",""))
+                        .put("languageName",omniLanguageEnglish()).put("profile",gradio?prefs.getString("gpu-hf-profile",""):CloudConnectionPolicy.referenceProfile(protocol,prefs.getString("accelerated-model","auto"),prefs.getString("cloud-profile","")))
                         .put("model",prefs.getString("accelerated-model","auto"))
                         .put("apiVoice",prefs.getString("accelerated-voice","auto")).put("text",s).put("language",omniLang)
                         .put("speed",speed).put("steps",prefs.getInt("accelerated-steps",32)).put("seed",prefs.getLong("voice-seed",42))
@@ -2776,7 +2821,6 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         foreground = false;
-        if(root!=null)CosmicUi.lifecycle(root,false);
         saveDraft();
         if (player != null && isPlaying()) player.pause();
         stopPreview();
@@ -2788,28 +2832,20 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         foreground = true;
-        if(root!=null)CosmicUi.lifecycle(root,true);
         refreshTracked = true;
         pollTrackedJob();
         try {
             history = readHistory();
             latest = history.optJSONObject(0);
-            if(root==null)render();
-            else if("作品".equals(page))populateWorks();
-            else if("创作".equals(page)){
-                showLatest();
-                if(creationVoiceLabel!=null)creationVoiceLabel.setText(selectedVoiceName());
-                if(creationVoiceCard!=null)creationVoiceCard.setContentDescription("当前音色："+selectedVoiceName()+"，点击更换音色与引擎");
-            }
+            if(root!=null&&!page.equals("音色")&&!page.equals("设置"))render();
         } catch (Exception ignored) {
         }
-        updatePlayback();updateJobUI();
+        updatePlayback();
     }
 
     @Override
     protected void onDestroy() {
         destroyed = true;
-        if(root!=null)CosmicUi.lifecycle(root,false);
         if(mergeCancelled!=null)mergeCancelled.set(true);
         if(mergeDialog!=null){mergeDialog.dismiss();mergeDialog=null;}
         if(freeDemoDialog!=null){freeDemoDialog.dismiss();freeDemoDialog=null;}

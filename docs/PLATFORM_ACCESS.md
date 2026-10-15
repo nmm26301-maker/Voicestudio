@@ -1,3 +1,9 @@
+# 1.5.27.1 修复提示
+
+MiniMax 现可明确选择中国站 `api.minimax.cn` 或国际站 `api.minimax.io`，对应不同的密钥范围；不要混用。音色读取增加实际 get_voice 查询。Cartesia 直连速度现支持 0.6—1.5，并传 generation_config.speed。旧文下述 1.0× 限制已取消。
+
+官方平台切换、录音继承和错误诊断的修复详见 [1.5.27.1](../CHANGELOG-1.5.27.1.md)。以下保留原平台操作参考。
+
 # 平台申请、密钥与自动地址
 
 VoiceStudio 1.5.25 在“音色 > 九引擎 / 自动”内添加账号申请、API Key 页面、粘贴密钥和恢复自动地址。Fish、ElevenLabs、MiniMax、Cartesia 可直接调用官方 API，无需另填自建网关。开源模型使用保存过的自建网关，并自动复用该地址。

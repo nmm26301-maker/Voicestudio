@@ -13,13 +13,22 @@ final class CloudConnectionPolicy {
     }
     static String validate(String id,String address)throws IOException{
         String expected=endpoint(id);
+        if(id.equals("minimax")&&"https://api.minimax.cn/v1/t2a_v2".equals(address))return address;
         if(!expected.equals(address))throw new IOException("官方直连地址与所选平台不匹配，请恢复自动填写");
         return expected;
+    }
+    static String endpoint(String id,boolean china)throws IOException{return id.equals("minimax")&&china?"https://api.minimax.cn/v1/t2a_v2":endpoint(id);}
+    static String secretScope(String id,String address)throws IOException{
+        validate(id,address);return id.equals("minimax")&&address.contains("api.minimax.cn/")?"official-minimax-cn":"official-"+id;
+    }
+    static boolean selectOfficial(String previous,String selected,boolean current){return previous.equals(selected)?current:official(selected);}
+    static String referenceProfile(String protocol,String model,String selected){
+        return "official".equals(protocol)&&!"fish".equals(model)?"":selected;
     }
     static String gateway(String value)throws IOException{
         try{
             String host=new URI(value.trim()).getHost();
-            if("api.fish.audio".equalsIgnoreCase(host)||"api.elevenlabs.io".equalsIgnoreCase(host)||"api.minimax.io".equalsIgnoreCase(host)||"api.cartesia.ai".equalsIgnoreCase(host))
+            if("api.fish.audio".equalsIgnoreCase(host)||"api.elevenlabs.io".equalsIgnoreCase(host)||"api.minimax.io".equalsIgnoreCase(host)||"api.minimax.cn".equalsIgnoreCase(host)||"api.cartesia.ai".equalsIgnoreCase(host))
                 throw new IOException("这是平台官方 API 地址，请选择“官方直连”连接方式");
         }catch(java.net.URISyntaxException e){throw new IOException("网关地址格式无效");}
         return AcceleratedSpeechClient.endpoint(value);

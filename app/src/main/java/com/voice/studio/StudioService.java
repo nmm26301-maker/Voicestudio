@@ -380,7 +380,8 @@ public class StudioService extends Service {
             if(!job.optString("protocol","rest").equals(getSharedPreferences("studio",0).getString("accelerated-protocol","rest")))throw new IOException("GPU 调用方式已改变，请重新创建任务");
             if(useGradio&&!provider.equals("hf"))throw new IOException("Space 平台配置无效");
             String referenceText=null;File ref=null;
-            if(useGradio || !job.optString("profile").isEmpty()) {
+            String selectedProfile=CloudConnectionPolicy.referenceProfile(job.optString("protocol","rest"),job.optString("model"),job.optString("profile"));
+            if(useGradio || !selectedProfile.isEmpty()) {
                 String profile=job.optString("profile");
                 if(!profile.equals(getSharedPreferences("studio",0).getString(useGradio?"gpu-hf-profile":"cloud-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
                 if(!profile.isEmpty()) {
@@ -401,7 +402,7 @@ public class StudioService extends Service {
                 if(ref==null)OfficialSpeechClient.body(job.getString("model"),job.optString("apiVoice","auto"),"配置检查",(float)job.optDouble("speed",1));
                 else if(!job.getString("model").equals("fish")||referenceText==null||referenceText.trim().isEmpty())throw new IOException("Fish 录音克隆需要准确录音原文；其它官方平台请用已有 Voice ID");
             }
-            String scope=direct?"official-"+job.getString("model"):useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
+            String scope=direct?CloudConnectionPolicy.secretScope(job.getString("model"),endpoint):useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
             AcceleratedSpeechClient transport=accelerated;
             if(direct){official=new OfficialSpeechClient((input,target,token,progress)->MediaFiles.decode(this,android.net.Uri.fromFile(input),target,token,progress::update),ref,referenceText);transport=official;}
             long millis=RemoteSpeechPipeline.generate(job,new SecretStore(this,scope).read(),ref,referenceText,remoteFolder(this,job.getString("id")),

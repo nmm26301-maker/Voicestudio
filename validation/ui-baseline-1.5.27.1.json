@@ -1,0 +1,52 @@
+{
+  "base": "1.5.27",
+  "baseCommit": "820cdcc170519bacbe43ae4b412d06ca0a1b90a1",
+  "status": "passed",
+  "matchedFiles": [
+    {
+      "path": "app/src/main/java/com/voice/studio/CosmicUi.java",
+      "sha256": "a7c7b53d01d6663b4e92fec8bfa12a1c24051651d462b34ed48e0412ab491626"
+    },
+    {
+      "path": "app/src/main/java/com/voice/studio/CosmicPanelDrawable.java",
+      "sha256": "14556aadb909b9b6b61e08132c3b8b440a511746410e86a28b7b9de7d0492078"
+    },
+    {
+      "path": "app/src/main/java/com/voice/studio/DreamBackdropDrawable.java",
+      "sha256": "e681a5b35187171097d4d30c9afa0f1843e428195b4a2271233d3690223e14ce"
+    },
+    {
+      "path": "app/src/main/java/com/voice/studio/DreamProgressView.java",
+      "sha256": "660020ae184a93c007ff39e7f9b05e91404558647b7e09b8ba9d0fe6700858a7"
+    },
+    {
+      "path": "app/src/main/java/com/voice/studio/ArchivePanelDrawable.java",
+      "sha256": "f950dfba96ccd6a0a0fddae14e98903c11f17f57bf60254f5aa75a0cbd03e14e"
+    },
+    {
+      "path": "app/src/main/java/com/voice/studio/VoiceCapturePanel.java",
+      "sha256": "8cbe3d38e16136f426a9bd005b25b686302456e0f4e515af96d15dd28dc17d00"
+    },
+    {
+      "path": "app/src/main/res/anim/cosmic_enter.xml",
+      "sha256": "a41894d785eb1eeb6d482d11d812689b10f88e0d0de0bfb0d1638f719ccfd7aa"
+    },
+    {
+      "path": "app/src/main/res/anim/cosmic_dialog_enter.xml",
+      "sha256": "6c2a9158ff6216be699f01819c4f461e3fbc506c4f49ef4843546daace8722df"
+    },
+    {
+      "path": "app/src/main/res/anim/cosmic_exit.xml",
+      "sha256": "f5121923062e7dc0990eef92b337ec93220fe9072e3c7cf8ed8aea9664518cec"
+    },
+    {
+      "path": "app/src/main/res/drawable/cosmic_dialog.xml",
+      "sha256": "992e3549f90ee6c08658682c804e4b54c40258d926b543093886ece7ad9a5c38"
+    },
+    {
+      "path": "app/src/main/res/values/styles.xml",
+      "sha256": "8f4da906181c96d9704f9a73dac8db470d5b0243a85e50b2ffb19430de26dca7"
+    }
+  ],
+  "scope": "Visual styling, recording panel and animation assets are byte-identical to 1.5.27. Main/Workspace changes concern API configuration and request construction."
+}

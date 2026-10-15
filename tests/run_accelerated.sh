@@ -9,7 +9,7 @@ sources=()
 for name in JobProgressGate SynthesisPreview AcceleratedSpeechClient GradioSpeechClient CloudReferenceClient CloudWavMerge CloudHealthClient CloudDeploymentConfig OfficialVoiceCatalog CloudEngineCatalog CloudConnectionPolicy OfficialSpeechClient FishInlineMessage FishClient RemoteSpeechSession RemoteSpeechPipeline KaggleTask SynthesisRequests AudioChecks PcmAudio OmniDuration OmniSegments OmniPrompt VoicePrompt;do
  sources+=("$project_dir/app/src/main/java/com/voice/studio/$name.java")
 done
-java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$out_dir" "${sources[@]}" "$project_dir/tests/OfficialVoiceCatalogTest.java" "$project_dir/tests/OfficialSpeechTest.java" "$project_dir/tests/CloudHealthTest.java" "$project_dir/tests/AcceleratedSpeechTest.java" "$project_dir/tests/OmniPromptTest.java" "$project_dir/tests/GradioSpeechTest.java" "$project_dir/tests/LiveGradioSpeech.java" "$project_dir/tests/RemoteSpeechPipelineTest.java" "$project_dir/tests/LiveGradioPipeline.java" "$project_dir/tests/AudioValidationTest.java" "$project_dir/tests/CloudWavMergeTest.java" "$project_dir/tests/DownloadRecoveryTest.java" "$project_dir/tests/ProgressPersistenceTest.java"
+java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$out_dir" "${sources[@]}" "$project_dir/tests/OfficialApiRepairTest.java" "$project_dir/tests/OfficialVoiceCatalogTest.java" "$project_dir/tests/OfficialSpeechTest.java" "$project_dir/tests/CloudHealthTest.java" "$project_dir/tests/AcceleratedSpeechTest.java" "$project_dir/tests/OmniPromptTest.java" "$project_dir/tests/GradioSpeechTest.java" "$project_dir/tests/LiveGradioSpeech.java" "$project_dir/tests/RemoteSpeechPipelineTest.java" "$project_dir/tests/LiveGradioPipeline.java" "$project_dir/tests/AudioValidationTest.java" "$project_dir/tests/CloudWavMergeTest.java" "$project_dir/tests/DownloadRecoveryTest.java" "$project_dir/tests/ProgressPersistenceTest.java"
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.OfficialSpeechTest "$out_dir/fish-reference.msgpack"
 python3 - "$out_dir/fish-reference.msgpack" <<'MSG'
 import sys, struct
@@ -39,6 +39,7 @@ assert len(body['references'][0]['audio'])==240044
 assert body['prosody']['speed']==1 and body['format']=='mp3'
 print('Fish MessagePack independently decoded: full UTF-8 text + exact WAV reference.')
 MSG
+java -cp "$out_dir:$JSON_JAR" com.voice.studio.OfficialApiRepairTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.OfficialVoiceCatalogTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.CloudHealthTest
 java -cp "$out_dir:$JSON_JAR" com.voice.studio.ProgressPersistenceTest
@@ -64,4 +65,11 @@ fi
 
 if [ "${VOICE_HF_PIPELINE_OUTPUT:-}" != "" ];then
  java -cp "$out_dir:$JSON_JAR" com.voice.studio.LiveGradioPipeline "$VOICE_HF_PIPELINE_OUTPUT"
+fi
+
+# Execute SecretStore's actual scope constructor when Android API stubs exist.
+scope_sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+if [[ -n "$scope_sdk" && -f "$scope_sdk/platforms/android-35/android.jar" ]]; then
+ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$out_dir:$scope_sdk/platforms/android-35/android.jar" -d "$out_dir" "$project_dir/app/src/main/java/com/voice/studio/SecretStore.java" "$project_dir/tests/SecretScopeTest.java"
+ java -cp "$out_dir:$scope_sdk/platforms/android-35/android.jar" com.voice.studio.SecretScopeTest
 fi

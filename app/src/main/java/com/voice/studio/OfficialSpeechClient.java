@@ -26,9 +26,10 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
         }
         if(engine.equals("cartesia")){
             if(!voice.matches("[a-zA-Z0-9-]{10,120}"))throw new IOException("Cartesia Sonic 音色 ID 无效");
-            if(speed != 1)throw new IOException("Cartesia Sonic 官方直连当前支持 1.0× 语速，请在创作页设为 1.0");
+            if(speed<.6f||speed>1.5f)throw new IOException("Cartesia 官方语速需为 0.6—1.5");
             return new JSONObject().put("model_id","sonic-3").put("transcript",text)
                 .put("voice",voice).put("language","zh")
+                .put("generation_config",new JSONObject().put("speed",speed))
                 .put("output_format",new JSONObject().put("container","wav")
                     .put("encoding","pcm_s16le").put("sample_rate",24000));
         }
@@ -85,12 +86,12 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             if(model.equals("fish"))c.setRequestProperty("model","s2.1-pro-free");
             progress.update("连接 "+CloudEngineCatalog.label(model)+" 官方 API…");
             try(OutputStream out=c.getOutputStream()){check(cancelled);out.write(body);}
-            int status=c.getResponseCode();check(cancelled);if(status!=200)throw new RequestRejected(status);
+            int status=c.getResponseCode();check(cancelled);if(status!=200)throw rejection(model,status,c,key,cancelled);
             String contentType=c.getContentType();
             if(!model.equals("minimax")&&contentType!=null&&(contentType.toLowerCase(Locale.ROOT).contains("json")||contentType.toLowerCase(Locale.ROOT).contains("text")))throw new IOException("平台未返回音频");
             if(model.equals("minimax")){
                 JSONObject result=new JSONObject(new String(readBounded(c.getInputStream(),8*1024*1024,cancelled),"UTF-8"));
-                if(result.getJSONObject("base_resp").getInt("status_code")!=0)throw new IOException("MiniMax 拒绝合成，请检查平台密钥、额度与音色");
+                if(result.getJSONObject("base_resp").getInt("status_code")!=0)throw new IOException(errorMessage(model,200,result,key));
                 JSONObject data=result.getJSONObject("data");if(data.optInt("status",2)!=2)throw new IOException("MiniMax 尚未返回完整音频");
                 byte[] audio=decodeHex(data.getString("audio"));try(OutputStream out=new FileOutputStream(downloaded)){out.write(audio);}
             }else{
@@ -117,6 +118,29 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             }
             long duration=validate(output,text,cancelled);complete=true;return duration;
         }finally{active=null;c.disconnect();downloaded.delete();if(!complete)output.delete();}
+    }
+    static RequestRejected rejection(String engine,int status,HttpURLConnection c,String key,AtomicBoolean cancelled)throws Exception{
+        JSONObject error=new JSONObject();InputStream stream=c.getErrorStream();
+        if(stream!=null)try{error=new JSONObject(new String(readBounded(stream,65536,cancelled),"UTF-8"));}
+        catch(InterruptedIOException e){throw e;}catch(Exception ignored){check(cancelled);}
+        return new RequestRejected(status,errorMessage(engine,status,error,key));
+    }
+    static String errorMessage(String engine,int status,JSONObject response,String key){
+        JSONObject detail=response.optJSONObject("detail"),error=response.optJSONObject("error"),base=response.optJSONObject("base_resp");
+        JSONObject source=base!=null?base:detail!=null?detail:error!=null?error:response;
+        String code=source.optString("status_code",source.optString("status",source.optString("code","")));
+        String message=source.optString("status_msg",source.optString("message",""));
+        // Keep diagnostic fields only; never dump raw bodies, headers or keys.
+        if(key!=null&&!key.isEmpty()){code=code.replace(key,"[密钥已隐藏]");message=message.replace(key,"[密钥已隐藏]");}
+        code=cleanDiagnostic(code);message=cleanDiagnostic(message);
+        String hint=status==401?"密钥认证失败，请核对平台与账号地区":status==403?"账号或密钥权限不足":status==402?"账号额度或余额不足":status==429?"额度或并发限制":status==404?"接口或音色不存在":status==400||status==422?"请求参数、模型或音色不被平台接受":status>=500?"平台服务异常，提交状态可能未知":"请按平台错误码核对配置";
+        return CloudEngineCatalog.label(engine)+" · HTTP "+status+(code.isEmpty()?"":" · "+code)+"\n"+hint+(message.isEmpty()?"":"\n"+message);
+    }
+    private static String cleanDiagnostic(String value){
+        String clean=value.replaceAll("(?i)Bearer\\s+[^\\s,;]+","Bearer [已隐藏]")
+            .replaceAll("(?i)(?:sk[_-]|xi[_-])[a-z0-9_-]{8,}","[密钥已隐藏]")
+            .replaceAll("[\\p{Cntrl}&&[^\\n]]"," ").trim();
+        return clean.length()>360?clean.substring(0,360)+"…":clean;
     }
     static byte[] readBounded(InputStream stream,int limit,AtomicBoolean cancelled)throws Exception{
         try(InputStream in=stream;ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] buffer=new byte[16384];int n;while((n=in.read(buffer))!=-1){check(cancelled);if(out.size()+n>limit)throw new IOException("平台响应过大");out.write(buffer,0,n);}check(cancelled);return out.toByteArray();}

@@ -61,7 +61,7 @@ public class OfficialSpeechTest {
    check(cbody.getString("voice").equals(cartesiaId),"Current Cartesia version uses string voice ID");
    check(cbody.getJSONObject("output_format").getString("container").equals("wav"),"Cartesia WAV request");
    reject(()->OfficialSpeechClient.body("cartesia","auto","hello",1));
-   reject(()->OfficialSpeechClient.body("cartesia",cartesiaId,"hello",1.5f));
+   reject(()->OfficialSpeechClient.body("cartesia",cartesiaId,"hello",1.6f));
    reject(()->CloudConnectionPolicy.gateway("https://api.cartesia.ai/tts/bytes"));
    out.delete();
    for(String bad:new String[]{"","00g0","fff"})reject(()->OfficialSpeechClient.decodeHex(bad));check(Arrays.equals(OfficialSpeechClient.decodeHex("0041ff"),new byte[]{0,65,-1}),"Hex decoding");
