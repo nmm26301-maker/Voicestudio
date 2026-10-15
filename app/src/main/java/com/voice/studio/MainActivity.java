@@ -1768,7 +1768,7 @@ public class MainActivity extends Activity {
         String[] profile={prefs.getString("gpu-hf-profile","")};
         CheckBox upload=new CheckBox(this);upload.setText("合成时上传所选参考录音（3—10 秒）");upload.setTextColor(INK);upload.setChecked(!profile[0].isEmpty());add(form,upload);
         add(form,button("选择已保存人物音色",false,()->pickGpuProfile(profile)));
-        add(form,text("长文分段可能排队多次；自动音色各段可能有变化，选择人物录音可保持更一致。参考片段同一任务仅上传一次。官方 Space 不接受本机采样种子。",12,MUTED,false));
+        add(form,text("可连接自己的 Qwen3-TTS ZeroGPU Space（使用 *.hf.space 地址）。录制 3—10 秒参考声音并选择；免费 GPU 有每日配额、排队及模型冷启动限制。",12,MUTED,false));
         ScrollView scroll=new ScrollView(this);scroll.addView(form);
         AlertDialog dialog=new CosmicDialogBuilder(this).setTitle("ZeroGPU 合成设置").setView(scroll).setNegativeButton("取消",null).setPositiveButton("保存并使用",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
@@ -1778,7 +1778,7 @@ public class MainActivity extends Activity {
                 new SecretStore(this,"gpu-hf").save(value);
                 prefs.edit().putString("gpu-hf-url",address).putString("gpu-hf-profile",upload.isChecked()?profile[0]:"")
                     .putString("accelerated-url",address).putString("accelerated-provider","hf").putString("accelerated-protocol","gradio")
-                    .putString("accelerated-model","k2-fsa/OmniVoice").putString("accelerated-voice",upload.isChecked()?"参考人物音色":"自动音色").apply();
+                    .putString("accelerated-model","qwen3tts").putString("accelerated-voice",upload.isChecked()?"参考人物音色":"未选择参考音色").apply();
                 engine="accelerated";saveSettings();dialog.dismiss();change("创作");
             }catch(Exception e){toast(e.getMessage());}
         }));dialog.show();
@@ -2032,7 +2032,14 @@ public class MainActivity extends Activity {
     void cloudSettings() {
         cloudApiProtection(content);
         LinearLayout c=card();
-        info(c,"九颗声音星球","选择一颗声音星球，保存连接后开始合成。四款官方 API、五款云端模型，手机不安装权重。");
+        info(c,"九颗声音星球","选择远程 GPU 或官方 API；手机不安装模型权重。");
+        LinearLayout gpuPaths=card();
+        info(gpuPaths,"☁ 免费 GPU 云端路线","ZeroGPU / Modal / Kaggle / Lightning；配额有限。Kaggle 为任务式，其他平台可按条件接入云端合成。");
+        add(gpuPaths,button("✦ ZeroGPU · 配置手机直接合成",true,this::gradioConfig));gap(gpuPaths,8);
+        add(gpuPaths,button("Modal · 部署云端 API",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md")));gap(gpuPaths,8);
+        add(gpuPaths,button("Kaggle · 免费 GPU Notebook",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/kaggle/VoiceStudio-Qwen3-TTS.ipynb")));gap(gpuPaths,8);
+        add(gpuPaths,button("Lightning AI · GPU Studio 教程",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/lightning/README.md")));
+        add(c,gpuPaths);gap(c,15);
         Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
         String chosen=prefs.getString("cloud-engine","auto");for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
         add(c,provider);gap(c,8);
@@ -2253,7 +2260,10 @@ public class MainActivity extends Activity {
             return;
         }
         hideKeyboard();
-        if(!prefs.getBoolean("cloud-api-consent",false)){
+        boolean freeHfGradio="accelerated".equals(engine)
+            && "hf".equals(prefs.getString("accelerated-provider",""))
+            && "gradio".equals(prefs.getString("accelerated-protocol",""));
+        if(!prefs.getBoolean("cloud-api-consent",false) && !freeHfGradio){
             new CosmicDialogBuilder(this).setTitle("当前为免费保护模式")
                 .setMessage("为避免产生意外费用，应用内 API 合成暂未授权。你可以免费通过官方 ZeroGPU 网页试听；若要使用 Fish / MiniMax / ElevenLabs 等 API，请主动了解费用并解锁。")
                 .setNegativeButton("取消",null)
