@@ -30,7 +30,7 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             return new JSONObject().put("model_id","sonic-3").put("transcript",text)
                 .put("voice",voice).put("language","zh")
                 .put("generation_config",new JSONObject().put("speed",speed))
-                .put("output_format",new JSONObject().put("container","wav")
+                .put("output_format",new JSONObject().put("container","raw")
                     .put("encoding","pcm_s16le").put("sample_rate",24000));
         }
         if(!engine.equals("minimax"))throw new IOException("所选引擎不支持官方直连");
@@ -74,14 +74,14 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
         }
         String target=model.equals("elevenlabs")?root+"/"+voice+"?output_format=mp3_44100_128":root;
         check(cancelled);HttpURLConnection c=connections.open(new URL(target));active=c;
-        File downloaded=new File(output.getPath()+".provider."+(model.equals("cartesia")?"wav":"mp3"));boolean complete=false;
+        File downloaded=new File(output.getPath()+".provider."+(model.equals("cartesia")?"pcm":"mp3"));boolean complete=false;
         try{
             c.setInstanceFollowRedirects(false);c.setConnectTimeout(15000);c.setReadTimeout(180000);c.setRequestMethod("POST");c.setDoOutput(true);c.setFixedLengthStreamingMode(body.length);
             c.setRequestProperty("Content-Type",type);
             if(model.equals("cartesia")){
                 c.setRequestProperty("Authorization","Bearer "+key);
                 c.setRequestProperty("Cartesia-Version","2026-08-14");
-                c.setRequestProperty("Accept","audio/wav");
+                c.setRequestProperty("Accept","application/octet-stream");
             }else c.setRequestProperty(model.equals("elevenlabs")?"xi-api-key":"Authorization",model.equals("elevenlabs")?key:"Bearer "+key);
             if(model.equals("fish"))c.setRequestProperty("model","s2.1-pro-free");
             progress.update("连接 "+CloudEngineCatalog.label(model)+" 官方 API…");
@@ -95,22 +95,23 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
                 JSONObject data=result.getJSONObject("data");if(data.optInt("status",2)!=2)throw new IOException("MiniMax 尚未返回完整音频");
                 byte[] audio=decodeHex(data.getString("audio"));try(OutputStream out=new FileOutputStream(downloaded)){out.write(audio);}
             }else{
-                try(InputStream in=c.getInputStream();OutputStream out=new FileOutputStream(downloaded)){byte[] buffer=new byte[32768];long total=0;int n;while((n=in.read(buffer))!=-1){check(cancelled);total+=n;if(total>4L*1024*1024)throw new IOException("平台返回音频过大");out.write(buffer,0,n);}}
+                try(InputStream in=c.getInputStream();OutputStream out=new FileOutputStream(downloaded)){
+                    byte[] buffer=new byte[32768];long total=0;int n;
+                    while((n=in.read(buffer))!=-1){
+                        check(cancelled);total+=n;
+                        if(total>4L*1024*1024)throw new IOException("平台返回音频过大");
+                        out.write(buffer,0,n);
+                    }
+                    long expected=c.getContentLengthLong();
+                    if(model.equals("cartesia")&&expected>=0&&total!=expected)
+                        throw new IOException("Cartesia 返回的 PCM 音频传输不完整");
+                }
             }
             check(cancelled);
             if(model.equals("cartesia")){
-                // Sonic bytes already returns WAV; don't pass it to an MP3 decoder.
-                // Validate the exact expected PCM format for the long-text merger.
-                AudioChecks.validate(downloaded,"wav");
-                try(PcmAudio.Reader reader=new PcmAudio.Reader(downloaded)){
-                    if(reader.rate!=24000||reader.channels!=1||reader.encoding!=1||reader.width!=2)
-                        throw new IOException("Cartesia 返回的格式不是 24kHz 单声道 PCM16 WAV");
-                    reader.validateSpeech(cancelled);
-                }
-                try(InputStream in=new FileInputStream(downloaded);OutputStream out=new FileOutputStream(output)){
-                    byte[] buffer=new byte[32768];int n;
-                    while((n=in.read(buffer))!=-1){check(cancelled);out.write(buffer,0,n);}
-                }
+                // Streaming WAV headers may contain unknown data lengths.
+                // Receive raw signed PCM16 and write canonical RIFF sizes locally.
+                cartesiaPcmToWav(downloaded,output,cancelled);
             }else{
                 AudioChecks.validate(downloaded,"mp3");
                 progress.update("接收完整音频并转换为 WAV…");
@@ -118,6 +119,25 @@ final class OfficialSpeechClient extends AcceleratedSpeechClient {
             }
             long duration=validate(output,text,cancelled);complete=true;return duration;
         }finally{active=null;c.disconnect();downloaded.delete();if(!complete)output.delete();}
+    }
+    /** Wrap fully received mono 24 kHz signed little-endian PCM in a canonical RIFF WAV. */
+    static void cartesiaPcmToWav(File pcm,File output,AtomicBoolean cancelled)throws Exception{
+        long bytes=pcm.length();
+        if(bytes<2||bytes>4L*1024*1024||(bytes&1)!=0)
+            throw new IOException("Cartesia 返回的 PCM 音频为空、过大或采样不完整");
+        try(InputStream in=new BufferedInputStream(new FileInputStream(pcm));
+            PcmAudio.Writer writer=new PcmAudio.Writer(output,24000)){
+            byte[] block=new byte[32768];long total=0;int n;
+            while((n=in.read(block))!=-1){
+                check(cancelled);
+                if(total==0&&n>=4&&block[0]=='R'&&block[1]=='I'&&block[2]=='F'&&block[3]=='F')
+                    throw new IOException("Cartesia 未按要求返回原始 PCM，而是 WAV");
+                writer.f.write(block,0,n);
+                total+=n;
+            }
+            if(total!=bytes)throw new IOException("Cartesia PCM 下载不完整");
+            writer.count=total/2;
+        }
     }
     static RequestRejected rejection(String engine,int status,HttpURLConnection c,String key,AtomicBoolean cancelled)throws Exception{
         JSONObject error=new JSONObject();InputStream stream=c.getErrorStream();
