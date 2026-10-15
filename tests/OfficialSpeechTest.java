@@ -39,15 +39,17 @@ public class OfficialSpeechTest {
     JSONObject body=new JSONObject(c.sent.toString("UTF-8"));check(body.getString("text").endsWith("最后一句。"),"Full new text in official payload");check(!body.has("token")&&!body.has("api_key"),"Key not in payload");out.delete();
     reject(()->client.generate("https://other.invalid/v1", "fixture-key",model,voice(model),"x","zh",1,16,42,out,new AtomicBoolean(),m->{}));check(calls.size()==1,"Mismatched host never called");
    }
-   // Cartesia Sonic returns PCM WAV bytes and must bypass the MP3 decoder.
+   // Cartesia Sonic streams raw PCM16; the client must author a complete WAV header.
    String cartesiaId="123e4567-e89b-12d3-a456-426614174000";
    File sonicFile=new File(folder,"cartesia.wav");
    try(PcmAudio.Writer writer=new PcmAudio.Writer(sonicFile,24000)){
      float[] samples=new float[5*24000];for(int i=0;i<samples.length;i++)samples[i]=(float)Math.sin(i*.1)*.18f;writer.write(samples);
    }
+   byte[] cartesiaWav=Files.readAllBytes(sonicFile.toPath());
+   byte[] cartesiaPcm=Arrays.copyOfRange(cartesiaWav,44,cartesiaWav.length);
    List<Fake> cartesiaCalls=new ArrayList<>();
    OfficialSpeechClient sonic=new OfficialSpeechClient(url->{
-       Fake f=new Fake(url,Files.readAllBytes(sonicFile.toPath()),"audio/wav");cartesiaCalls.add(f);return f;
+       Fake f=new Fake(url,cartesiaPcm,"application/octet-stream");cartesiaCalls.add(f);return f;
      },(in,file,cancel,progress)->{throw new AssertionError("WAV must bypass MP3 decoder");},null,null);
    long millisSonic=sonic.generate(CloudConnectionPolicy.endpoint("cartesia"),"cartesia-fixture","cartesia",
        cartesiaId,"完整的 Cartesia 文本，最后一句。","zh",1,16,42,out,new AtomicBoolean(),m->{});
@@ -59,7 +61,10 @@ public class OfficialSpeechTest {
    JSONObject cbody=new JSONObject(cts.sent.toString("UTF-8"));
    check(cbody.getString("transcript").endsWith("最后一句。"),"Cartesia full text");
    check(cbody.getString("voice").equals(cartesiaId),"Current Cartesia version uses string voice ID");
-   check(cbody.getJSONObject("output_format").getString("container").equals("wav"),"Cartesia WAV request");
+   check(cbody.getJSONObject("output_format").getString("container").equals("raw"),"Cartesia raw PCM16 request");
+   check(Arrays.equals(Arrays.copyOfRange(Files.readAllBytes(out.toPath()),44,44+cartesiaPcm.length),cartesiaPcm),"Cartesia PCM audio preserved");
+   File oddPcm=new File(folder,"odd.pcm");Files.write(oddPcm.toPath(),new byte[]{1,2,3});
+   reject(()->OfficialSpeechClient.cartesiaPcmToWav(oddPcm,out,new AtomicBoolean()));
    reject(()->OfficialSpeechClient.body("cartesia","auto","hello",1));
    reject(()->OfficialSpeechClient.body("cartesia",cartesiaId,"hello",1.6f));
    reject(()->CloudConnectionPolicy.gateway("https://api.cartesia.ai/tts/bytes"));
