@@ -1,61 +1,43 @@
-# 1.5.27.1 修复提示
+# VoiceStudio 1.5.27.2 · 独立平台设置
 
-MiniMax 现可明确选择中国站 `api.minimax.cn` 或国际站 `api.minimax.io`，对应不同的密钥范围；不要混用。音色读取增加实际 get_voice 查询。Cartesia 直连速度现支持 0.6—1.5，并传 generation_config.speed。旧文下述 1.0× 限制已取消。
+音色页分为官方 API 与独立云端模型。每家分别保存地址、密钥、音色 ID 和参考录音；切换平台不会覆盖另一家的连接。沿用 1.5.27 的界面和动效。
 
-官方平台切换、录音继承和错误诊断的修复详见 [1.5.27.1](../CHANGELOG-1.5.27.1.md)。以下保留原平台操作参考。
+## 官方 API
 
-# 平台申请、密钥与自动地址
-
-VoiceStudio 1.5.25 在“音色 > 九引擎 / 自动”内添加账号申请、API Key 页面、粘贴密钥和恢复自动地址。Fish、ElevenLabs、MiniMax、Cartesia 可直接调用官方 API，无需另填自建网关。开源模型使用保存过的自建网关，并自动复用该地址。
-
-## 注册和密钥入口
-
-| 引擎 | 账号 / 资源申请 | 密钥入口 | 本版连接方式 |
+| 平台 | API Key 页面 | 合成地址 | 音色 |
 | --- | --- | --- | --- |
-| Fish Audio | https://fish.audio/auth/signup/ | https://fish.audio/app/api-keys/ | 官方直连或自建网关；录音克隆需准确原文 |
-| ElevenLabs | https://elevenlabs.io/app/sign-up | https://elevenlabs.io/app/developers/api-keys | 官方直连或自建网关；使用平台 Voice ID |
-| MiniMax | https://platform.minimax.io/login | https://platform.minimax.io/console/access | 官方直连或自建网关；使用普通语音 API Key 和平台 Voice ID |
-| Cartesia Sonic | https://play.cartesia.ai/ | https://play.cartesia.ai/keys | 官方 `/tts/bytes`；使用已注册的 Cartesia Voice ID |
-| GPT-SoVITS | https://github.com/RVC-Boss/GPT-SoVITS | 自建桥接器密钥 | 官方原生 `/tts` 经服务器上的安全桥接器连接，不需要手机本地模型 |
-| IndexTTS 2.5 | https://huggingface.co/join | https://huggingface.co/settings/tokens | 申请 GPU/部署 Token，部署模型与网关后使用 |
-| CosyVoice 3 开源模型 | https://huggingface.co/join | https://huggingface.co/settings/tokens | 申请 GPU/部署 Token，部署模型与网关后使用 |
-| Qwen3-TTS 开源模型 | https://huggingface.co/join | https://huggingface.co/settings/tokens | 申请 GPU/部署 Token，部署模型与网关后使用 |
-| Chatterbox V3 | https://huggingface.co/join | https://huggingface.co/settings/tokens | 申请 GPU/部署 Token，部署模型与网关后使用 |
+| Fish Audio | https://fish.audio/app/api-keys/ | `https://api.fish.audio/v1/tts` | 保留原有账户与音色入口 |
+| ElevenLabs | https://elevenlabs.io/app/developers/api-keys | `https://api.elevenlabs.io/v1/text-to-speech` | 从本平台读取 Voice ID |
+| MiniMax 中国站 | https://platform.minimax.cn/console/access?tab=api-keys | `https://api.minimax.cn/v1/t2a_v2` | 中国站自己的 Voice ID 与密钥 |
+| MiniMax 国际站 | https://platform.minimax.io/console/access | `https://api.minimax.io/v1/t2a_v2` | 国际站自己的 Voice ID 与密钥 |
+| Cartesia Sonic | https://play.cartesia.ai/keys | `https://api.cartesia.ai/tts/bytes` | Cartesia Voice ID |
 
-账号登录、验证码、资格/额度审批和生成密钥需要用户在官方平台完成。App 只提供入口，用户复制密钥后主动点“粘贴已领取的密钥”；不会自动读取剪贴板或冒充账号申请成功。
+1. 打开“音色”，点击具体平台的“独立配置”。MiniMax 先明确选择账号地区。
+2. 填本平台 API Key，点“读取本平台音色 ID”选择声音，也可直接填已有 Voice ID。
+3. 点“检查本平台认证与音色”，查看平台返回结果。此操作不提交合成。
+4. 点“保存并使用这家”，回到合成页输入文字，再点“开始合成”。
 
-Qwen/CosyVoice 另有阿里云百炼托管服务，申请入口 https://bailian.console.aliyun.com/，密钥说明 https://help.aliyun.com/zh/model-studio/get-api-key 。其模型、地域/业务空间地址和接口与本版开源 worker 不同，本版未接入百炼直连；不要把百炼 API Key 当作自建网关密钥。
+ElevenLabs / MiniMax / Cartesia 的官方 TTS 只使用其平台 Voice ID，不继承手机的参考录音。Fish 原有入口继续保留。官方地址固定，不需要手填共享网关。
 
-## 地址怎样自动填写
+检查成功表示认证与音色可查询，不表示 TTS 权限、余额或音质已通过验收。任务失败时打开任务详情查看平台名、HTTP 状态、错误码和消息；已知密钥会隐藏。401 提示核对密钥与地区，403 提示核对权限，具体原因以平台原文为准。未确认提交状态的失败任务不会自动重复请求。
 
-| 官方直连平台 | 自动填写的实际地址 |
-| --- | --- |
-| Fish | `https://api.fish.audio/v1/tts` |
-| ElevenLabs | `https://api.elevenlabs.io/v1/text-to-speech`（生成时追加选定 Voice ID） |
-| MiniMax | `https://api.minimax.io/v1/t2a_v2` |
-| Cartesia Sonic | `https://api.cartesia.ai/tts/bytes` |
+## 五款开源模型
 
-地址对应各平台真实请求格式，不能在自建网关模式把官方地址拼成 `/v1/audio/speech`。此版本遇到这种混填会直接提示选择官方直连。
+IndexTTS 2.5、CosyVoice 3、Qwen3-TTS、Chatterbox V3、GPT-SoVITS 在云 GPU 运行。每个模型有自己的配置入口，并分别保存 REST、Modal、Lightning 连接；Qwen ZeroGPU Space 也单独保存。
 
-- 切换商业平台后会自动填地址，并读取该平台独立的加密密钥和音色设置。
-- 切回自建网关会恢复保存的网关地址和网关密钥，不把平台 API Key 自动带到网关。
-- 项目没有已部署的公共网关。自建网关域名由部署结果决定，不能通过模型名字自动推导。部署后填写一次，之后切换开源引擎即可自动复用。
-- HF/Modal 的部署 Token 是平台访问凭据，自建网关的 `VOICE_GATEWAY_TOKEN` 是部署时设置的独立访问密钥，二者不能混用。
-- 官方直连“检查”只验证地址和密钥格式，不提交付费合成，也不宣称密钥权限/额度已验证。网关模式可实际请求认证健康接口。
+1. 在“音色”页点击目标模型，选择已部署服务的类型。
+2. 填该模型实际运行的 HTTPS API 地址及其自己的访问密钥。Modal 使用实际 `*.modal.run` Web Endpoint；不能填控制台页面。
+3. 选择这个模型自己的 3—10 秒参考音色；GPT-SoVITS 还需要准确的录音原文。
+4. 检测、保存并使用，再回到合成页开始生成。
 
-## 使用
+Modal / Lightning 的 `VOICE_GATEWAY_TOKEN` 是你为服务设置的访问密钥，不是账号部署 Token。HF Token、百炼 API Key 也不能当作这些服务的网关密钥。Qwen ZeroGPU Space 支持匿名时可留空 HF Token。
 
-1. 选择平台。Fish / ElevenLabs / MiniMax / Cartesia 的平台行会切换为官方直连；也可手动选择自建网关。
-2. 点注册 / 申请账号，登录后点对应 API Key 页面，生成密钥并复制。
-3. 回到应用，点粘贴密钥。选择该平台音色 ID；Fish 可改为已录制参考声音，录音原文须准确。
-4. 保存并使用。直连地址已经自动填好；自建网关填写部署地址和网关 token 后保存一次即可。
+[手机 Modal 部署](MODAL_PHONE_DEPLOY.md) · [五引擎部署](OPEN_MODEL_DEPLOY.md) · [免费网页试听](FREE_MOBILE_CLOUD.md)
 
-ElevenLabs 直连使用 `eleven_multilingual_v2`，官方语速参数 0.7—1.2；超范围会明确提示调整。Fish 使用 `s2.1-pro-free`；MiniMax 使用 `speech-2.8-hd`；Cartesia 直连使用 `sonic-3`、WAV 输出，手机端语速设为 1.0×。GPT-SoVITS 必须选择 3—10 秒参考录音并填准确原声文本。平台费用、资格与限额由官方账号决定，不承诺免费额度。
+## 请求格式与验证
 
-## 验证范围
+ElevenLabs 使用 `eleven_multilingual_v2`，语速 0.7—1.2；MiniMax 使用 `speech-2.8-hd`；Cartesia 使用 `sonic-3` 与 `2026-08-14` API 版本，语速 0.6—1.5，输出 24kHz PCM16 WAV。超出支持范围会提示调整。
 
-官方直连加入注入式请求/解码器测试，验证完整文本、认证头、固定地址、响应边界、Fish MessagePack WAV 与准确原文、分段合并、续传不重发，以及未知计费状态时停止。Host 使用模拟请求和解码器，没有真实账号/GPU或手机 codec 音质验收。
+官方参考：[ElevenLabs TTS](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)、[MiniMax 中国站 TTS](https://platform.minimax.cn/docs/api-reference/speech-t2a-http)、[MiniMax 国际站 TTS](https://platform.minimax.io/docs/api-reference/speech-t2a-http)、[Cartesia TTS](https://docs.cartesia.ai/api-reference/tts/bytes)。2026-10-15 核对。
 
-官方参考：[Fish API](https://docs.fish.audio/api-reference/endpoint/openapi-v1/text-to-speech)、[ElevenLabs Quickstart](https://elevenlabs.io/docs/eleven-api/quickstart)、[MiniMax HTTP Speech](https://platform.minimax.io/docs/api-reference/speech-t2a-http)。
-
-**最新八款模型 + Fish 的全部连接方式和实际合成入口，见 [八引擎合成说明](EIGHT_ENGINES_SYNTHESIS.md)。**
+已验证编译、签名、平台独立保存、任务切换后的凭据归属和模拟请求。尚未使用真实平台账号完成 TTS、手机安装/播放或 GPU 音质验收，详见 [当前验证记录](../validation/current-checks.md)。

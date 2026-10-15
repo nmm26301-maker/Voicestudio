@@ -1,25 +1,18 @@
-# VoiceStudio 1.5.27.1-cloud · API 修复验证
+# VoiceStudio 1.5.27.2-cloud 当前验证
 
-## 当前通过
+- 1.5.27 系列界面基线，未采用 1.5.28 样式。
+- 本次重新编译的全部 DEX、manifest、资源和素材与交付签名 APK 逐字节一致。Android 编译、DEX、zipalign、原 v2/v3 签名通过，versionCode 46；从已交付 1.5.27.1 升级的 31 项兼容检查通过。
+- 独立存储类测试 118 项：实际 CloudConnectionStore、任务构造与密钥选择，偏好存储和凭据仓库注入测试。覆盖多个平台配置、创建任务后切换其他平台、区域隔离、参考录音隔离、错误标识拒绝、仅同平台地址变更影响其旧任务、明确归属的旧配置迁移。没有使用真实 API Key。
+- SecretStore 真实构造范围检查 26 项通过，不访问 Android Keystore；前次 API 专项 76 项及既有官方 API、恢复、音频、合并、持久化、全文管线回归通过。
+- 137 项 UI 基础 / 对比度检查通过。没有执行真机布局、录音、播放、Keystore 加密读写或安装验收。
+- 原签名恢复归档与 APK 字节一致，私钥未放入公开源码。
 
-- 原生 Android 编译、DEX、zipalign、v2/v3 原签名通过；安装身份 com.voice.studio.preview，versionCode 45。
-- 从 1.5.27、1.5.28 升级各 31 项兼容检查通过，无需因为版本回退而降低 versionCode。没有执行用户手机安装。
-- 11 个界面样式、录音面板和动效文件与 1.5.27 字节一致，已取消 1.5.28 的界面改动。主界面中的变动仅涉及 API 路由、地区、查询、表单保留及错误显示。
-- 76 项 API 专项 host/mock 回归通过：平台切换、官方 ID 请求不继承全局录音、Fish 参考录音保留、MiniMax 两地区固定地址和密钥范围、真实查询请求结构、HTTP / 业务码保留、密钥脱敏、Cartesia 语速参数、未知提交状态不重复请求。
-- 10 项 SecretStore 真实构造函数检查通过，覆盖全部允许的密钥范围和未知范围拒绝。测试没有调用 Android Keystore，不能替代设备上的加密读写验收。
-- 既有 host/mock 回归通过：84 项官方 API、44 项音色与部署配置、16 项健康、1023 项持久化、42 项音频、123 项恢复、10 项 WAV 合并、67 项请求、38 项 prompt、10841 项远程管线、52 项旧 GPU 协议。
-- UI 基础 / 对比度检查 137 项通过。原签名恢复归档中的 APK 与交付 APK 相同。
+APK SHA256：`f0c4b0a0dff0307d167a5f2f057c4e6a7aa4ceee8bcb53b8531f04b4ba27af53`。
 
-APK SHA256：`22563de8ee4fe229cfb8f4aa0df539fadff77ed1aa1bf60ec3d02b14d154c108`。
+用户确认原失败出现在点击合成后，类型为 HTTP 401/403。当前没有具体平台的完整错误消息，也没有真实账号 TTS 验收。此次代码与测试证明连接 / 密钥 / 任务的隔离规则，不证明服务端认证一定已成功。无效 Key、权限、账号地区或限制仍需具体返回信息判断。
 
-## 原故障的代码证据
+服务端与 GPU 部署代码未改动，未触发真实云部署或收费推理。五款自建模型仍需已运行的服务。
 
-保存参考录音会更新共享 cloud-profile。旧单条和批量任务把它直接写入官方 API 任务；旧后台对非 Fish 的原始参考录音主动拒绝。现三处都使用平台能力策略，ElevenLabs / MiniMax / Cartesia 走平台 Voice ID，不再继承该文件。
+公开验证证据：isolation-java-1.5.27.2.log、upgrade-checks-1.5.27.2.json、source-match-1.5.27.2.json。
 
-旧引擎下拉框与连接方式未同步，HTTP 错误体被丢弃，官方检查只验证密钥字符格式。现切换平台同步方式、实际查询音色并显示结构化错误，MiniMax 明确选择中国站或国际站。保存配置不会被查询成功冒充为 TTS 实测通过。
-
-## 未验证
-
-没有用户实际平台账户或当前错误日志，因此不能确认其每一次失败都只有上述原因。尚未用真实账号完成 ElevenLabs、MiniMax、Cartesia 合成、余额和权限验收；未连接手机验证安装、密钥读写、录音、播放和保留数据。五款开源模型仍需真实 GPU 部署和可运行服务，不因为 APK 有入口而已可用。
-
-证据：api-fix-java-1.5.27.1.log、build-1.5.27.1.log、ui-baseline-1.5.27.1.json、upgrade-checks-1.5.27.1.json、upgrade-from-1.5.28-to-1.5.27.1.json、release-backup-1.5.27.1.json。
+本次补充核验：source-match-1.5.27.2.json；隔离覆盖同一模型的 REST / Modal / Lightning 与匿名 Qwen Space。

@@ -369,21 +369,17 @@ public class StudioService extends Service {
 
     void acceleratedSpeech(JSONObject job, File out) throws Exception {
         String endpoint = job.getString("endpoint");
-        String current = getSharedPreferences("studio",0).getString("accelerated-url", "");
         String provider=job.optString("provider","custom");
-        if(!provider.equals(getSharedPreferences("studio",0).getString("accelerated-provider","custom")))throw new IOException("GPU 平台已改变，请按新配置重新创建任务");
-        if (!endpoint.equals(current)) throw new IOException("加速接口地址已改变，请按新配置重新创建任务");
+        String serviceKey=new CloudConnectionStore(this).keyForJob(job);
         File pending = new File(out.getPath()+".pending"),reference=new File(out.getPath()+".reference.pending.wav");
         try {
             long start = System.nanoTime();
             boolean useGradio=job.optString("protocol","rest").equals("gradio");
-            if(!job.optString("protocol","rest").equals(getSharedPreferences("studio",0).getString("accelerated-protocol","rest")))throw new IOException("GPU 调用方式已改变，请重新创建任务");
             if(useGradio&&!provider.equals("hf"))throw new IOException("Space 平台配置无效");
             String referenceText=null;File ref=null;
             String selectedProfile=CloudConnectionPolicy.referenceProfile(job.optString("protocol","rest"),job.optString("model"),job.optString("profile"));
             if(useGradio || !selectedProfile.isEmpty()) {
                 String profile=job.optString("profile");
-                if(!profile.equals(getSharedPreferences("studio",0).getString(useGradio?"gpu-hf-profile":"cloud-profile","")))throw new IOException("参考录音上传设置已改变，请重新创建任务");
                 if(!profile.isEmpty()) {
                     if(!profile.matches("[a-f0-9-]{36}"))throw new IOException("参考人物音色编号无效");
                     File folder=StudioFiles.dir(this,"profiles");JSONObject meta=StudioFiles.read(new File(folder,profile+".json"));
@@ -402,10 +398,10 @@ public class StudioService extends Service {
                 if(ref==null)OfficialSpeechClient.body(job.getString("model"),job.optString("apiVoice","auto"),"配置检查",(float)job.optDouble("speed",1));
                 else if(!job.getString("model").equals("fish")||referenceText==null||referenceText.trim().isEmpty())throw new IOException("Fish 录音克隆需要准确录音原文；其它官方平台请用已有 Voice ID");
             }
-            String scope=direct?CloudConnectionPolicy.secretScope(job.getString("model"),endpoint):useGradio?"gpu-hf":provider.equals("modal")?"gpu-modal":"accelerated";
+
             AcceleratedSpeechClient transport=accelerated;
             if(direct){official=new OfficialSpeechClient((input,target,token,progress)->MediaFiles.decode(this,android.net.Uri.fromFile(input),target,token,progress::update),ref,referenceText);transport=official;}
-            long millis=RemoteSpeechPipeline.generate(job,new SecretStore(this,scope).read(),ref,referenceText,remoteFolder(this,job.getString("id")),
+            long millis=RemoteSpeechPipeline.generate(job,serviceKey,ref,referenceText,remoteFolder(this,job.getString("id")),
                 pending,cancel,m->{
                     if(m.contains("音频已校验")||m.contains("复用已完成音频"))try{if(SynthesisPreview.remote(new File(new File(StudioFiles.dir(this,"jobs"),job.getString("id")),"gpu"))!=null)job.put("previewReady",true);}catch(Exception ignored){}
                     state(job,"running",m);

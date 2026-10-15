@@ -6,7 +6,7 @@ project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 out_dir="$(mktemp -d)"
 trap 'rm -rf "$out_dir"' EXIT
 sources=()
-for name in JobProgressGate SynthesisPreview AcceleratedSpeechClient GradioSpeechClient CloudReferenceClient CloudWavMerge CloudHealthClient CloudDeploymentConfig OfficialVoiceCatalog CloudEngineCatalog CloudConnectionPolicy OfficialSpeechClient FishInlineMessage FishClient RemoteSpeechSession RemoteSpeechPipeline KaggleTask SynthesisRequests AudioChecks PcmAudio OmniDuration OmniSegments OmniPrompt VoicePrompt;do
+for name in JobProgressGate SynthesisPreview AcceleratedSpeechClient GradioSpeechClient CloudReferenceClient CloudWavMerge CloudHealthClient CloudDeploymentConfig OfficialVoiceCatalog CloudEngineCatalog CloudConnectionPolicy CloudConnection OfficialSpeechClient FishInlineMessage FishClient RemoteSpeechSession RemoteSpeechPipeline KaggleTask SynthesisRequests AudioChecks PcmAudio OmniDuration OmniSegments OmniPrompt VoicePrompt;do
  sources+=("$project_dir/app/src/main/java/com/voice/studio/$name.java")
 done
 java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$JSON_JAR" -d "$out_dir" "${sources[@]}" "$project_dir/tests/OfficialApiRepairTest.java" "$project_dir/tests/OfficialVoiceCatalogTest.java" "$project_dir/tests/OfficialSpeechTest.java" "$project_dir/tests/CloudHealthTest.java" "$project_dir/tests/AcceleratedSpeechTest.java" "$project_dir/tests/OmniPromptTest.java" "$project_dir/tests/GradioSpeechTest.java" "$project_dir/tests/LiveGradioSpeech.java" "$project_dir/tests/RemoteSpeechPipelineTest.java" "$project_dir/tests/LiveGradioPipeline.java" "$project_dir/tests/AudioValidationTest.java" "$project_dir/tests/CloudWavMergeTest.java" "$project_dir/tests/DownloadRecoveryTest.java" "$project_dir/tests/ProgressPersistenceTest.java"
@@ -70,6 +70,7 @@ fi
 # Execute SecretStore's actual scope constructor when Android API stubs exist.
 scope_sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 if [[ -n "$scope_sdk" && -f "$scope_sdk/platforms/android-35/android.jar" ]]; then
- java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$out_dir:$scope_sdk/platforms/android-35/android.jar" -d "$out_dir" "$project_dir/app/src/main/java/com/voice/studio/SecretStore.java" "$project_dir/tests/SecretScopeTest.java"
- java -cp "$out_dir:$scope_sdk/platforms/android-35/android.jar" com.voice.studio.SecretScopeTest
+ java -jar "$ECJ_JAR" -source 8 -target 8 -encoding UTF-8 -cp "$out_dir:$JSON_JAR:$scope_sdk/platforms/android-35/android.jar" -d "$out_dir" "$project_dir/app/src/main/java/com/voice/studio/SecretStore.java" "$project_dir/tests/SecretScopeTest.java" "$project_dir/app/src/main/java/com/voice/studio/CloudConnectionStore.java" "$project_dir/tests/IndependentConnectionsTest.java"
+ java -cp "$out_dir:$JSON_JAR:$scope_sdk/platforms/android-35/android.jar" com.voice.studio.SecretScopeTest
+ java -cp "$out_dir:$JSON_JAR:$scope_sdk/platforms/android-35/android.jar" com.voice.studio.IndependentConnectionsTest
 fi

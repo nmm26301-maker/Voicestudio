@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "sourceBuildMatchesSignedRelease": true,
+  "files": {
+    "AndroidManifest.xml": true,
+    "assets/omni-languages.json": true,
+    "classes.dex": true,
+    "res/anim/cosmic_dialog_enter.xml": true,
+    "res/anim/cosmic_enter.xml": true,
+    "res/anim/cosmic_exit.xml": true,
+    "res/anim/cosmic_hold.xml": true,
+    "res/drawable/cosmic_dialog.xml": true,
+    "res/drawable/ic_launcher.xml": true,
+    "resources.arsc": true
+  },
+  "apkSha256": "f0c4b0a0dff0307d167a5f2f057c4e6a7aa4ceee8bcb53b8531f04b4ba27af53",
+  "scope": "Recompiled current Android source and compared every manifest/resource/asset/DEX byte with signed release; archive timestamps and signing metadata excluded."
+}

@@ -149,25 +149,7 @@ public class WorkspaceActivity extends Activity {
                 .put("speed",p.getFloat("speed",1)).put("voice",p.getString("voiceName","Fish 音色"));
         }
         if(!engine.equals("accelerated"))throw new IOException("请先在首页选择并配置云端引擎");
-        String url=p.getString("accelerated-url","");
-        if(url.isEmpty())throw new IOException("请先填写云端网关地址");
-        boolean gradio="gradio".equals(p.getString("accelerated-protocol","rest"));
-        String protocol=p.getString("accelerated-protocol","rest");
-        if(protocol.equals("official"))CloudConnectionPolicy.validate(p.getString("accelerated-model","auto"),url);else if(gradio)GradioSpeechClient.base(url);else CloudConnectionPolicy.gateway(url);
-        String model=p.getString("accelerated-model","auto");
-        String voice=p.getString("accelerated-voice","auto");
-        AcceleratedSpeechClient.request(text,model,voice,p.getString("omniLang","zh"),
-            p.getFloat("speed",1),p.getInt("accelerated-steps",32),p.getLong("voice-seed",42));
-        return new JSONObject().put("type","tts").put("engine","accelerated")
-            .put("text",text).put("endpoint",url)
-            .put("provider",p.getString("accelerated-provider","custom"))
-            .put("protocol",protocol)
-            .put("profile",gradio?p.getString("gpu-hf-profile",""):CloudConnectionPolicy.referenceProfile(protocol,model,p.getString("cloud-profile","")))
-            .put("language",p.getString("omniLang","zh"))
-            .put("languageName","Auto")
-            .put("model",model).put("apiVoice",voice)
-            .put("speed",p.getFloat("speed",1)).put("steps",p.getInt("accelerated-steps",32))
-            .put("seed",p.getLong("voice-seed",42)).put("voice",voice);
+        return new CloudConnectionStore(this).job(text,p.getString("omniLang","zh"),"Auto",p.getFloat("speed",1),p.getInt("accelerated-steps",32),p.getLong("voice-seed",42));
     }
 
     void batch() {

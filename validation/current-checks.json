@@ -1,44 +1,32 @@
 {
-  "version": "1.5.27.1-cloud",
-  "versionCode": 45,
+  "version": "1.5.27.2-cloud",
+  "versionCode": 46,
   "checkedOn": "2026-10-15",
-  "uiBaseCommit": "820cdcc170519bacbe43ae4b412d06ca0a1b90a1",
+  "baseCommit": "81b455d3191d693a57e2e5edeb21cf1524cbcd26",
   "uiBase": "1.5.27",
-  "discardedUiVersion": "1.5.28",
-  "androidCompilation": "passed ECJ/resources/D8/zipalign and original v2/v3 signature",
-  "upgradeFrom1527": {
+  "androidCompilation": "passed original v2/v3 signature and cloud-only build",
+  "upgrade": {
     "status": "passed",
     "checks": 31,
     "package": "com.voice.studio.preview",
     "label": "VoiceStudio",
-    "version": "1.5.27.1-cloud",
-    "versionCode": 45,
+    "version": "1.5.27.2-cloud",
+    "versionCode": 46,
     "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
-    "apkSha256": "22563de8ee4fe229cfb8f4aa0df539fadff77ed1aa1bf60ec3d02b14d154c108",
-    "previousApkSha256": "c3275b3c09ab5071e0619e52cbd61ccb428eda560badca96556e948185039c02",
-    "previousVersionCode": 43,
+    "apkSha256": "f0c4b0a0dff0307d167a5f2f057c4e6a7aa4ceee8bcb53b8531f04b4ba27af53",
+    "previousApkSha256": "22563de8ee4fe229cfb8f4aa0df539fadff77ed1aa1bf60ec3d02b14d154c108",
+    "previousVersionCode": 45,
     "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
   },
-  "upgradeFrom1528": {
-    "status": "passed",
-    "checks": 31,
-    "package": "com.voice.studio.preview",
-    "label": "VoiceStudio",
-    "version": "1.5.27.1-cloud",
-    "versionCode": 45,
-    "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
-    "apkSha256": "22563de8ee4fe229cfb8f4aa0df539fadff77ed1aa1bf60ec3d02b14d154c108",
-    "previousApkSha256": "7c9e4ea21f053caf5afddf657c6775b3c5cb12d7b1811f6266b5d51f1cb3382a",
-    "previousVersionCode": 44,
-    "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
-  },
+  "independentStoreHostChecks": 118,
+  "secretScopeConstructorChecks": 26,
   "apiRepairHostChecks": 76,
-  "secretScopeConstructorChecks": 10,
-  "existingHostRequestRegression": "passed official APIs, remote speech, recovery, persistence, reference and WAV merging",
+  "userReportedFailure": "After pressing synthesize; HTTP 401/403; raw provider error not yet supplied",
   "unverified": [
-    "User account authentication and actual TTS success",
-    "User device install and recording/playback",
-    "Actual GPU deployment and model output",
-    "Live provider balance, TTS permissions and quotas"
-  ]
+    "Real account TTS authentication and permissions",
+    "Actual Android Keystore and phone installation",
+    "Real GPU deployment and voice quality",
+    "Exact cause of user 401/403"
+  ],
+  "independentStoreCoverage": "Per-model REST, Modal, Lightning; anonymous Qwen HF; official API regions; immutable voice/reference snapshots; no credentials from other connections"
 }
