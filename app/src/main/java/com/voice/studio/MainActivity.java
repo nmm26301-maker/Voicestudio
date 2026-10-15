@@ -1761,7 +1761,7 @@ public class MainActivity extends Activity {
 
     void gradioConfig() {
         LinearLayout form=new LinearLayout(this);form.setOrientation(LinearLayout.VERTICAL);form.setPadding(dp(20),dp(12),dp(20),dp(12));
-        EditText url=field("https://作者-空间名.hf.space",prefs.getString("gpu-hf-url",GradioSpeechClient.OFFICIAL),false);
+        EditText url=field("https://作者-空间名.hf.space",prefs.getString("gpu-hf-url",""),false);
         String token="";try{token=new SecretStore(this,"gpu-hf").read();}catch(Exception ignored){}
         EditText key=field("可选 HF Token；匿名可留空",token,true);key.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
         add(form,url);add(form,key);
@@ -2034,11 +2034,32 @@ public class MainActivity extends Activity {
         LinearLayout c=card();
         info(c,"九颗声音星球","选择远程 GPU 或官方 API；手机不安装模型权重。");
         LinearLayout gpuPaths=card();
-        info(gpuPaths,"☁ 免费 GPU 云端路线","ZeroGPU / Modal / Kaggle / Lightning；配额有限。Kaggle 为任务式，其他平台可按条件接入云端合成。");
-        add(gpuPaths,button("✦ ZeroGPU · 配置手机直接合成",true,this::gradioConfig));gap(gpuPaths,8);
-        add(gpuPaths,button("Modal · 部署云端 API",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md")));gap(gpuPaths,8);
-        add(gpuPaths,button("Kaggle · 免费 GPU Notebook",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/kaggle/VoiceStudio-Qwen3-TTS.ipynb")));gap(gpuPaths,8);
-        add(gpuPaths,button("Lightning AI · GPU Studio 教程",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/lightning/README.md")));
+        info(gpuPaths,"☁ 四座 GPU 云端基地","手机不运行模型。先配置 Qwen3-TTS；试用资源有限，Kaggle 不提供常驻 API。");
+        final String[] gpuNames={"✦ ZeroGPU","Modal","Kaggle","Lightning"};
+        final String[] gpuDetails={"免费配额 · 直接合成","计算赠额 · HTTPS","Notebook · 导出 WAV","GPU Studio · HTTPS"};
+        final Runnable[] gpuActions={
+            this::gradioConfig,
+            ()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/MODAL_PHONE_DEPLOY.md"),
+            ()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/kaggle/VoiceStudio-Qwen3-TTS.ipynb"),
+            ()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/deploy/lightning/README.md")
+        };
+        for(int start=0;start<4;start+=2){
+            LinearLayout gpuRow=row();
+            for(int offset=0;offset<2;offset++){
+                final int route=start+offset;
+                LinearLayout tile=col();
+                tile.setPadding(dp(12),dp(12),dp(12),dp(12));
+                tile.setBackground(CosmicUi.panel(this,route==0?CYAN:PURPLE));
+                add(tile,text(gpuNames[route],14,INK,true));gap(tile,6);
+                add(tile,text(gpuDetails[route],11,MUTED,false));
+                tile.setOnClickListener(v->gpuActions[route].run());
+                tile.setContentDescription(gpuNames[route]+" · "+gpuDetails[route]);
+                CosmicUi.press(tile);
+                if(offset!=0)sideGap(gpuRow,8);
+                flexible(gpuRow,tile);
+            }
+            add(gpuPaths,gpuRow);gap(gpuPaths,9);
+        }
         add(c,gpuPaths);gap(c,15);
         Spinner provider=new Spinner(this);provider.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CLOUD_LABELS));
         String chosen=prefs.getString("cloud-engine","auto");for(int i=0;i<CLOUD_IDS.length;i++)if(CLOUD_IDS[i].equals(chosen))provider.setSelection(i);
