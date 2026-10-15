@@ -359,8 +359,12 @@ public class MainActivity extends Activity {
     }
 
     String readyMessage() {
+        if ("accelerated".equals(engine)
+            && "hf".equals(prefs.getString("accelerated-provider",""))
+            && "gradio".equals(prefs.getString("accelerated-protocol","")))
+            return "ZeroGPU 参考录音已选时可直接合成 · 受 HF 每日配额与排队限制";
         if(!prefs.getBoolean("cloud-api-consent",false))
-            return "免费保护模式 · 立即免费试听，不提交可能收费的 API";
+            return "费用保护已开启 · 商业 API 需主动授权，HF ZeroGPU 可在免费额度内直接合成";
         if ("accelerated".equals(engine)) return prefs.getString("accelerated-url", "").isEmpty()
                 ? "先到音色页配置云端连接" : "云端连接已填写 · 可检查连接后生成";
         if ("fish".equals(engine)) {
@@ -1741,7 +1745,7 @@ public class MainActivity extends Activity {
         LinearLayout safety=card();
         info(safety,allowed?"费用保护已解除 · API 可能计费":"费用保护已开启 · 不自动付费",
              allowed?"已允许调用云端接口。请留意所选服务的官方免费额度或付费余额。":
-               "默认不提交可能收费的 API 请求；仍可通过 ZeroGPU 网页免费试听并导入 WAV。");
+               "商业 API 默认需要费用授权；HF ZeroGPU 可以按账号免费配额在应用内合成，Kaggle 可离线生成 WAV 导入。");
         gap(safety,10);
         add(safety,button("✦ 免电脑免费试用",false,this::freeCloudStarter));
         gap(safety,8);
