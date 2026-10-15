@@ -38,9 +38,15 @@ public class StudioService extends Service {
     }
 
     static void requireApiConsent(Context c, JSONObject job) throws IOException {
+        // HF Gradio ZeroGPU is quota-limited, not one of the four commercial
+        // API routes. Keep fee consent mandatory for all other cloud routes.
+        boolean hfGradio = "accelerated".equals(job.optString("engine"))
+            && "hf".equals(job.optString("provider"))
+            && "gradio".equals(job.optString("protocol"));
         if (job.optString("type", "tts").equals("tts")
+            && !hfGradio
             && !c.getSharedPreferences("studio", 0).getBoolean("cloud-api-consent", false))
-            throw new IOException("费用保护已开启：应用内云端 API 合成可能计费。请先在音色/设置页面主动授权，或使用免电脑免费 ZeroGPU 网页试听并导入 WAV。");
+            throw new IOException("费用保护已开启：商业 API 和自建 GPU 可能计费。请先在设置页面主动授权；HF ZeroGPU 可在免费额度内使用但可能排队或耗尽配额。");
     }
 
     static synchronized String enqueue(Context c, JSONObject job) throws Exception {
