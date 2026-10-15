@@ -36,6 +36,12 @@ public final class OfficialVoiceCatalogTest {
         reject(()->new OfficialVoiceCatalog(url->huge).list("cartesia","key",""));check(huge.closed);
         check(CloudDeploymentConfig.endpoint("modal","https://user--voice.modal.run").endsWith("/v1/audio/speech"));
         check(CloudDeploymentConfig.endpoint("modal","{\"schema_version\":1,\"provider\":\"modal\",\"engine\":\"qwen3tts\",\"protocol\":\"rest\",\"url\":\"https://user--voice.modal.run\"}").startsWith("https://user--voice.modal.run"));
+        for(String id:CloudDeploymentConfig.ENGINES){
+            String json="{\"schema_version\":1,\"provider\":\"modal\",\"engine\":\""+id+"\",\"protocol\":\"rest\",\"url\":\"https://user--voice.modal.run\"}";
+            check(CloudDeploymentConfig.endpoint("modal",id,json).endsWith("/v1/audio/speech"));
+            if(!id.equals("qwen3tts"))reject(()->CloudDeploymentConfig.endpoint("modal","qwen3tts",json));
+        }
+        reject(()->CloudDeploymentConfig.endpoint("modal","fish","https://user--voice.modal.run"));
         for(String bad:new String[]{"https://modal.com/apps","http://user--voice.modal.run","https://user--voice.modal.run?key=x","https://huggingface.co/spaces/user/space","https://api.cartesia.ai/tts/bytes","https://key@user--voice.modal.run"})reject(()->CloudDeploymentConfig.endpoint("modal",bad));
         reject(()->CloudDeploymentConfig.endpoint("lightning","{\"schema_version\":1,\"provider\":\"modal\",\"engine\":\"qwen3tts\",\"protocol\":\"rest\",\"url\":\"https://user--voice.modal.run\"}"));
         System.out.println("Voice IDs and deployment configuration: "+checks+" read-only/pagination/auth/redirect/bounds/endpoint checks passed.");

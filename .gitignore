@@ -18,3 +18,5 @@ app/libs/*.pending
 # Locally restored build/test dependencies.
 deps/
 server/.env.cloud
+
+.cloud-envs/

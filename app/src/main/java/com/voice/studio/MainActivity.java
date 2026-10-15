@@ -1811,7 +1811,11 @@ public class MainActivity extends Activity {
     void gpuGatewayConfig(String platform) {
         boolean modal=platform.equals("modal");String brand=modal?"Modal":"Lightning";
         LinearLayout form=col();form.setPadding(dp(16),dp(12),dp(16),dp(16));
-        info(form,brand+" · 云端 Qwen3-TTS","先部署，再填写真实服务地址。模型在远程 GPU 运行；创建账户、授权和 GPU 费用由你在平台确认。");gap(form,12);
+        info(form,brand+" · 五种云端引擎","先部署，再填写真实服务地址。模型在远程 GPU 运行；创建账户、授权和 GPU 费用由你在平台确认。");gap(form,12);
+        Spinner deployed=new Spinner(this);deployed.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,CloudDeploymentConfig.LABELS));
+        String savedEngine=prefs.getString("gpu-"+platform+"-engine","qwen3tts");
+        for(int i=0;i<CloudDeploymentConfig.ENGINES.length;i++)if(savedEngine.equals(CloudDeploymentConfig.ENGINES[i]))deployed.setSelection(i);
+        add(form,text("部署的引擎（与 Run workflow 或云端命令保持一致）",12,MUTED,false));add(form,deployed);gap(form,10);
         if(modal){
             add(form,text("部署前：Modal 创建 voicestudio-cloud Secret；GitHub Actions Secrets 添加 MODAL_TOKEN_ID 和 MODAL_TOKEN_SECRET。下面的网关密钥与账号部署 Token 是两套凭据。",12,MUTED,false));gap(form,8);
             add(form,button("打开 GitHub Actions Secrets 设置",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/settings/secrets/actions")));gap(form,8);
@@ -1819,11 +1823,11 @@ public class MainActivity extends Activity {
             add(form,button("① 打开 GitHub 部署入口 · Run workflow",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(form,8);
             add(form,button("查看部署运行结果 / Summary",false,()->openUrl(CloudDeploymentConfig.MODAL_WORKFLOW)));gap(form,8);
             add(form,button("打开 Modal Apps · 查看实际 Web Endpoint",false,()->openUrl("https://modal.com/apps")));gap(form,10);
-            add(form,text("GitHub 选择 main → Run workflow。成功后展开本次运行的 Summary，即可复制真实地址；也可在 Modal Apps → voicestudio-qwen3tts → voice_api 查看 Web Endpoint。",12,MUTED,false));gap(form,10);
+            add(form,text("GitHub 选择 main → Run workflow → engine。每个引擎部署独立服务；成功后在 Summary 复制真实地址。Modal App 名为 voicestudio-引擎ID，函数为 voice_api。",12,MUTED,false));gap(form,10);
             add(form,button("复制 Modal Secret 名称：voicestudio-cloud",false,()->copyPrivateValue("Secret 名称","voicestudio-cloud")));gap(form,8);
             add(form,button("复制变量名：VOICE_GATEWAY_TOKEN",false,()->copyPrivateValue("变量名","VOICE_GATEWAY_TOKEN")));gap(form,8);
         }else{
-            add(form,button("① 打开 Lightning 云端部署步骤",false,()->gpuGatewayConfig("lightning")));gap(form,8);
+            add(form,button("① 打开 Lightning 云端部署步骤",false,()->openUrl("https://github.com/nmm26301-maker/Voicestudio/blob/feature/cloud-voice-20261014/docs/OPEN_MODEL_DEPLOY.md")));gap(form,8);
         }
         EditText address=field("② 实际 HTTPS 运行地址（或部署 JSON）",prefs.getString("gpu-"+platform+"-url",""),false);
         String existing="";try{existing=new SecretStore(this,modal?"gpu-modal":"gpu-lightning").read();}catch(Exception ignored){}
@@ -1844,26 +1848,27 @@ public class MainActivity extends Activity {
         TextView result=text("连接尚未检测",12,MUTED,false);add(form,result);gap(form,8);
         TextView probe=button("⑤ 检测连接 · 不提交合成",false,()->{});
         probe.setOnClickListener(v->{
-            final String url,key;
-            try{url=CloudDeploymentConfig.endpoint(platform,address.getText().toString());key=token.getText().toString().trim();AcceleratedSpeechClient.token(key);if(key.length()<24)throw new IOException("请填写至少 24 位网关访问密钥");}
+            final String url,key,selected=CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()];
+            try{url=CloudDeploymentConfig.endpoint(platform,CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()],address.getText().toString());key=token.getText().toString().trim();AcceleratedSpeechClient.token(key);if(key.length()<24)throw new IOException("请填写至少 24 位网关访问密钥");}
             catch(Exception e){result.setText(e.getMessage());return;}
             probe.setEnabled(false);result.setText("正在连接；GPU 冷启动可能较慢…");
-            new Thread(()->{String message;try{Set<String> configured=new CloudHealthClient().check(url,key);if(!configured.contains("qwen3tts"))throw new IOException("服务未配置 Qwen3-TTS");message="连接成功 · Qwen3-TTS 已配置（音质尚未验证）";}catch(Exception e){message=e.getMessage();}final String detail=message;
-                runOnUiThread(()->{if(isFinishing()||isDestroyed())return;probe.setEnabled(true);try{result.setText(!url.equals(CloudDeploymentConfig.endpoint(platform,address.getText().toString()))||!key.equals(token.getText().toString().trim())?"配置已变更，请重新检测":detail);}catch(Exception e){result.setText("配置已变更，请重新检测");}});
+            new Thread(()->{String message;try{Set<String> configured=new CloudHealthClient().check(url,key);if(!configured.contains(selected))throw new IOException("服务未配置 "+CloudEngineCatalog.label(selected));message="连接成功 · "+CloudEngineCatalog.label(selected)+" 已配置（音质尚未验证）";}catch(Exception e){message=e.getMessage();}final String detail=message;
+                runOnUiThread(()->{if(isFinishing()||isDestroyed())return;probe.setEnabled(true);try{result.setText(!selected.equals(CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()])||!url.equals(CloudDeploymentConfig.endpoint(platform,CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()],address.getText().toString()))||!key.equals(token.getText().toString().trim())?"配置已变更，请重新检测":detail);}catch(Exception e){result.setText("配置已变更，请重新检测");}});
             },"gpu-connection-check").start();
         });add(form,probe);
         ScrollView scroll=new ScrollView(this);scroll.addView(form);
         AlertDialog dialog=new CosmicDialogBuilder(this).setTitle(brand+" 手机部署与连接")
             .setView(scroll).setNegativeButton("取消",null).setPositiveButton("保存连接 → 合成",null).create();
         dialog.setOnShowListener(d->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{
-            String url=CloudDeploymentConfig.endpoint(platform,address.getText().toString()),key=token.getText().toString().trim();
+            String selected=CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()];
+            String url=CloudDeploymentConfig.endpoint(platform,CloudDeploymentConfig.ENGINES[deployed.getSelectedItemPosition()],address.getText().toString()),key=token.getText().toString().trim();
             AcceleratedSpeechClient.token(key);if(key.length()<24)throw new IOException("请使用至少 24 位的 VOICE_GATEWAY_TOKEN，不是平台登录 Token");
-            if(profile[0].isEmpty()||!new File(StudioFiles.dir(this,"profiles"),profile[0]+".reference.wav").isFile())throw new IOException("Qwen3-TTS 需要先录制并选择参考音色");
+            if(profile[0].isEmpty()||!new File(StudioFiles.dir(this,"profiles"),profile[0]+".reference.wav").isFile())throw new IOException("需要先录制并选择参考音色；GPT-SoVITS 还需准确的录音原文");
             new SecretStore(this,"accelerated").save(key);new SecretStore(this,modal?"gpu-modal":"gpu-lightning").save(key);
-            prefs.edit().putString("gpu-"+platform+"-url",url).putString("gateway-url",url).putString("cloud-url",url)
-                .putString("cloud-engine","qwen3tts").putString("cloud-profile",profile[0]).putString("cloud-voice","auto")
+            prefs.edit().putString("gpu-"+platform+"-engine",selected).putString("gpu-"+platform+"-url",url).putString("gateway-url",url).putString("cloud-url",url)
+                .putString("cloud-engine",selected).putString("cloud-profile",profile[0]).putString("cloud-voice","auto")
                 .putString("accelerated-url",url).putString("accelerated-provider","custom").putString("accelerated-protocol","rest")
-                .putString("accelerated-model","qwen3tts").putString("accelerated-voice","auto").apply();
+                .putString("accelerated-model",selected).putString("accelerated-voice","auto").apply();
             engine="accelerated";saveSettings();dialog.dismiss();change("创作");toast("已保存云端连接；输入文字后直接点击开始合成");
         }catch(Exception e){toast(e.getMessage());}}));dialog.show();
     }
@@ -2270,7 +2275,7 @@ public class MainActivity extends Activity {
         info(privacy,"隐私与费用","仅在主动生成时向所选服务发送文字及参考录音。第三方云端 API 可能收费；不会自动重试不确定是否已计费的请求。网关密钥保存在 Android Keystore 加密存储。");
         add(content,privacy);gap(content,12);
         LinearLayout about=card();
-        info(about,"VoiceStudio 1.5.26 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
+        info(about,"VoiceStudio 1.5.27 · 九引擎云端版","录音与作品继续保存在手机。连接自己的云端服务后，开始新的声音创作。");
         add(content,about);
     }
 

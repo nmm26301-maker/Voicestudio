@@ -1,0 +1,14 @@
+Official APIs: 84 host/mock request, reference, decode-boundary, resume and cancellation checks passed.
+Fish MessagePack independently decoded: full UTF-8 text + exact WAV reference.
+Voice IDs and deployment configuration: 44 read-only/pagination/auth/redirect/bounds/endpoint checks passed.
+Cloud health: 16 mock read-only/auth/redirect/body-limit checks passed.
+Progress persistence: 1023 heartbeat/fast-step/lifecycle/preview/failed-save/clock checks passed; host only.
+Host 300s PCM16 validation median: previous=62.965 ms; bounded=2.091 ms; buffer=32768 bytes (not phone/GPU inference speed).
+Audio validation: 42 format/full-read/nonfinite/cancellation checks passed.
+Download recovery: 123 transient/permanent/cancel/no-repeat-POST checks passed (mock transport).
+Cloud WAV merge: 10 host checks passed
+Accelerated API: 67 checks passed; mock transport only, no live GPU/server speed claim.
+Omni upstream prompt/duration: 38 checks passed; semantic speech quality requires real weights/device.
+Remote pipeline: 10841 Unicode/checkpoint/transport/PCM/consent checks passed; mocked speech only.
+Free GPU: 52 protocol/transport/notebook checks passed.
+Kaggle generated Python parses; user input remains literal data.

@@ -1,3 +1,7 @@
+# 1.5.27：五引擎入口
+
+新增 [独立云端环境启动器](../../docs/OPEN_MODEL_DEPLOY.md)。本页下文是保留兼容的 Qwen 专用流程，其他引擎请用新的启动器，每款引擎独立环境。未完成真实 Studio/GPU 验收。
+
 # Lightning AI Studio · VoiceStudio Qwen3-TTS
 
 1. On Android open https://lightning.ai/ and create/verify an account.

@@ -1,39 +1,30 @@
 {
-  "version": "1.5.19-hybrid",
-  "versionCode": 35,
-  "baseCommit": "fe6eba17385e1b27253664e5f76ee58b02842526",
-  "checkedOn": "2026-10-14",
-  "androidCompilation": "passed ECJ/resources/D8/ARM64; original runtime/assets preserved",
+  "version": "1.5.27-cloud",
+  "versionCode": 43,
+  "checkedOn": "2026-10-15",
+  "baseCommit": "4af2807b6d4e58e65e11a0821bddd8fcc03181f8",
+  "androidCompilation": "passed ECJ/resources/D8/zipalign and original v2/v3 signature",
   "upgrade": {
     "status": "passed",
-    "checks": 47,
+    "checks": 31,
     "package": "com.voice.studio.preview",
     "label": "VoiceStudio",
-    "version": "1.5.19-hybrid",
-    "versionCode": 35,
+    "version": "1.5.27-cloud",
+    "versionCode": 43,
     "certificateSha256": "8d6cde5c3a0876b56a0191dbefd28160fc79604d1ebf7dff664cae736ff5f860",
-    "apkSha256": "146caf80f028a90d77d38cf7907bbe24d10849e8097043dda249acb2348d1bef",
-    "previousApkSha256": "701cabd29f199af4cf60718a6faa73024583e440e7df76912ffe5eff1a82620a",
-    "previousVersionCode": 34,
-    "scope": "Signed APK identity/version/provider continuity and unchanged assets/runtime verified. No device installation, data-retention or functional acceptance performed."
+    "apkSha256": "c3275b3c09ab5071e0619e52cbd61ccb428eda560badca96556e948185039c02",
+    "previousApkSha256": "b1f73c0879716e709a34acb930c03e9ce9970e550d4fcd53f7725b7866d1f2a6",
+    "previousVersionCode": 42,
+    "scope": "Signed cloud APK identity/version/provider continuity and removal of local native/model assets verified. This script performs no device installation or speech-quality acceptance."
   },
-  "hostRegression": "Full initial host suite passed; final modified synthesis, accelerated, actual-native/cache/PCM/preview and source integration suites rerun and passed.",
-  "referenceOutputChecks": 56,
-  "referenceTranscriptChecks": 19,
-  "boundedPcmWriterChecks": 840,
-  "decodedCacheChecks": 22,
-  "actualSpeechEvidence": "real-reference-repair-1.5.19.json",
-  "backups": "Exact APK + unchanged key/password instructions archived; encrypted ZIP round-trip verified; separate recovery JSON retained.",
+  "serverTests": 51,
+  "javaVoiceAndDeploymentChecks": 44,
+  "hostRegression": "passed official APIs, remote pipeline, persistence, audio validation, recovery, WAV merge and legacy Gradio/Kaggle protocols",
   "unverified": [
-    "User reference recording and real video identities",
-    "Android installation/data retention/playback",
-    "Phone speed, memory and thermal behavior",
-    "Arbitrary text verbatim accuracy"
-  ],
-  "githubSigningBackup": {
-    "status": "blocked",
-    "destination": "nmm26301-maker/Zizai",
-    "branch": "backup/voicestudio-1.5.19-20261014",
-    "reason": "Automatic approval review rejected final encrypted signing-backup tree mutation: trusted user text did not identify sensitive payload and Zizai destination. Saved direct backup and recovery JSON available."
-  }
+    "New remote dependency image builds",
+    "Actual Modal/Lightning/HF/Kaggle GPU inference",
+    "Phone install/record/playback/data retention",
+    "Real voice similarity and full-text speech acceptance",
+    "Live platform permissions, quotas and costs"
+  ]
 }

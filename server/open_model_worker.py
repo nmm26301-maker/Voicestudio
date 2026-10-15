@@ -66,9 +66,12 @@ def load_model(engine):
         from indextts.infer_v2_5 import IndexTTS2
         if not directory:
             raise RuntimeError("VOICE_MODEL_DIR must contain IndexTTS-2.5")
-        return IndexTTS2(cfg_path=str(Path(directory) / "config.yaml"), model_dir=directory, use_bf16=True)
+        import torch
+        bf16 = device.startswith("cuda") and torch.cuda.is_available() and torch.cuda.is_bf16_supported()
+        return IndexTTS2(cfg_path=str(Path(directory) / "config.yaml"), model_dir=directory,
+                         device=device, use_bf16=bf16)
     from chatterbox.mtl_tts import ChatterboxMultilingualTTS
-    return ChatterboxMultilingualTTS.from_pretrained(device=device, t3_model="t3_mtl23ls_v3.safetensors")
+    return ChatterboxMultilingualTTS.from_pretrained(device=device, t3_model="v3")
 
 
 def language(value, text):
